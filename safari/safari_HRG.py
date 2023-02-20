@@ -62,6 +62,7 @@ cut = T
 mode = "ALPHA"
 topology = "MIX"
 mapping="trivial"
+index = "jacp"
 opt_score = ["_maxmu", "_X", "_D"]
 
 properties = {
@@ -71,6 +72,8 @@ properties = {
   "prob" : prob,
   "cut" : cut,
   "topology" : topology,
+  "mapping" : mapping,
+  "index" : index,
   "mode" : mode,
 }
 

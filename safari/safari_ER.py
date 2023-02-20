@@ -23,9 +23,9 @@ lookup = F
 prob = F
 cut = T
 mode = "ALPHA"
-distance = ""
 topology = "MIX"
 mapping="trivial"
+index = "jacp"
 opt_score = ["_maxmu", "_X", "_D"]
 # opt_score = ["_maxmu"]
 
@@ -34,9 +34,10 @@ properties = {
   "nlog10" : nlog10,
   "lookup" : lookup,
   "prob" : prob,
-  "distance": distance,
   "cut" : cut,
+  "mapping" : mapping,
   "topology" : topology,
+  "index" : index,
   "mode" : mode
 }
 
