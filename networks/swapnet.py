@@ -1,0 +1,202 @@
+import os
+from os.path import join
+import pandas as pd
+import numpy as np
+from networks.edrnet import EDR
+from various.network_tools import column_normalize
+
+class SWAPNET(EDR):
+  def __init__(
+    self, nodes : int, linkage : str, mode : str, iteration : int,
+    nlog10=False, lookup=False, cut=False,
+    mapping="R1", topology="MIX", index="jacp", **kwargs
+  ) -> None:
+    super().__init__(nodes, **kwargs)
+    self.random = "swaps"
+    self.iter = iteration
+    self.nlog10 = nlog10
+    self.lookup = lookup
+    self.topology = topology
+    self.mapping = mapping
+    self.index = index
+    self.cut = cut
+    self.subfolder = f"{topology}_{index}_{mapping}"
+    ## the distance matrix ----
+    self.structure_path = os.path.join(
+      "../CSV", self.subject,
+      self.version, self.structure,
+      self.nature, self.distance
+    )
+    if self.nature == "original":
+      self.structure_path = os.path.join(
+        self.structure_path, str(self.nodes)
+      )
+    elif self.nature == "imputation":
+      self.structure_path = os.path.join(
+        self.structure_path, self.model, str(self.nodes)
+      )
+    # Get structure network ----
+    self.C, self.A = self.get_structure()
+    # Set ANALYSIS NAME ----
+    self.analysis = linkage.upper() + "_{}_{}".format(
+      self.rows, self.nodes
+    )
+    if nlog10:
+      self.analysis = self.analysis + "_l10"
+    if lookup:
+      self.analysis = self.analysis + "_lup"
+    if cut:
+      self.analysis = self.analysis + "_cut"
+    # Directory details ----
+    self.common_path = os.path.join(
+      self.folder, self.random,
+      self.subject, self.version,
+      self.structure, self.distance,
+      self.model, self.analysis, str(self.iter)
+    )
+    self.plot_path = os.path.join(
+      "../plots", self.common_path, mode,
+      self.subfolder, "b_"+str(self.b)
+    )
+    self.csv_path = os.path.join(
+      "../CSV", self.common_path, self.subfolder
+    )
+    self.pickle_path = os.path.join(
+      "../pickle", self.common_path, mode, self.subfolder,
+      "b_"+str(self.b)
+    )
+    # Labels and regions ----
+    self.labels_path = self.structure_path
+    self.regions_path = os.path.join(
+      "../CSV/Regions",
+      "Table_areas_regions_09_2019.csv"
+    )
+    # Get network's spatial distances ----
+    self.D = self.get_distance()
+    # Base clustering attributes ----
+    self.overlap = np.array(["UNKNOWN"] * self.nodes)
+
+  def create_plot_path(self):
+    self.create_directory(self.plot_path)
+  
+  def create_pickle_path(self):
+    self.create_directory(self.pickle_path)
+
+  def create_csv_path(self):
+    self.create_directory(self.csv_path)
+
+  def set_colregion(self, colregion):
+    self.colregions = colregion
+  
+  def get_distance(self):
+    fname = join(
+      self.structure_path, "distance.csv"
+    )
+    ##
+    raw = pd.read_csv(fname, index_col=0)
+    # raw = pd.read_csv(fname)
+    ##
+    raw.columns = np.char.lower(raw.columns.to_numpy().astype(str))
+    raw = raw.set_index(raw.columns)
+    # load areas definition
+    raw = raw[self.struct_labels].reindex(self.struct_labels)
+    D = raw.to_numpy()
+    D[np.isnan(D)] = 0
+    np.fill_diagonal(D, 0)
+    return D
+
+  def get_structure(self):
+    # Get structure ----
+    if self.nature == "original":
+      path = join(
+        self.structure_path, "Count.csv"
+      )
+      C = pd.read_csv(path, index_col=0)
+      clab = C.columns.to_numpy()
+      rlab = np.array(C.index)
+      nrlab = np.array([r for r in rlab if r not in clab])
+      rlab = np.hstack([clab, nrlab])
+      C = C.reindex(rlab).to_numpy()
+      # Take out claustrum
+      C = C[:-1, :]
+      self.struct_labels = rlab[:-1]
+      # self.struct_labels = rlab
+      #
+      self.struct_labels = np.array(self.struct_labels, dtype=str)
+      self.struct_labels = np.char.lower(self.struct_labels)
+      self.rows = C.shape[0]
+      self.nodes = C.shape[1]
+    elif self.nature == "imputation":
+      path = join(
+        self.structure_path, "fln.csv"
+      )
+      C = pd.read_csv(path)
+      self.struct_labels = list(C.columns)
+      C = C.to_numpy()
+      # Get network dimensions ----
+      self.rows = C.shape[0]
+      self.nodes = C.shape[1]
+    else:
+      raise ValueError("Unknow FLN network.")
+    return C, column_normalize(C.copy())
+
+  def random_one_k(self, run=True, **kwargs):
+    if self.nature == "original":
+      path = os.path.join(
+        self.csv_path, "Count.csv"
+      )
+      if run:
+        if not os.path.exists(path):
+          from rand_network import swap_one_k
+          t = swap_one_k(
+            self.C, self.rows, self.nodes, 100000
+          )
+          self.C = np.array(t)
+          print(
+            "Density: {}".format(
+              self.den(self.C[:self.nodes, :self.nodes])
+            )
+          )
+          print(
+            "Count: {}".format(self.count(self.C))
+          )
+          if "on_save_csv" in kwargs.keys():
+            if kwargs["on_save_csv"]:
+              np.savetxt(
+                path, self.C, delimiter=","
+              )
+        else:
+          self.C = np.genfromtxt(path, delimiter=",")
+        self.A = column_normalize(self.C.copy())
+      else:
+        self.C = np.genfromtxt(path, delimiter=",")
+        self.A = column_normalize(self.C.copy())
+    elif self.nature == "imputation":
+      path = os.path.join(
+        self.csv_path, "fln.csv"
+      )
+      if run:
+        if not os.path.exists(path):
+          from rand_network import swap_one_k
+          t = swap_one_k(
+            self.A, self.rows, self.nodes, 100000
+          )
+          self.A = np.array(t)
+          print(
+            "Density: {}".format(
+              self.den(self.C[:self.nodes, :self.nodes])
+            )
+          )
+          print(
+            "Count: {}".format(self.count(self.C))
+          )
+          if "on_save_csv" in kwargs.keys():
+            if kwargs["on_save_csv"]:
+              np.savetxt(
+                path, self.A, delimiter=","
+              )
+        else:
+          self.A = np.genfromtxt(path, delimiter=",")
+      else:
+        self.A = np.genfromtxt(path, delimiter=",")
+
