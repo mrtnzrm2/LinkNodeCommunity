@@ -20,3 +20,30 @@ Some key features that make our algorithm convenient are the following:
 3. **Flexible topology**: You can choose to find node communities for how similar are their source or/and target connections. In directed networks, nodes can have different functions from the perspective of acting or receiving the action of other nodes. A good parition from the perspective of how the nodes act on other nodes could be very differeny from how their receive the actions since those groups can potentially be different. Our algorithm can produce partitions taking into account the direction of interest which produce partitions that are easier to interpret.
 
 4. **New quality functions ($\mu$-score)**: As it is well know, the concept of a community can have multiple interpretation; however, it is well accepted that the communities tend to be formed by set of nodes with more connections between them than with the rest of the network. But, what happens when the network is so dense that modularity, i.e., density of a cluster compared to a random network, stops being a a good quality function to detect the best partition? To solve that problem, we introduce a new quality function that we called the $\mu$-score which spots a parition with a good balance of link communities' sizes. We believe that, although the function probably needs improvements, it is a sound start towards new alternatives for quality functions in dense networks. Preliminary tests show that in the partitions selected using the $\mu$-score, the algorithm has better sensitivity ans specificity identifying the nodes with overlapping memberships (NOCs) using the LFR benchmark.
+
+## Pybind C++ libraries
+
+The code is implemented mostly in Python (3.9.13) with some C++ libraries used to speed up the link community processing to find the right parition.
+
+The steps to pybind (mandatory) the C++ code are the following:
+
+1. Install **cmake** version [3.24.0-rc4] (https://cmake.org/files/). To use cmake, do not forget to add it to your path.
+
+```
+export PATH="/Applications/CMake.app/Contents/bin:/usr/local/bin:$PATH"
+```
+
+2. Install pybind11.
+
+```
+pip3 install pybind11
+```
+
+3. Download the hclust-cpp repository created by [Daniel Müllner] (http://danifold.net/) and [Christoph Dalitz] (https://lionel.kr.hs-niederrhein.de/~dalitz/data/hclust/).
+
+```
+https://github.com/cdalitz/hclust-cpp.git
+```
+4. Paste the repository in the cpp/process_hclust/src and cpp/la_arbre_a_merde/src.
+
+5. We embedded the LFB benchmark from 
