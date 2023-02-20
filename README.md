@@ -1,4 +1,4 @@
-# LinkCommunities
+# DiLinkCommunities
 An extended version of the link community algorithm to use in directed networks with very heterogeneous weights.
 
  ## Introduction
