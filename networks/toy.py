@@ -7,10 +7,17 @@ from networks.base import BASE
 
 class TOY(BASE):
   def __init__(
-    self, A, linkage, nlog10=False, lookup=False, cut=False, 
+    self, A, linkage, nlog10=False, lookup=False, cut=False,
+    mapping="trivial", index="jacp", topolgy="MIX",
     **kwargs
   ) -> None:
     super().__init__(linkage, **kwargs)
+    self.nlog10 = nlog10
+    self.lookup = lookup
+    self.cut = cut
+    self.topology = topolgy
+    self.mapping = mapping
+    self.index = index
     self.A = A.copy()
     self.nodes, self.rows = A.shape
     # Set ANALYSIS NAME ----
