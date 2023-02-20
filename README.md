@@ -65,7 +65,9 @@ We have created several examples in the form of Jupyter Notebooks to get a bette
 ## Drawbacks
 There still plenty of work to do. Some of the points to improve are:
 
-- 
+- Low computational speed. Currently, the processing of link communities to identify the most interesting partitions is slow and scales as $O(M^{2})$ where $M$ is the number of links in the network.
+
+- The algorithm identifies well the NOCs, however, it does not identify well community membership that they belong. However, by looking to the node dendrogram and link community matrix, one can get an idea about which communty they belong to.
 
 ## References
 - Ahn, YY., Bagrow, J. & Lehmann, S. Link communities reveal multiscale complexity in networks. Nature 466, 761–764 (2010). https://doi.org/10.1038/nature09182
