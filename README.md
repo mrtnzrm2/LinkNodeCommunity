@@ -46,4 +46,13 @@ https://github.com/cdalitz/hclust-cpp.git
 ```
 4. Paste the repository in the cpp/process_hclust/src and cpp/la_arbre_a_merde/src.
 
-5. We embedded the LFB benchmark from 
+5. Install the C++ libraries in python by running:
+
+```
+pip3 install cpp/process_hclust
+pip3 install cpp/la_arbre_a_merde
+pip3 install cpp/rand_network
+pip3 install cpp/WDN
+```
+
+To create directed, weighted and possible nodes with overlapping communities, we modified the LFR benchmark from [Andrea Lancichinetti and Santo Fortunato] (https://www.santofortunato.net/resources) (package 4) to pybind it. The modified code can be seen in cpp/WDN.
