@@ -1,2 +1,2 @@
 # LinkCommunities
- Link community algorithm applied to weightred and directed networks.
+ Link community algorithm applied to weighted and directed networks.
