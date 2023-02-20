@@ -57,6 +57,11 @@ pip3 install cpp/WDN
 
 To create directed, weighted and possible nodes with overlapping communities, we modified the LFR benchmark from [Andrea Lancichinetti](https://sites.google.com/site/andrealancichinetti/) and [Santo Fortunato](https://www.santofortunato.net/resources) (package 4) to pybind it. The modified code can be seen in cpp/WDN.
 
+## Examples
+We have created several examples in the form of Jupyter Notebooks to get a better understanding of how to use the algorithm.
+
+- ER_exmaple: Running the algorithm in an Erdos-Renyi random graph with high density. The lack of structure in the node dendrogram shows that the algorithm does not find structure in this null model.
+
 ## References
 - Ahn, YY., Bagrow, J. & Lehmann, S. Link communities reveal multiscale complexity in networks. Nature 466, 761–764 (2010). https://doi.org/10.1038/nature09182
 - Lancichinetti, A., & Fortunato, S. (2009). Benchmarks for testing community detection algorithms on directed and weighted graphs with overlapping communities. Phys. Rev. E, 80, 016118.
