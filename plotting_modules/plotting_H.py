@@ -95,6 +95,46 @@ class Plot_H:
     else:
       print("No Mu with plotly")
 
+  def plot_measurements_mu(self, on=False, **kwargs):
+    if on:
+      print("Plot Mu iterations")
+      from pandas import DataFrame, concat
+      # Create Data ----
+      dF = DataFrame()
+      # Concatenate over n and beta ----
+      for i in np.arange(len(self.BH)):
+        dF = concat(
+          [
+            dF,
+            self.BH[i]
+          ], ignore_index=True
+        )
+      # Create figure ----
+      g = sns.FacetGrid(
+        dF, row="alpha"
+      )
+      g.map_dataframe(
+        sns.lineplot,
+        x="K",
+        y="mu",
+        hue="beta"
+      ).set(xscale="log")
+      # Arrange path ----
+      plot_path = join(self.path, "Features")
+      # Crate path ----
+      Path(
+        plot_path
+      ).mkdir(exist_ok=True, parents=True)
+      # Save plot ----
+      plt.savefig(
+        join(
+          plot_path, "Mu_logK.png"
+        ),
+        dpi=300
+      )
+      plt.close()
+    else: print("No Mu iterations")
+
   def D_plotly(self, on=True, **kwargs):
     if on:
       import plotly.express as px
@@ -127,6 +167,36 @@ class Plot_H:
     else:
       print("No D with plotly")
 
+  def plot_measurements_D(self, on=False, **kwargs):
+    if on:
+      print("Plot D iterations")
+      # Create figure ----
+      fig, ax = plt.subplots(1, 1)
+      sns.lineplot(
+        data=self.BH[0],
+        x="K",
+        y="D",
+        ax=ax
+      )
+      plt.legend([],[], frameon=False)
+      plt.xscale("log")
+      fig.tight_layout()
+      # Arrange path ----
+      plot_path = join(self.path, "Features")
+      # Crate path ----
+      Path(
+        plot_path
+      ).mkdir(exist_ok=True, parents=True)
+      # Save plot ----
+      plt.savefig(
+        join(
+          plot_path, "D_logK.png"
+        ),
+        dpi=300
+      )
+      plt.close()
+    else: print("No D iterations")
+
   def X_plotly(self, on=True, **kwargs):
     if on:
       import plotly.express as px
@@ -158,6 +228,36 @@ class Plot_H:
       )
     else:
       print("No X with plotly")
+
+  def plot_measurements_X(self, on=False, **kwargs):
+    if on:
+      print("Plot X iterations")
+      # Create figure ----
+      fig, ax = plt.subplots(1, 1)
+      sns.lineplot(
+        data=self.BH[0],
+        x="K",
+        y="X",
+        ax=ax
+      )
+      plt.legend([],[], frameon=False)
+      plt.xscale("log")
+      fig.tight_layout()
+      # Arrange path ----
+      plot_path = join(self.path, "Features")
+      # Crate path ----
+      Path(
+        plot_path
+      ).mkdir(exist_ok=True, parents=True)
+      # Save plot ----
+      plt.savefig(
+        join(
+          plot_path, "X_logK.png"
+        ),
+        dpi=300
+      )
+      plt.close()
+    else: print("No X iterations")
   
   def order_parameter_plotly(self, on=True):
     if on:
@@ -190,6 +290,36 @@ class Plot_H:
       )
     else:
       print("No the order parameter with plotly")
+
+  def plot_measurements_order_parameter(self, on=False, **kwargs):
+    if on:
+      print("Plot order parameter iterations")
+      # Create figure ----
+      fig, ax = plt.subplots(1, 1)
+      sns.lineplot(
+        data=self.BH[0],
+        x="K",
+        y="m",
+        ax=ax
+      )
+      plt.legend([],[], frameon=False)
+      plt.xscale("log")
+      fig.tight_layout()
+      # Arrange path ----
+      plot_path = join(self.path, "Features")
+      # Crate path ----
+      Path(
+        plot_path
+      ).mkdir(exist_ok=True, parents=True)
+      # Save plot ----
+      plt.savefig(
+        join(
+          plot_path, "order_parameter_logK.png"
+        ),
+        dpi=300
+      )
+      plt.close()
+    else: print("No order parameter iterations")
   
   def susceptibility_plotly(self, on=True):
     if on:
@@ -223,6 +353,36 @@ class Plot_H:
     else:
       print("No xm(t) with plotly")
 
+  def plot_measurements_susceptibility(self, on=False, **kwargs):
+    if on:
+      print("Plot susceptibility iterations")
+      # Create figure ----
+      fig, ax = plt.subplots(1, 1)
+      sns.lineplot(
+        data=self.BH[0],
+        x="K",
+        y="xm",
+        ax=ax
+      )
+      plt.legend([],[], frameon=False)
+      plt.xscale("log")
+      fig.tight_layout()
+      # Arrange path ----
+      plot_path = join(self.path, "Features")
+      # Crate path ----
+      Path(
+        plot_path
+      ).mkdir(exist_ok=True, parents=True)
+      # Save plot ----
+      plt.savefig(
+        join(
+          plot_path, "xm_logK.png"
+        ),
+        dpi=300
+      )
+      plt.close()
+    else: print("No susceptibility iterations")
+
   def ntrees_plotly(self, on=True):
     if on:
       import plotly.express as px
@@ -254,6 +414,36 @@ class Plot_H:
       )
     else:
       print("No ntrees with plotly")
+
+  def plot_measurements_ntrees(self, on=False, **kwargs):
+    if on:
+      print("Plot ntrees iterations")
+      # Create figure ----
+      fig, ax = plt.subplots(1, 1)
+      sns.lineplot(
+        data=self.BH[0],
+        x="K",
+        y="ntrees",
+        ax=ax
+      )
+      plt.legend([],[], frameon=False)
+      plt.xscale("log")
+      fig.tight_layout()
+      # Arrange path ----
+      plot_path = join(self.path, "Features")
+      # Crate path ----
+      Path(
+        plot_path
+      ).mkdir(exist_ok=True, parents=True)
+      # Save plot ----
+      plt.savefig(
+        join(
+          plot_path, "ntrees_logK.png"
+        ),
+        dpi=300
+      )
+      plt.close()
+    else: print("No ntrees iterations")
     
   def skim_partition(self, partition):
     from collections import Counter
@@ -507,7 +697,7 @@ class Plot_H:
       # Get nodes ordering ----
       from scipy.cluster import hierarchy
       den_order = np.array(
-        hierarchy.dendrogram(self.Z)["ivl"]
+        hierarchy.dendrogram(self.Z, no_plot=True)["ivl"]
       ).astype(int)
       W = W[den_order, :][:, den_order]
       # Configure labels ----
@@ -834,7 +1024,7 @@ class Plot_H:
         # Get nodes ordering ----
         from scipy.cluster import hierarchy
         den_order = np.array(
-          hierarchy.dendrogram(self.Z)["ivl"]
+          hierarchy.dendrogram(self.Z, no_plot=True)["ivl"]
         ).astype(int)
         dFLN = dFLN[den_order, :]
         dFLN = dFLN[:, den_order]
