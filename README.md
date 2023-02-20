@@ -55,4 +55,4 @@ pip3 install cpp/rand_network
 pip3 install cpp/WDN
 ```
 
-To create directed, weighted and possible nodes with overlapping communities, we modified the LFR benchmark from [Andrea Lancichinetti and Santo Fortunato](https://www.santofortunato.net/resources) (package 4) to pybind it. The modified code can be seen in cpp/WDN.
+To create directed, weighted and possible nodes with overlapping communities, we modified the LFR benchmark from [Andrea Lancichinetti](https://sites.google.com/site/andrealancichinetti/) and [Santo Fortunato](https://www.santofortunato.net/resources) (package 4) to pybind it. The modified code can be seen in cpp/WDN.
