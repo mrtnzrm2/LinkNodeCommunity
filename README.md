@@ -6,7 +6,7 @@ An extended version of the link community algorithm to use in directed networks 
  
  The problem of community dectedtion is very deep since it is connected to the problem of data encoding. Each day, millons of bytes of information are saved by the goverments and companies all around the world. However, all that data is useless unless you can process it and reveal the structures, symmetries, global features, and laws inside. Finding communties is similar to separating the data into homogeneous parts which implies low entropy in the system. In the context of information theory, paritioning the data into clusters with similar features can allow you decode the information faster, a property prominent if the system is under the forces of natural selection.
 
- There are several community detection algorithms for different network classes. However, the project I am working tries to find communities in a **dense**, **directed**, **weighted**, and **heterogeneous** network, the FLN network (Markov et al. 2011 and 2012). This type of network represents a challenge to any state-of-the-art algorithm. For that reason, we started to work on an algorithm to overcome the challenges of indentifying communities in this network.
+ There are several community detection algorithms for different network classes. However, the project we are working tries to find communities in a **dense**, **directed**, **weighted**, and **heterogeneous** network, the macaque fraction of labeled neurons (FLN) network (Markov et al. 2011 and 2012). This type of network represents a challenge to any state-of-the-art algorithm. For that reason, we started to work on an algorithm to overcome the challenges of indentifying communities in this network.
 
  Our journey led us to the link community algorithm which has many important features such as assigning nodes to more than one cluster. Nevertheless, to make it work in our network, we had to add several features to the algorithm that we list below.
 
@@ -20,6 +20,9 @@ Some key features that make our algorithm convenient are the following:
 3. **Flexible topology**: You can choose to find node communities for how similar are their source or/and target connections. In directed networks, nodes can have different functions from the perspective of acting or receiving the action of other nodes. A good parition from the perspective of how the nodes act on other nodes could be very differeny from how their receive the actions since those groups can potentially be different. Our algorithm can produce partitions taking into account the direction of interest which produce partitions that are easier to interpret.
 
 4. **New quality functions ($\mu$-score)**: As it is well know, the concept of a community can have multiple interpretation; however, it is well accepted that the communities tend to be formed by set of nodes with more connections between them than with the rest of the network. But, what happens when the network is so dense that modularity, i.e., density of a cluster compared to a random network, stops being a a good quality function to detect the best partition? To solve that problem, we introduce a new quality function that we called the $\mu$-score which spots a parition with a good balance of link communities' sizes. We believe that, although the function probably needs improvements, it is a sound start towards new alternatives for quality functions in dense networks. Preliminary tests show that in the partitions selected using the $\mu$-score, the algorithm has better sensitivity ans specificity identifying the nodes with overlapping memberships (NOCs) using the LFR benchmark.
+
+## Why is it different from the rest of community detection algorithms?
+
 
 ## Pybind11 C++ libraries
 
@@ -65,9 +68,11 @@ We have created several examples in the form of Jupyter Notebooks to get a bette
 ## Drawbacks
 There still plenty of work to do. Some of the points to improve are:
 
-- Low computational speed. Currently, the processing of link communities to identify the most interesting partitions is slow and scales as $O(M^{2})$ where $M$ is the number of links in the network. The link to node dendrogam projection also scales in the same way.
+- Low computational speed. Currently, the processing of link communities to identify the most interesting partitions is slow and scales as $O(M^{2})$ where $M$ is the number of links in the network. The link-to-node dendrogam projection also scales in the same way.
 
 - The algorithm identifies well the NOCs, however, it does not identify well community membership that they belong. However, by looking to the node dendrogram and link community matrix, one can get an idea about which communty they belong to.
+
+- For undirected networks, we need to check if the link-to-node hierarchy projection algorithm works.
 
 ## References
 - Ahn, YY., Bagrow, J. & Lehmann, S. Link communities reveal multiscale complexity in networks. Nature 466, 761–764 (2010). https://doi.org/10.1038/nature09182
