@@ -27,7 +27,7 @@ The code is implemented mostly in Python (3.9.13) with some C++ libraries used t
 
 The steps to pybind (mandatory) the C++ code are the following:
 
-1. Install **cmake** version [3.24.0-rc4] (https://cmake.org/files/). To use cmake, do not forget to add it to your path.
+1. Install **cmake** version [3.24.0-rc4](https://cmake.org/files/). To use cmake, do not forget to add it to your path.
 
 ```
 export PATH="/Applications/CMake.app/Contents/bin:/usr/local/bin:$PATH"
@@ -39,7 +39,7 @@ export PATH="/Applications/CMake.app/Contents/bin:/usr/local/bin:$PATH"
 pip3 install pybind11
 ```
 
-3. Download the hclust-cpp repository created by [Daniel Müllner] (http://danifold.net/) and [Christoph Dalitz] (https://lionel.kr.hs-niederrhein.de/~dalitz/data/hclust/).
+3. Download the hclust-cpp repository created by [Daniel Müllner](http://danifold.net/) and [Christoph Dalitz](https://lionel.kr.hs-niederrhein.de/~dalitz/data/hclust/).
 
 ```
 https://github.com/cdalitz/hclust-cpp.git
@@ -55,4 +55,4 @@ pip3 install cpp/rand_network
 pip3 install cpp/WDN
 ```
 
-To create directed, weighted and possible nodes with overlapping communities, we modified the LFR benchmark from [Andrea Lancichinetti and Santo Fortunato] (https://www.santofortunato.net/resources) (package 4) to pybind it. The modified code can be seen in cpp/WDN.
+To create directed, weighted and possible nodes with overlapping communities, we modified the LFR benchmark from [Andrea Lancichinetti and Santo Fortunato](https://www.santofortunato.net/resources) (package 4) to pybind it. The modified code can be seen in cpp/WDN.
