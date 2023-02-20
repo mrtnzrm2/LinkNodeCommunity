@@ -1,5 +1,5 @@
 # LinkCommunities
- Link community algorithm applied to weighted and directed networks.
+An extended version of the link community algorithm to use in directed networks with very heterogeneous weights.
 
  ## Introduction
  Welcome everyone! How good of you to spend some of your time taking a look to this software. I consider this software to be an extension of the original link community algorithm (Ahn et al. 2010).
@@ -63,7 +63,9 @@ We have created several examples in the form of Jupyter Notebooks to get a bette
 - ER_exmaple: Running the algorithm in an Erdos-Renyi random graph with high density. The lack of structure in the node dendrogram shows that the algorithm does not find structure in this null model.
 
 ## Drawbacks
+There still plenty of work to do. Some of the points to improve are:
 
+- 
 
 ## References
 - Ahn, YY., Bagrow, J. & Lehmann, S. Link communities reveal multiscale complexity in networks. Nature 466, 761–764 (2010). https://doi.org/10.1038/nature09182
