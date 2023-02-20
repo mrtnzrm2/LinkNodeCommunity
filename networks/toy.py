@@ -6,6 +6,24 @@ import numpy as np
 from networks.base import BASE
 
 class TOY(BASE):
+  """
+    Class to process the network in the format needed for the Hierarchy class to work.
+    Hierarchy was created to use specifically in the macaque FLN network.
+    In the future, there will be another class to run the link community algorithm
+    in particular netowrks. For the moment, the network has to be directed.
+    
+    Parameters:
+        A: An NxM directed adjacency matrix.
+          The algorithm can compute similarities using
+          the whole data, but only classsify links from the edge-comple graph.
+
+        linkage: string.
+          Desired linkage-method for the hierarchical agglomeration algorithm.
+          Currenly, only working with the single and average linkage method.
+
+        nlog10: bool.
+          
+  """
   def __init__(
     self, A, linkage, nlog10=False, lookup=False, cut=False,
     mapping="trivial", index="jacp", topolgy="MIX",
