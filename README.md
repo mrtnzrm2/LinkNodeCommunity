@@ -52,6 +52,7 @@ https://github.com/cdalitz/hclust-cpp.git
 5. Install the C++ libraries in python by running:
 
 ```
+pip3 install cpp/simquest
 pip3 install cpp/process_hclust
 pip3 install cpp/la_arbre_a_merde
 pip3 install cpp/rand_network
