@@ -1,7 +1,6 @@
 # Standard libs ----
 import numpy as np
 import pandas as pd
-import os
 #  Personal libs ----
 from various.network_tools import *
 from modules.colregion import colregion
@@ -33,7 +32,7 @@ class Hierarchy(Sim):
     self.dist_mat = self.linksim_matrix
     self.dist_mat[self.dist_mat == 0] = np.nan
     self.dist_mat = 1 - self.dist_mat
-    self.dist_mat[np.isnan(self.dist_mat)] = np.nanmax(self.dist_mat) + 100
+    self.dist_mat[np.isnan(self.dist_mat)] = np.nanmax(self.dist_mat) + 1
     # Compute hierarchy ----
     self.H = self.get_hierarchy()
     # Network to edgelist of EC ----
@@ -42,9 +41,6 @@ class Hierarchy(Sim):
     )
     ## Take out zeros ----
     self.dA = self.dA.loc[self.dA.weight != 0]
-    ## Get some functions
-    self.minus_one_Dc = minus_one_Dc 
-    self.Dc_id = Dc_id
     ## Stats ----
     self.stat_cor()
     # Overlaps ----
@@ -74,80 +70,6 @@ class Hierarchy(Sim):
       ),
       self.linkage
     )
-
-  #** Feature methods:
-  def mu(self, id, n, beta):
-    # LC frequencies ----
-    from collections import Counter
-    id_counter =  dict(Counter(id))
-    # Decreasingly sort frequencies ----
-    id_counter = {
-      k: v for k, v in sorted(
-        id_counter.items(), key=lambda item: item[1],
-        reverse=True
-      )
-    }
-    ## Get keys ----
-    id_keys = list(id_counter.keys())
-    ## Initilaize mu_score ----
-    mu_score = 0
-    # Start loop ----
-    size = len(id_keys)
-    if size >= n:
-      for i in np.arange(n - 1):
-        for j in np.arange(i + 1, n):
-          D = id_counter[id_keys[j]] / id_counter[id_keys[i]]
-          if D > beta:
-            mu_score += D * (
-              id_counter[id_keys[j]] + id_counter[id_keys[i]]
-            ) / self.leaves
-          else:
-            mu_score -= D * (
-              id_counter[id_keys[j]] + id_counter[id_keys[i]]
-            ) / self.leaves
-      mu_score /= 0.5 * n * (n - 1)
-    else:
-      for i in np.arange(size - 1):
-        for j in np.arange(i + 1, size):
-          D = id_counter[id_keys[j]] / id_counter[id_keys[i]]
-          if D > beta:
-            mu_score += D * (
-              id_counter[id_keys[j]] + id_counter[id_keys[i]]
-            ) / self.leaves
-          else:
-            mu_score -= D * (
-              id_counter[id_keys[j]] + id_counter[id_keys[i]]
-            ) / self.leaves
-      mu_score /= 0.5 * n * (n - 1)
-    return mu_score
-
-  def get_ncs(self, df):
-    uni_ids = np.unique(df["id"].to_numpy())
-    nc = np.zeros(2)
-    nc[0] = np.copy(self.nodes)
-    for id in uni_ids:
-      src = df.loc[df["id"] == id, "source"].to_numpy()
-      tgt = df.loc[df["id"] == id, "target"].to_numpy()
-      nodes_c = np.unique(
-        np.concatenate((src, tgt), axis=0)
-      )
-      m = len(src)
-      if m > 1 and len(nodes_c) > 2:
-        inter = np.intersect1d(src, tgt)
-        if len(inter) > 1:
-          nc[0] -= len(inter)
-          nc[0] += 1
-        nc[1] += 1
-    return nc
-
-  def tree_height(self):
-    dis_H = self.H[:, 2]
-    nH = len(dis_H)
-    height = np.zeros(nH)
-    height[0] = dis_H[0] / 2
-    for i in np.arange(1, nH):
-      height[i] = height[i - 1] + (dis_H[i] - dis_H[i - 1]) / 2
-    return height
 
   def H_features_cpp(self, linkage, alpha, beta, cut=False):
     # Get network dataframe ----
@@ -389,7 +311,7 @@ class Hierarchy(Sim):
     dA["id"] = cut_tree(
       self.H, n_clusters=K
     ).reshape(-1)
-    self.minus_one_Dc(dA)
+    minus_one_Dc(dA)
     aesthetic_ids(dA)
     dA_ = dA.loc[dA["id"] != -1].copy()
     ## linkcom ids from 0 to k-1 ----

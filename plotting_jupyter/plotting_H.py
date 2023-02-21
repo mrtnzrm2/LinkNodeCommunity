@@ -31,17 +31,6 @@ class Plot_H:
     self.colregion = H.colregion
     self.colregion.get_regions()
 
-  def aesthetic_ids(self, dA):
-    ids = np.sort(np.unique(dA["id"].to_numpy()))
-    if -1 in ids:
-      ids = ids[1:]
-      aids = np.arange(1, len(ids) + 1)
-    else:
-      aids = np.arange(1, len(ids) + 1)
-    for i, id in enumerate(ids):
-      dA.loc[dA["id"] == id, "id"] = aids[i].astype(str)
-    dA["id"] = dA["id"].astype(int)
-
   def plot_measurements_mu(self, **kwargs):
     print("Plot Mu iterations")
     from pandas import DataFrame, concat
@@ -139,17 +128,6 @@ class Plot_H:
     plt.legend([],[], frameon=False)
     plt.xscale("log")
     fig.tight_layout()
-    
-  def skim_partition(self, partition):
-    from collections import Counter
-    fq = Counter(partition)
-    for i in fq.keys():
-      if fq[i] == 1: partition[partition == i] = -1
-    new_partition = partition
-    ndc = np.unique(partition[partition != -1])
-    for i, c in enumerate(ndc):
-      new_partition[partition == c] = i
-    return new_partition
   
   def core_dendrogram(self, R, cmap_name="hls", remove_labels=False):
     print("Visualize node-community dendrogram!!!")
@@ -159,7 +137,7 @@ class Plot_H:
     for r in R:
       if r == 1: r += 1
       partition = hierarchy.cut_tree(self.Z, r).ravel()
-      new_partition = self.skim_partition(partition)
+      new_partition = skim_partition(partition)
       unique_clusters_id = np.unique(new_partition)
       cm = sns.color_palette(cmap_name, len(unique_clusters_id))
       dlf_col = "#808080"
@@ -179,9 +157,7 @@ class Plot_H:
       if not remove_labels:
         hierarchy.dendrogram(
           self.Z,
-          labels=self.colregion.labels[
-            :self.nodes
-          ],
+          labels=self.colregion.labels[:self.nodes],
           color_threshold=self.Z[self.nodes - r, 2],
           link_color_func = lambda k: link_cols[k]
         )
@@ -335,7 +311,7 @@ class Plot_H:
         n_clusters = k
       ).reshape(-1)
       minus_one_Dc(dFLN)
-      self.aesthetic_ids(dFLN)
+      aesthetic_ids(dFLN)
       keff = np.unique(
         dFLN["id"].to_numpy()
       ).shape[0]
@@ -418,7 +394,7 @@ class Plot_H:
       dFLN["source_label"] = labels[dFLN.source]
       dFLN["target_label"] = labels[dFLN.target]
       minus_one_Dc(dFLN)
-      self.aesthetic_ids(dFLN)
+      aesthetic_ids(dFLN)
       keff = np.unique(dFLN.id)
       keff = keff.shape[0]
       # Transform dFLN to Adj ----
@@ -513,9 +489,9 @@ class Plot_H:
       F.set_para(kk, R[i], ids)
       F.plot_flatmap(save=save)
 
-  def plot_networx(self, r, rlabels, score="", cmap_name="", **kwargs):
+  def plot_networx(self, rlabels, cmap_name="", **kwargs):
     print("Draw networkx!!!")
-    rlabels = self.skim_partition(rlabels)
+    rlabels = skim_partition(rlabels)
     unique_labels = np.unique(rlabels)
     number_of_communities = unique_labels.shape[0]
     if -1 in unique_labels:
@@ -555,51 +531,50 @@ class Plot_H:
     )
     fig.tight_layout()
   
-  def plot_networx_link_communities(self, K, score="", cmap_name="hls", **kwargs):
+  def plot_link_communities(self, K, cmap_name="hls", **kwargs):
     print("Draw networkx link communities!!!")
     dA = self.dA.copy()
     from scipy.cluster.hierarchy import cut_tree
-    for k in K:
-      labels = cut_tree(self.H, k).ravel()
-      dA["id"] = labels
-      minus_one_Dc(dA)
-      self.aesthetic_ids(dA)
-      labels = dA.id.to_numpy()
-      labels[labels > 0] = labels[labels > 0] - 1
-      unique_labels = np.unique(labels)
-      number_of_communities = unique_labels.shape[0]
-      if -1 in unique_labels:
-        save_colors = sns.color_palette(cmap_name, number_of_communities - 1)
-        color_map = [[]] * number_of_communities
-        color_map[0] = [199/ 255.0, 0, 57/ 255.0]
-        color_map[1:] = save_colors
-      else:
-        color_map = sns.color_palette(cmap_name, number_of_communities)
-      color_dict = dict()
-      for i, lab in enumerate(unique_labels):
-        if lab != -1: color_dict[lab] = color_map[i]
-        else: color_dict[-1] = "#808080"
-      edge_colors = [
-        color_dict[lab] for lab in labels
-      ]
-      G = nx.from_numpy_array(
-        self.A, create_using=nx.DiGraph
-      )
-      Ainv = self.A.copy()
-      Ainv[Ainv != 0] = 1 / Ainv[Ainv != 0]
-      Ginv = nx.from_numpy_array(
-        Ainv, create_using=nx.DiGraph
-      )
-      # Create figure ----
-      fig, ax = plt.subplots(1, 1)
-      pos = nx.kamada_kawai_layout(Ginv)
-      pos = nx.spring_layout(
-        G, pos=pos, iterations=5, seed=212
-      )
-      nx.draw_networkx(
-        G, pos=pos,
-        edge_color=edge_colors,
-        connectionstyle="arc3,rad=0.1",
-        ax=ax, **kwargs
-      )
-      fig.tight_layout()
+    labels = cut_tree(self.H, K).ravel()
+    dA["id"] = labels
+    minus_one_Dc(dA)
+    aesthetic_ids(dA)
+    labels = dA.id.to_numpy()
+    labels[labels > 0] = labels[labels > 0] - 1
+    unique_labels = np.unique(labels)
+    number_of_communities = unique_labels.shape[0]
+    if -1 in unique_labels:
+      save_colors = sns.color_palette(cmap_name, number_of_communities - 1)
+      color_map = [[]] * number_of_communities
+      color_map[0] = [199/ 255.0, 0, 57/ 255.0]
+      color_map[1:] = save_colors
+    else:
+      color_map = sns.color_palette(cmap_name, number_of_communities)
+    color_dict = dict()
+    for i, lab in enumerate(unique_labels):
+      if lab != -1: color_dict[lab] = color_map[i]
+      else: color_dict[-1] = "#808080"
+    edge_colors = [
+      color_dict[lab] for lab in labels
+    ]
+    G = nx.from_numpy_array(
+      self.A, create_using=nx.DiGraph
+    )
+    Ainv = self.A.copy()
+    Ainv[Ainv != 0] = 1 / Ainv[Ainv != 0]
+    Ginv = nx.from_numpy_array(
+      Ainv, create_using=nx.DiGraph
+    )
+    # Create figure ----
+    fig, ax = plt.subplots(1, 1)
+    pos = nx.kamada_kawai_layout(Ginv)
+    pos = nx.spring_layout(
+      G, pos=pos, iterations=5, seed=212
+    )
+    nx.draw_networkx(
+      G, pos=pos,
+      edge_color=edge_colors,
+      connectionstyle="arc3,rad=0.1",
+      ax=ax, **kwargs
+    )
+    fig.tight_layout()

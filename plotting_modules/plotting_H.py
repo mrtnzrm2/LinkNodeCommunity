@@ -30,25 +30,12 @@ class Plot_H:
       self.sln = NET.sln
       self.supra = NET.supra
       self.infra = NET.infra
-    ## Methods ----
-    self.minus_one_Dc = H.minus_one_Dc
     # Net ----
     self.path = H.plot_path
     self.areas = NET.struct_labels
     # Get regions and colors ----
     self.colregion = H.colregion
     self.colregion.get_regions()
-
-  def aesthetic_ids(self, dA):
-    ids = np.sort(np.unique(dA["id"].to_numpy()))
-    if -1 in ids:
-      ids = ids[1:]
-      aids = np.arange(1, len(ids) + 1)
-    else:
-      aids = np.arange(1, len(ids) + 1)
-    for i, id in enumerate(ids):
-      dA.loc[dA["id"] == id, "id"] = aids[i].astype(str)
-    dA["id"] = dA["id"].astype(int)
 
   def Mu_plotly(self, on=True, **kwargs):
     if on:
@@ -445,17 +432,6 @@ class Plot_H:
       )
       plt.close()
     else: print("No ntrees iterations")
-    
-  def skim_partition(self, partition):
-    from collections import Counter
-    fq = Counter(partition)
-    for i in fq.keys():
-      if fq[i] == 1: partition[partition == i] = -1
-    new_partition = partition
-    ndc = np.unique(partition[partition != -1])
-    for i, c in enumerate(ndc):
-      new_partition[partition == c] = i
-    return new_partition
   
   def core_dendrogram(self, R, score="", cmap_name="hls", remove_labels=False, on=False):
     if on:
@@ -476,7 +452,7 @@ class Plot_H:
         else: sname = ""
         #
         partition = hierarchy.cut_tree(self.Z, r).ravel()
-        new_partition = self.skim_partition(partition)
+        new_partition = skim_partition(partition)
         unique_clusters_id = np.unique(new_partition)
         cm = sns.color_palette(cmap_name, len(unique_clusters_id))
         dlf_col = "#808080"
@@ -496,9 +472,7 @@ class Plot_H:
         if not remove_labels:
           hierarchy.dendrogram(
             self.Z,
-            labels=self.colregion.labels[
-              :self.nodes
-            ],
+            labels=self.colregion.labels[:self.nodes],
             color_threshold=self.Z[self.nodes - r, 2],
             link_color_func = lambda k: link_cols[k]
           )
@@ -862,8 +836,8 @@ class Plot_H:
           self.H,
           n_clusters = k
         ).reshape(-1)
-        self.minus_one_Dc(dFLN)
-        self.aesthetic_ids(dFLN)
+        minus_one_Dc(dFLN)
+        aesthetic_ids(dFLN)
         keff = np.unique(
           dFLN["id"].to_numpy()
         ).shape[0]
@@ -951,8 +925,8 @@ class Plot_H:
         self.H,
         n_clusters = k
       ).reshape(-1)
-      self.minus_one_Dc(dA)
-      self.aesthetic_ids(dA)
+      minus_one_Dc(dA)
+      aesthetic_ids(dA)
       dA.weight = np.log(dA.weight)
       dA.id = dA.id.astype(str)
       dA = dA.sort_values(by="id", ignore_index=True)
@@ -1026,7 +1000,7 @@ class Plot_H:
           )
         ##
         minus_one_Dc(dFLN)
-        self.aesthetic_ids(dFLN)
+        aesthetic_ids(dFLN)
         keff = np.unique(dFLN.id)
         keff = keff.shape[0]
         # Transform dFLN to Adj ----
@@ -1232,8 +1206,8 @@ class Plot_H:
             self.H,
             n_clusters = k
           ).reshape(-1)
-          self.minus_one_Dc(dFLN)
-          self.aesthetic_ids(dFLN)
+          minus_one_Dc(dFLN)
+          aesthetic_ids(dFLN)
           # Transform dFLN to Adj ----
           dFLN = df2adj(dFLN, var="id")
           # Get memberships ----
@@ -1353,7 +1327,7 @@ class Plot_H:
   def plot_networx(self, r, rlabels, score="", cmap_name="", on=False, **kwargs):
     if on:
       print("Draw networkx!!!")
-      rlabels = self.skim_partition(rlabels)
+      rlabels = skim_partition(rlabels)
       unique_labels = np.unique(rlabels)
       number_of_communities = unique_labels.shape[0]
       if -1 in unique_labels:
@@ -1417,8 +1391,8 @@ class Plot_H:
       for k in K:
         labels = cut_tree(self.H, k).ravel()
         dA["id"] = labels
-        self.minus_one_Dc(dA)
-        self.aesthetic_ids(dA)
+        minus_one_Dc(dA)
+        aesthetic_ids(dA)
         labels = dA.id.to_numpy()
         labels[labels > 0] = labels[labels > 0] - 1
         unique_labels = np.unique(labels)
