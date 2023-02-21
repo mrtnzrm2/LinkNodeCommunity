@@ -64,7 +64,9 @@ To create directed, weighted and possible nodes with overlapping communities, we
 ## Examples
 We have created several examples in the form of Jupyter Notebooks to get a better understanding of how to use the algorithm.
 
-- ER_exmaple: Running the algorithm in an Erdos-Renyi random graph with high density. The lack of structure in the node dendrogram shows that the algorithm does not find structure in this null model.
+- ER_example: Running the algorithm in an Erdos-Renyi random graph with high density. The lack of structure in the node dendrogram shows that the algorithm does not find structure in this null model.
+
+- HRG_example: Explore the performance of the algorithm in a sparse directed hierarchical random graph. The most remarkable aspext is that even if the quality functions find different partitions, all the clustering informatin is encoded in the node community hierarchy. From there, one can read which nodes have a clear modular or overlapping role and the interegional distance between nodes at different hierarchy levels.
 
 ## Drawbacks
 There still plenty of work to do. Some of the points to improve are:
