@@ -108,9 +108,11 @@ class Plot_H:
             self.BH[i]
           ], ignore_index=True
         )
+      dF.alpha = dF.alpha.to_numpy().astype(str)
+      dF.beta = dF.beta.to_numpy().astype(str)
       # Create figure ----
       g = sns.FacetGrid(
-        dF, row="alpha"
+        dF, col="alpha"
       )
       g.map_dataframe(
         sns.lineplot,
@@ -455,7 +457,7 @@ class Plot_H:
       new_partition[partition == c] = i
     return new_partition
   
-  def core_dendrogram(self, R, score="", cmap_name="hls", on=False):
+  def core_dendrogram(self, R, score="", cmap_name="hls", remove_labels=False, on=False):
     if on:
       print("Visualize node-community dendrogram!!!")
       # Arrange path ----
@@ -491,14 +493,22 @@ class Plot_H:
             for x in i12)
           link_cols[i+1+len(self.Z)] = c1 if c1 == c2 else dlf_col
         fig, _ = plt.subplots(1, 1)
-        hierarchy.dendrogram(
-          self.Z,
-          labels=self.colregion.labels[
-            :self.nodes
-          ],
-          color_threshold=self.Z[self.nodes - r, 2],
-          link_color_func = lambda k: link_cols[k]
-        )
+        if not remove_labels:
+          hierarchy.dendrogram(
+            self.Z,
+            labels=self.colregion.labels[
+              :self.nodes
+            ],
+            color_threshold=self.Z[self.nodes - r, 2],
+            link_color_func = lambda k: link_cols[k]
+          )
+        else:
+          hierarchy.dendrogram(
+            self.Z,
+            no_labels=True,
+            color_threshold=self.Z[self.nodes - r, 2],
+            link_color_func = lambda k: link_cols[k]
+          )
         fig.set_figwidth(10)
         fig.set_figheight(7)
         # Save plot ----
@@ -980,8 +990,8 @@ class Plot_H:
     else: print("No histoscatter linkcomm")
 
   def lcmap_dendro(
-    self, K, score="", feature="", cmap_name="hls",
-    link_com_list=False, on=False, **kwargs
+    self, K, score="", cmap_name="hls",
+    link_com_list=False, remove_labels=False, on=False, **kwargs
   ):
     if on:
       print("Visualize k LCs!!!")
@@ -997,6 +1007,7 @@ class Plot_H:
         ).mkdir(exist_ok=True, parents=True)
         # Get labels ----
         labels = self.colregion.labels
+        regions = self.colregion.regions
         # FLN to dataframe and filter FLN = 0 ----
         dFLN = self.dA.copy()
         # Add id with aesthethis ----
@@ -1014,7 +1025,7 @@ class Plot_H:
             f"{plot_path}/link_community_list_{k}.csv"
           )
         ##
-        self.minus_one_Dc(dFLN)
+        minus_one_Dc(dFLN)
         self.aesthetic_ids(dFLN)
         keff = np.unique(dFLN.id)
         keff = keff.shape[0]
@@ -1031,20 +1042,10 @@ class Plot_H:
         dFLN[dFLN > 0] = dFLN[dFLN > 0] - 1
         # Configure labels ----
         labels =  np.char.lower(labels[den_order].astype(str))
-        rlabels = np.array([
-          str(r).lower() for r in self.colregion.regions.AREA
-        ])
-        colors = self.colregion.regions.loc[
-          match(
-            labels,
-            rlabels
-          ),
-          "COLOR"
-        ].to_numpy()
+        rlabels = np.array([str(r).lower() for r in regions.AREA])
+        colors = regions.COLOR.loc[match( labels, rlabels)].to_numpy()
         # Create figure ----
         fig, ax = plt.subplots(1, 1)
-        fig.set_figwidth(18)
-        fig.set_figheight(15)
         # Check colors with and without trees (-1) ---
         if -1 in dFLN:
           save_colors = sns.color_palette(cmap_name, keff - 1)
@@ -1053,34 +1054,35 @@ class Plot_H:
           cmap_heatmap[1:] = save_colors
         else:
           cmap_heatmap = sns.color_palette(cmap_name, keff)
-        plot = sns.heatmap(
-          dFLN,
-          cmap=cmap_heatmap,
-          # cbar=False,
-          xticklabels=labels,
-          yticklabels=labels
-        )
-        if "font_size" in kwargs.keys():
-          if kwargs["font_size"] > 0:
-            plot.set_xticklabels(
-              plot.get_xmajorticklabels(), fontsize = kwargs["font_size"]
-            )
-            plot.set_yticklabels(
-              plot.get_ymajorticklabels(), fontsize = kwargs["font_size"]
-            )
-        # Setting labels colors ----
-        [t.set_color(i) for i,t in
-          zip(
-            colors,
-            ax.xaxis.get_ticklabels()
+        if not remove_labels:
+          plot = sns.heatmap(
+            dFLN,
+            cmap=cmap_heatmap,
+            xticklabels=labels,
+            yticklabels=labels,
+            ax=ax
           )
-        ]
-        [t.set_color(i) for i,t in
-          zip(
-            colors,
-            ax.yaxis.get_ticklabels()
+          if "font_size" in kwargs.keys():
+            if kwargs["font_size"] > 0:
+              plot.set_xticklabels(
+                plot.get_xmajorticklabels(), fontsize = kwargs["font_size"]
+              )
+              plot.set_yticklabels(
+                plot.get_ymajorticklabels(), fontsize = kwargs["font_size"]
+              )
+          # Setting labels colors ----
+          [t.set_color(i) for i,t in zip(colors, ax.xaxis.get_ticklabels())]
+          [t.set_color(i) for i,t in zip(colors, ax.yaxis.get_ticklabels())]
+        else:
+          sns.heatmap(
+            dFLN,
+            cmap=cmap_heatmap,
+            xticklabels=False,
+            yticklabels=False,
+            ax=ax
           )
-        ]
+        fig.set_figwidth(18)
+        fig.set_figheight(15)
         # Save plot ----
         plt.savefig(
           os.path.join(

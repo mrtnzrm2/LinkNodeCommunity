@@ -14,7 +14,6 @@ from networks.toy import TOY
 from modules.hierarmerge import Hierarchy
 from modules.colregion import colregion
 from plotting_modules.plotting_H import Plot_H
-from plotting_modules.plotting_overlap import PLOT_O
 from various.network_tools import get_best_kr_equivalence, get_labels_from_Z
 
 class HRG:
@@ -90,8 +89,8 @@ if __name__ == "__main__":
   NET.create_plot_directory()
   NET.set_labels(hrg.labels)
   H = Hierarchy(
-    NET, hrg.A, np.zeros(hrg.A.shape),
-    N, linkage, mode, prob=prob
+    NET, hrg.A, hrg.A, np.zeros(hrg.A.shape),
+    N, linkage, mode
   )
   ## Compute topologys ----
   H.BH_features_cpp()
@@ -103,13 +102,9 @@ if __name__ == "__main__":
   H.set_colregion(L)
   # Plot H ----
   plot_h = Plot_H(NET, H)
-  plot_h.Mu_plotly(on=T) #
-  plot_h.D_plotly(on=T) #
-  plot_h.X_plotly(on=T) #
-  plot_h.order_parameter_plotly(on=T) #
-  plot_h.susceptibility_plotly(on=T) #
-  # Plot O ----
-  plot_o = PLOT_O(NET, H)
+  plot_h.plot_measurements_D(on=T)
+  plot_h.plot_measurements_X(on=T)
+  plot_h.plot_measurements_mu(on=T)
   for j, score in enumerate(opt_score):
     k, r = get_best_kr_equivalence(score, H)
     rlabels = get_labels_from_Z(H.Z, r)
@@ -117,27 +112,10 @@ if __name__ == "__main__":
     H.set_overlap_labels(NET.overlap, score)
     plot_h.lcmap_dendro(
       [k], cmap_name="husl",
-      font_size=30,
+      font_size=30, remove_labels=T,
       score="_"+score, on=T
-    )
-    plot_h.plot_networx(
-      r, rlabels, score="_"+score,
-      on=F, labels=labels_dict, cmap_name="husl"
-    )
-    plot_h.plot_networx_link_communities(
-      [k], score="_"+score,
-      cmap_name="husl",
-      on=F, labels=labels_dict
     )
     plot_h.core_dendrogram(
       [r], score="_"+score,
-      on=T, cmap_name="husl"
-    )
-    plot_o.bar_node_membership(
-      [k], labels = rlabels, score="_"+score,
-      node_labels = hrg.labels, on=F,
-    )
-    plot_o.bar_node_overlap(
-      [k], NET.overlap, score="_"+score,
-      node_labels = hrg.labels, on=F
+      cmap_name="husl", remove_labels=T, on=T
     )

@@ -25,7 +25,7 @@ class BASE:
     self.save_class = save_class
     self.read_class = read_class
     # Create paths ----
-    self.common_path = join(self.version, self.mode)
+    self.common_path = self.version
 
   def set_alpha(self, alpha):
     self.Alpha = alpha

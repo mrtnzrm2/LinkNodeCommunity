@@ -102,7 +102,7 @@ if __name__ == "__main__":
     )
     leaves = np.sum(net.A != 0)
     H = Hierarchy(
-      net, net.A, np.zeros(net.A.shape),
+      net, net.A, net.A, np.zeros(net.A.shape),
       __nodes__, linkage, mode, prob=prob
     )
     ## Compute features ----

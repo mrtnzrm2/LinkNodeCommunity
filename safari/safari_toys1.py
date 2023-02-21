@@ -112,8 +112,8 @@ if __name__ == "__main__":
     net.set_labels(original_labels)
     leaves = np.sum(net.A != 0)
     H = Hierarchy(
-      net, net.A, np.zeros(net.A.shape),
-      nodes, linkage, mode, prob=prob
+      net, net.A, net.A, np.zeros(net.A.shape),
+      nodes, linkage, mode
     )
     ## Compute features ----
     H.BH_features_cpp()

@@ -57,9 +57,10 @@ class Plot_H:
         ignore_index=True
       )
     dF.alpha = dF.alpha.to_numpy().astype(str)
+    dF.beta = dF.beta.to_numpy().astype(str)
     # Create figure ----
     g = sns.FacetGrid(
-      dF, row="alpha",
+      dF, col="alpha",
       aspect=1, height=6
     )
     g.map_dataframe(
@@ -175,7 +176,7 @@ class Plot_H:
           for x in i12)
         link_cols[i+1+len(self.Z)] = c1 if c1 == c2 else dlf_col
       fig, _ = plt.subplots(1, 1)
-      if ~remove_labels:
+      if not remove_labels:
         hierarchy.dendrogram(
           self.Z,
           labels=self.colregion.labels[
@@ -187,7 +188,7 @@ class Plot_H:
       else:
         hierarchy.dendrogram(
           self.Z,
-          labels=False,
+          no_labels=True,
           color_threshold=self.Z[self.nodes - r, 2],
           link_color_func = lambda k: link_cols[k]
         )
@@ -449,7 +450,7 @@ class Plot_H:
         cmap_heatmap[1:] = save_colors
       else:
         cmap_heatmap = sns.color_palette(cmap_name, keff)
-      if ~remove_labels:
+      if not remove_labels:
         plot = sns.heatmap(
           dFLN,
           cmap=cmap_heatmap,
