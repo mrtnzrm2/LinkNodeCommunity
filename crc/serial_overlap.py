@@ -92,9 +92,8 @@ def worker_overlap(
       # Compute RAND Hierarchy ----
       print("Compute Hierarchy")
       RAND_H = Hierarchy(
-        RAND, RAND.A, zeros(RAND.A.shape),
-        __nodes__, linkage, __mode__,
-        prob=prob
+        RAND, RAND.A, RAND.A, zeros(RAND.A.shape),
+        __nodes__, linkage, __mode__
       )
       ## Compute features ----
       RAND_H.BH_features_cpp()

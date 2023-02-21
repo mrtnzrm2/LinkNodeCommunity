@@ -8,6 +8,7 @@ from networks.structure import MAC
 from modules.nodhierarchy import NODH
 from plotting_modules.plotting_trends import PLOT_TREND
 from plotting_modules.plotting_H import Plot_H
+from various.data_transformations import maps
 # Boolean aliases ----
 T = True
 F = False
@@ -19,8 +20,11 @@ if __name__ == "__main__":
   nature = "original"
   distance = "MAP3D"
   imputation_model = ""
-  direct = "SOURCE_FULL"
-  feature = "dtw_source"
+  topology = "SOURCE"
+  index = "jacp"
+  mapping = "R2"
+  prob = T
+  bias = 0.3
   nodes=106
   inj=57
   nlog10=T
@@ -30,11 +34,14 @@ if __name__ == "__main__":
   NET = MAC(
     linkage, mode, nlog10=nlog10, lookup=lookup,
     version=version, nature=nature, distance=distance,
-    dir=direct, feature=feature,
-    inj=inj
+    topology=topology, index=index, inj=inj
+  )
+  # Transform data for analysis ----
+  R, lookup, shift = maps[mapping](
+    NET.A, nlog10, lookup, prob, b=bias
   )
   # Create Hierarchy ----
-  H = NODH(NET, nodes, nlog10=nlog10, lookup=lookup)
+  H = NODH(nodes, NET, R, lookup=lookup)
   ##
   H.hierarchical_clustering()
   # cluster, i = H.best_partition_similarity(save=T)

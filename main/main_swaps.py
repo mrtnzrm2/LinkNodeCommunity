@@ -6,13 +6,14 @@ sys.path.append(os.path.dirname(SCRIPT_DIR))
 # Allias booleans ----
 T = True
 F = False
-#Import libraries ----
+# Personal libs ----
 from modules.hierarmerge import Hierarchy
 from plotting_modules.plotting_H import Plot_H
 from plotting_modules.plotting_N import Plot_N
 from networks.swapnet import SWAPNET
 from various.network_tools import *
 from modules.colregion import colregion
+from various.data_transformations import maps
 # Declare global variables ----
 __iter__ = 0
 linkage = "single"
@@ -55,8 +56,12 @@ if __name__ == "__main__":
   # Create network ----
   print("Create random graph")
   NET.random_one_k(run=run, on_save_csv=T)
+  # Transform data for analysis ----
+  R, lookup, shift = maps[mapping](
+    NET.A, nlog10, lookup, prob, b=bias
+  )
+  # Add color ----
   L = colregion(NET)
-  # Overlap ----
   NET.set_colregion(L)
   # Compute Hierarchy ----
   print("Compute Hierarchy")
@@ -64,8 +69,8 @@ if __name__ == "__main__":
   if save_data:
     ## Hierarchy object!! ----
     H = Hierarchy(
-      NET, NET.A[:, :__nodes__], NET.D, __nodes__,
-      linkage, __mode__, prob=prob, b=bias
+      NET, NET.A[:, :NET.nodes], R[:, :NET.nodes],
+      NET.D, __nodes__, linkage, __mode__, lookup=lookup
     )
     ## Compute features ----
     H.BH_features_cpp()

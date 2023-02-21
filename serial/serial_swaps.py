@@ -15,6 +15,7 @@ from plotting_modules.plotting_H import Plot_H
 from networks.structure import MAC
 from networks.swapnet import SWAPNET
 from various.network_tools import *
+from various.data_transformations import maps
 # Declare global variables NET ----
 MAXI = 502
 linkage = "single"
@@ -113,13 +114,16 @@ if __name__ == "__main__":
       # Create network ----
       print("Create random graph")
       RAND.random_one_k(run=run, on_save_csv=F)   #****
+      # Transform data for analysis ----
+      R, lookup, _ = maps[mapping](
+        RAND.A, nlog10, lookup, prob, b=bias
+      )
       # Compute RAND Hierarchy ----
       print("Compute Hierarchy")
       if save_hierarchy:
         RAND_H = Hierarchy(
-          RAND, RAND.A[:, :__nodes__], RAND.D,
-          __nodes__, linkage, mode,
-          prob=prob, b=bias
+          RAND, RAND.A[:, :__nodes__], R[:, :__nodes__], RAND.D,
+          __nodes__, linkage, mode, lookup=lookup
         )
         ## Compute features ----
         RAND_H.BH_features_cpp()

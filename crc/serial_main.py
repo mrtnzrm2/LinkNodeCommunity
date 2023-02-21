@@ -13,6 +13,7 @@ from modules.hierarmerge import Hierarchy
 from modules.colregion import colregion
 from various.network_tools import *
 from networks.structure import MAC
+from various.data_transformations import maps
 # Iterable varaibles ----
 cut = [F]
 topologies = ["MIX", "TARGET", "SOURCE"]
@@ -36,6 +37,7 @@ save_data = T
 version = 220830
 __nodes__ = 57
 __inj__ = 57
+bias = 0.1
 
 # Start main ----
 if __name__ == "__main__":
@@ -56,15 +58,18 @@ if __name__ == "__main__":
       index=index, mapping=mapping,
       cut=cut
     )
+    # Transform data for analysis ----
+    R, lookup, _ = maps[mapping](
+      NET.A, nlog10, lookup, prob, b=bias
+    )
     # Compute Hierarchy ----
     print("Compute Hierarchy")
     # Save ----
     if save_data:
       ## Hierarchy object!! ----
       H = Hierarchy(
-        NET, NET.A, NET.D,
-        __nodes__, linkage, mode,
-        prob=prob
+        NET, NET.A, R, NET.D,
+        __nodes__, linkage, mode, lookup=lookup
       )
       ## Compute features ----
       H.BH_features_cpp()

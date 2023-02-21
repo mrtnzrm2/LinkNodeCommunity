@@ -1,15 +1,18 @@
 import numpy as np
 from fastdtw import fastdtw
 from scipy.spatial.distance import euclidean
-# My libs ----
-from networks.structure import MAC
+# Personal libs ----
 from modules.simanalysis import Sim
 from various.network_tools import adj2df
 from various.similarity_indices import *
 
 class NODA(Sim):
-  def __init__(self, NET : MAC, n, nlog10=True, lookup=False, **kwargs):
-    super().__init__(n, NET.A, NET.D, NET.mode, nlog10, lookup, **kwargs)
+  def __init__(self, nodes : int, NET, R, lookup=0, **kwargs):
+    super().__init__(
+      nodes, NET.A, R, NET.D, NET.mode,
+      topology=NET.topology, index=NET.index,
+      lookup=lookup, **kwargs
+    )
     self.dA = adj2df(self.A)
     self.dA = self.dA.loc[self.dA.weight != 0]
     AA = self.A.copy()
@@ -64,7 +67,7 @@ class NODA(Sim):
   def jacp_source(self):
     W = self.W1.copy()
     W[W != 0] = -W[W != 0]
-    if self.lookup: max_W = self.m1
+    if self.lup: max_W = self.m1
     else: max_W = 0
     distance = np.zeros((self.nodes, self.nodes)) * np.nan
     for i in np.arange(self.nodes):
@@ -73,7 +76,7 @@ class NODA(Sim):
         w_j = W[j, :]
         if i < W.shape[1]: w_i[i] = np.nanmean(w_i[w_i != max_W])
         if j < W.shape[1]: w_j[j] = np.nanmean(w_j[w_j != max_W])
-        distance[i, j] = jacp(w_i, w_j, W.shape[1])
+        distance[i, j] = jacp(w_i, w_j, W.shape[1], self.lup)
         distance[j, i] = distance[i, j]
     if np.sum(distance <= 0) > 0:
       distance = self.to_distance(distance)
@@ -86,7 +89,7 @@ class NODA(Sim):
   def jacp_target(self):
     W = self.W1.copy()
     W[W != 0] = -W[W != 0]
-    if self.lookup: max_W = self.m1
+    if self.lup: max_W = self.m1
     else: max_W = 0
     distance = np.zeros((W.shape[1], W.shape[1])) * np.nan
     for i in np.arange(W.shape[1]):
@@ -95,7 +98,7 @@ class NODA(Sim):
         w_j = W[:, j].ravel()
         w_i[i] = np.nanmean(w_i[w_i != max_W])
         w_j[j] = np.nanmean(w_j[w_j != max_W])
-        distance[i, j] = jacp(w_i, w_j, W.shape[0])
+        distance[i, j] = jacp(w_i, w_j, W.shape[0], self.lup)
         distance[j, i] = distance[i, j]
     if np.sum(distance <= 0) > 0:
       distance = self.to_distance(distance)
@@ -114,7 +117,7 @@ class NODA(Sim):
         w_j = W[j, :]
         if i < W.shape[1]: w_i[i] = np.nanmean(w_i[w_i != 0])
         if j < W.shape[1]: w_j[j] = np.nanmean(w_j[w_j != 0])
-        distance[i, j] = jacw(w_i, w_j, W.shape[1])
+        distance[i, j] = jacw(w_i, w_j, W.shape[1], self.lup)
         distance[j, i] = distance[i, j]
     # if np.sum(distance <= 0) > 0:
     #   distance = self.to_distance(distance)
@@ -133,7 +136,7 @@ class NODA(Sim):
         w_j = W[:, j].ravel()
         w_i[i] = np.nanmean(w_i[w_i != 0])
         w_j[j] = np.nanmean(w_j[w_j != 0])
-        distance[i, j] = jacw(w_i, w_j, W.shape[0])
+        distance[i, j] = jacw(w_i, w_j, W.shape[0], self.lup)
         distance[j, i] = distance[i, j]
     # if np.sum(distance <= 0) > 0:
     #   distance = self.to_distance(distance)
@@ -302,7 +305,7 @@ class NODA(Sim):
   def cossim_source(self):
     W = self.W1.copy()
     W[W != 0] = -W[W != 0]
-    if self.lookup: max_W = self.m1
+    if self.lup: max_W = self.m1
     else: max_W = 0
     dist = np.zeros((self.nodes, self.nodes)) * np.nan
     for i in np.arange(self.nodes):
@@ -333,7 +336,7 @@ class NODA(Sim):
   def cossim_target(self):
     W = self.W1.copy()
     W[W != 0] = -W[W != 0]
-    if self.lookup: max_W = self.m1
+    if self.lup: max_W = self.m1
     else: max_W = 0
     dist = np.zeros((W.shape[1], W.shape[1])) * np.nan
     for i in np.arange(W.shape[1]):

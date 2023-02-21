@@ -1,43 +1,36 @@
+# Standard libs ----
 import numpy as np
 from fastdtw import fastdtw
 from scipy.spatial.distance import euclidean
-# For unique combinations
 from itertools import chain, repeat, count, islice
 from collections import Counter
 # Personal libs ----
-from various.data_transformations import maps
-from various.similarity_indices import *
+import simquest as squest
 
 class Sim:
   def __init__(
-    self, n, A, D, mode, nlog10=True,
-    prob=True, lookup=False,
-    mapping="R1", index="jacp", topology="MIX",
-    b=1e-5, **kwargs
+    self, nodes : int, A, R, D, mode, topology="MIX", index="jacp", lookup=0
   ):
     # Parameters ----
-    self.nodes = n
+    self.nodes = nodes
     self.mode = mode
     self.A = A
-    self.nonzero = (A != 0)
+    self.R = R
     self.D = D
-    self.nlog10 = nlog10
-    self.mapping = mapping
-    self.topology = topology
-    self.index = sims[index]
-    # Treat sln ----
-    if "sln" in kwargs.keys():
-      self.sln = kwargs["sln"]
-      min_sln = np.min(self.sln[self.sln > 0])
-      self.sln[self.sln == 0] = min_sln / 10
-    # Map data ----
-    if mapping != "R1" and mapping != "R2" and nlog10:
-      raise ValueError("\n  Log transformation of data, but mapping not found.\n")
-    self.R, self.lup, self.shift = maps[mapping](A, nlog10, lookup, prob, b=b)
+    self.nonzero = (A != 0)
+    self.lup = lookup
     # Get number of rows ----
     self.rows = self.A.shape[0]
     # Number of connections in the EC component ----
-    self.leaves = np.sum(self.A[:n, :n] != 0)
+    self.leaves = np.sum(self.A[:nodes, :nodes] != 0).astype(int)
+    self.topologies = {
+      "MIX" : 0, "SOURCE" : 1, "TARGET" : 2
+    }
+    self.indices = {
+      "jacp" : 0, "tanimoto" : 1, "cos" : 2, "jacw" : 3, "bsim" : 4
+    }
+    self.topology = topology
+    self.index = index
 
   def get_aik(self):
     aik =  self.R.copy()
@@ -154,45 +147,11 @@ class Sim:
     np.fill_diagonal(target_mat, 0)
     return target_mat
 
-  # def paper_source_b(self):
-  #   B = self.R.copy()
-  #   B[B != 0] = 1
-  #   nodes = B.shape[1]
-  #   np.fill_diagonal(B, 0)
-  #   dist = np.zeros((self.nodes, self.nodes)) * np.nan
-  #   for i in np.arange(self.nodes):
-  #     for j in np.arange(i+1, self.nodes):
-  #       sim = np.sum(B[i, :] == B[j, :]) / nodes
-  #       pi = np.sum(B[i, :]) / nodes
-  #       pj = np.sum(B[j, :]) / nodes
-  #       sim -=  1 - pj - pi + 2*pi*pj
-  #       dist[i, j] = sim
-  #       dist[j, i] = sim
-  #   np.fill_diagonal(dist, 0)
-  #   return dist
-
-  # def paper_target_b(self):
-  #   B = self.R.copy()
-  #   B[B != 0] = 1
-  #   np.fill_diagonal(B, 0)
-  #   nodes = B.shape[0]
-  #   dist = np.zeros((B.shape[1], B.shape[1])) * np.nan
-  #   for i in np.arange(B.shape[1]):
-  #     for j in np.arange(i+1, B.shape[1]):
-  #       sim = np.sum(B[:, i] == B[:, j]) / nodes
-  #       pi = np.sum(B[:, i]) / nodes
-  #       pj = np.sum(B[:, j]) / nodes
-  #       sim -=  1 - pj - pi + 2*pi*pj
-  #       dist[i, j] = sim
-  #       dist[j, i] = sim
-  #   np.fill_diagonal(dist, 0)
-  #   return dist
-
   def similarity_matrix(self, source_mat, target_mat):
     # Load important things ----
     self.get_id_matrix()
     # Create leave matrix ----
-    self.sim_mat = np.zeros((self.leaves, self.leaves))
+    self.linksim_matrix = np.zeros((self.leaves, self.leaves))
     for i in np.arange(self.nodes):
       for j in np.arange(self.nodes):
         if self.id_mat[i, j] == 0: continue
@@ -200,242 +159,48 @@ class Sim:
         for k in np.arange(j, self.nodes):
           y = self.id_mat[i, k]
           if k == j or y == 0: continue
-          self.sim_mat[x -1, y - 1] = target_mat[j, k]
+          self.linksim_matrix[x -1, y - 1] = target_mat[j, k]
         for k in np.arange(i, self.nodes):
           y = self.id_mat[k,j]
           if k == i or y == 0 : continue
-          self.sim_mat[x - 1, y - 1] = source_mat[i, k]
-    self.sim_mat = self.sim_mat + self.sim_mat.T
-
-  def similarity_matrix_motif_5(self, source_mat, target_mat):
-    # Load important things ----
-    self.get_id_matrix()
-    # Create leave matrix ----
-    self.sim_mat = np.zeros((self.leaves, self.leaves))
-    for i in np.arange(self.nodes):
-      for j in np.arange(self.nodes):
-        if self.id_mat[i, j] == 0: continue
-        x = self.id_mat[i, j]
-        for k in np.arange(j, self.nodes):
-          y = self.id_mat[i, k]
-          if k == j or y == 0: continue
-          dir_jk = (self.id_mat[j, k] != 0)
-          dir_kj = (self.id_mat[k, j] != 0)
-          if (dir_jk and ~dir_kj) or (~dir_jk and dir_kj):
-            self.sim_mat[x -1, y - 1] = target_mat[j, k]
-        for k in np.arange(i, self.nodes):
-          y = self.id_mat[k,j]
-          if k == i or y == 0 : continue
-          dir_ik = (self.id_mat[i, k] != 0)
-          dir_ki = (self.id_mat[k, i] != 0)
-          if (dir_ik and ~dir_ki) or (~dir_ik and dir_ki):
-            self.sim_mat[x - 1, y - 1] = source_mat[i, k]
-    self.sim_mat = self.sim_mat + self.sim_mat.T
-
-  def similarity_matrix_motif_6(self, source_mat, target_mat):
-    # Load important things ----
-    self.get_id_matrix()
-    # Create leave matrix ----
-    self.sim_mat = np.zeros((self.leaves, self.leaves))
-    for i in np.arange(self.nodes):
-      for j in np.arange(self.nodes):
-        if self.id_mat[i, j] == 0: continue
-        x = self.id_mat[i, j]
-        for k in np.arange(j, self.nodes):
-          y = self.id_mat[i, k]
-          if k == j or y == 0: continue
-          dir_jk = (self.id_mat[j, k] != 0)
-          dir_kj = (self.id_mat[k, j] != 0)
-          if dir_jk and dir_kj:
-            self.sim_mat[x -1, y - 1] = target_mat[j, k]
-        for k in np.arange(i, self.nodes):
-          y = self.id_mat[k,j]
-          if k == i or y == 0 : continue
-          dir_ik = (self.id_mat[i, k] != 0)
-          dir_ki = (self.id_mat[k, i] != 0)
-          if dir_ik and dir_ki:
-            self.sim_mat[x - 1, y - 1] = source_mat[i, k]
-    self.sim_mat = self.sim_mat + self.sim_mat.T
-
-  def similarity_matrix_motif_9(self, source_mat, target_mat):
-    # Load important things ----
-    self.get_id_matrix()
-    # Create leave matrix ----
-    self.sim_mat = np.zeros((self.leaves, self.leaves))
-    for i in np.arange(self.nodes):
-      for j in np.arange(self.nodes):
-        if self.id_mat[i, j] == 0: continue
-        x = self.id_mat[i, j]
-        for k in np.arange(i, self.nodes):
-          y = self.id_mat[k, i]
-          if k == j or y == 0: continue
-          dir = (self.id_mat[j, k] != 0)
-          if dir:
-            self.sim_mat[x -1, y - 1] = target_mat[j, k]
-        for k in np.arange(j, self.nodes):
-          y = self.id_mat[j, k]
-          if k == i or y == 0 : continue
-          dir = (self.id_mat[k, i] != 0)
-          if dir:
-            self.sim_mat[x - 1, y - 1] = source_mat[i, k]
-    self.sim_mat = self.sim_mat + self.sim_mat.T
-
-  def sln_out_similarity(self, i, j, k, aik_i, aik_j, f=jacp):
-    if self.sln[i, k] >= 0.5 and self.sln[j, k] >= 0.5:
-      hood = (self.sln[i, :] >= 0.5) & (self.sln[j, :] >= 0.5)
-      n = np.sum(hood)
-      return f(aik_i[hood], aik_j[hood], n, self.lup)
-    elif self.sln[i, k] < 0.5 and self.sln[j, k] >= 0.5:
-      hood = (self.sln[i, :] < 0.5) & (self.sln[j, :] >= 0.5)
-      n = np.sum(hood)
-      return f(aik_i[hood], aik_j[hood], n, self.lup)
-    elif self.sln[i, k] >= 0.5 and self.sln[j, k] < 0.5:
-      hood = (self.sln[i, :] >= 0.5) & (self.sln[j, :] < 0.5)
-      n = np.sum(hood)
-      return f(aik_i[hood], aik_j[hood], n, self.lup)
-    elif self.sln[i, k] < 0.5 and self.sln[j, k] < 0.5:
-      hood = (self.sln[i, :] < 0.5) & (self.sln[j, :] < 0.5)
-      n = np.sum(hood)
-      return f(aik_i[hood], aik_j[hood], n, self.lup)
-    else: 
-      raise Exception("Compared links have strange sln values")
-
-  def sln_in_similarity(self, i, j, k, aki_i, aki_j, f=jacp):
-    if self.sln[k, i] >= 0.5 and self.sln[k, j] >= 0.5:
-      hood = (self.sln[:, i] >= 0.5) & (self.sln[:, j] >= 0.5)
-      n = np.sum(hood)
-      return f(aki_i[hood], aki_j[hood], n, self.lup)
-    elif self.sln[k, i] < 0.5 and self.sln[k, j] >= 0.5:
-      hood = (self.sln[:, i] < 0.5) & (self.sln[:, j] >= 0.5)
-      n = np.sum(hood)
-      return f(aki_i[hood], aki_j[hood], n, self.lup)
-    elif self.sln[k, i] >= 0.5 and self.sln[k, j] < 0.5:
-      hood = (self.sln[:, i] >= 0.5) & (self.sln[:, j] < 0.5)
-      n = np.sum(hood)
-      return f(aki_i[hood], aki_j[hood], n, self.lup)
-    elif self.sln[k, i] < 0.5 and self.sln[k, j] < 0.5:
-      hood = (self.sln[:, i] < 0.5) & (self.sln[:, j] < 0.5)
-      n = np.sum(hood)
-      return f(aki_i[hood], aki_j[hood], n, self.lup)
-    else:
-      raise Exception("Compared links have strange sln values")
-  
-  def similarity_matrix_SLN(self):
-    # Load important things ----
-    aik = self.get_aik()
-    aki = self.get_aki()
-    self.get_id_matrix()
-    # Create leave matrix ----
-    self.sim_mat = np.zeros((self.leaves, self.leaves))
-    for i in np.arange(self.nodes):
-      for j in np.arange(self.nodes):
-        if self.id_mat[i, j] == 0: continue
-        x = self.id_mat[i, j]
-        for k in np.arange(j, self.nodes):
-          y = self.id_mat[i, k]
-          if k == j or y == 0: continue
-          self.sim_mat[x -1, y - 1] = self.sln_in_similarity(j, k, i, aki[j, :], aki[k, :])
-        for k in np.arange(i, self.nodes):
-          y = self.id_mat[k, j]
-          if k == i or y == 0 : continue
-          self.sim_mat[x - 1, y - 1] = self.sln_out_similarity(i, k, j, aik[i, :], aik[k, :])
-    self.sim_mat = self.sim_mat + self.sim_mat.T
-    # if np.sum((self.sim_mat > 1) | (self.sim_mat < 0)) > 0:
-    #   raise ValueError("Similarity can not be greater than one")
-
-  def parallel_similarity(self, i, k, j, aik, akj, f=jacp):
-    if self.sln[i, k] >= 0.5 and self.sln[k, j] >= 0.5:
-      hood = (self.sln[i, :] >= 0.5) & (self.sln[:, j][:self.nodes] >= 0.5)
-      n = np.sum(hood)
-      return f(aik[hood], akj[:self.nodes][hood], n, self.lup)
-    if self.sln[i, k] >= 0.5 and self.sln[k, j] < 0.5:
-      hood = (self.sln[i, :] >= 0.5) & (self.sln[:, j][:self.nodes] < 0.5)
-      n = np.sum(hood)
-      return f(aik[hood], akj[:self.nodes][hood], n, self.lup)
-    if self.sln[i, k] < 0.5 and self.sln[k, j] >= 0.5:
-      hood = (self.sln[i, :] < 0.5) & (self.sln[:, j][:self.nodes] >= 0.5)
-      n = np.sum(hood)
-      return f(aik[hood], akj[:self.nodes][hood], n, self.lup)
-    if self.sln[i, k] < 0.5 and self.sln[k, j] < 0.5:
-      hood = (self.sln[i, :] < 0.5) & (self.sln[:, j][:self.nodes] < 0.5)
-      n = np.sum(hood)
-      return f(aik[hood], akj[:self.nodes][hood], n, self.lup)
-    else: 
-      raise Exception("Compared links have strange sln values")
-
-  def similarity_matrix_SLN_2(self):
-    # Load important things ----
-    aik = self.get_aik()
-    aki = self.get_aki()
-    self.get_id_matrix()
-    # Create leave matrix ----
-    self.sim_mat = np.zeros((self.leaves, self.leaves))
-    for i in np.arange(self.nodes):
-      for j in np.arange(self.nodes):
-        if self.id_mat[i, j] == 0: continue
-        x = self.id_mat[i, j]
-        for k in np.arange(j, self.nodes):
-          y = self.id_mat[i, k]
-          if k == j or y == 0: continue
-          self.sim_mat[x -1, y - 1] = self.sln_in_similarity(j, k, i, aki[j, :], aki[k, :])
-          self.sim_mat[y - 1, x - 1] = self.sim_mat[x -1, y - 1]
-        for k in np.arange(i, self.nodes):
-          y = self.id_mat[k, j]
-          if k == i or y == 0 : continue
-          self.sim_mat[x - 1, y - 1] = self.sln_out_similarity(i, k, j, aik[i, :], aik[k, :])
-          self.sim_mat[y - 1, x - 1] = self.sim_mat[x -1, y - 1]
-    for k in np.arange(self.nodes):
-      availabe_nodes = np.arange(self.nodes)
-      availabe_nodes = availabe_nodes[availabe_nodes != k]
-      choices = list(unique_combinations(availabe_nodes, 2))
-      for i, j in choices:
-        ## right ->
-        u = self.id_mat[i, k]
-        v = self.id_mat[k, j]
-        if u != 0 and v != 0:
-          self.sim_mat[u - 1, v - 1] = self.parallel_similarity(i, k, j, aik[i, :], aki[j, :])
-          self.sim_mat[v - 1, u - 1] = self.sim_mat[u - 1, v - 1]
-        ## left <-
-        u = self.id_mat[j, k]
-        v = self.id_mat[k, i]
-        if u != 0 and v != 0:
-          self.sim_mat[u - 1, v - 1] = self.parallel_similarity(j, k, i, aik[j, :], aki[i, :])
-          self.sim_mat[v - 1, u - 1] = self.sim_mat[u - 1, v - 1]
+          self.linksim_matrix[x - 1, y - 1] = source_mat[i, k]
+    self.linksim_matrix = self.linksim_matrix + self.linksim_matrix.T
 
   def similarity_by_feature(self):
     if "TARGET" in self.topology:
       if "DTW" in self.topology: mat = self.dtw_target_similarity()
-      else: mat = self.target_similarity(self.index, self.shift)
+      else: mat = self.target_similarity(self.index)
       self.similarity_matrix(mat, mat)
-      self.sim1 = mat
-      self.sim2 = mat
+      self.source_sim_matrix = mat
+      self.target_sim_matrix = mat
     elif "SOURCE" in self.topology:
       if "DTW" in self.topology: mat1 = self.dtw_source_similarity()
-      else: mat1 = self.source_similarity(self.index, self.shift)
+      else: mat1 = self.source_similarity(self.index)
       self.similarity_matrix(mat1, mat1)
-      self.sim1 = mat1
-      self.sim2 = mat1
+      self.source_sim_matrix = mat1
+      self.target_sim_matrix = mat1
     elif "MIX" in self.topology:
       if "DTW" in self.topology:
         mat1 = self.dtw_source_similarity()
         mat2 = self.dtw_target_similarity()
       else:
-        mat1 = self.source_similarity(self.index, self.shift)
-        mat2 = self.target_similarity(self.index, self.shift)
+        mat1 = self.source_similarity(self.index)
+        mat2 = self.target_similarity(self.index)
       self.similarity_matrix(mat1, mat2)
-      self.sim1 = mat1
-      self.sim2 = mat2
-    elif self.topology == "SLN":
-      self.sim1 = np.array([0])
-      self.sim2 = np.array([0])
-      self.similarity_matrix_SLN()
-    elif self.topology == "SLN2":
-      """w/Parallel similarities"""
-      self.sim1 = np.array([0])
-      self.sim2 = np.array([0])
-      self.similarity_matrix_SLN_2()
+      self.sisource_sim_matrixm1 = mat1
+      self.target_sim_matrix = mat2
     else:
       raise RuntimeError("Not compatible direction.")
+  
+  def similarity_by_feature_cpp(self):
+    Quest = squest(
+      self.A, self.get_aki(), self.get_aik(), self.nodes,
+      self.leaves, self.topologies[self.topology],
+      self.indices[self.index]
+    )
+    self.linksim_matrix = np.array(Quest.get_linksim_matrix())
+    self.source_sim_matrix = np.array(Quest.get_source_matrix())
+    self.target_sim_matrix = np.array(Quest.get_target_matrix())
 
 def repeat_chain(values, counts):
     return chain.from_iterable(map(repeat, values, counts))

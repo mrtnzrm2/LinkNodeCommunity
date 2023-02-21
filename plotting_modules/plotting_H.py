@@ -8,11 +8,10 @@ import numpy as np
 import os
 # Personal libs ----
 from various.network_tools import *
-from modules.hierarmerge import Hierarchy
 from modules.flatmap import FLATMAP
 
 class Plot_H:
-  def __init__(self, NET, H : Hierarchy, sln=False) -> None:
+  def __init__(self, NET, H, sln=False) -> None:
     ## Attributes ----
     self.linkage = H.linkage
     self.BH = H.BH

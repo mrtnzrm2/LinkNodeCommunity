@@ -15,6 +15,7 @@ from various.network_tools import *
 from modules.colregion import colregion
 from networks.structure import MAC
 from networks.distbase import DISTBASE
+from various.data_transformations import maps
 
 def worker_distbase(
   number_of_iterations : int, number_of_inj : int,
@@ -112,13 +113,16 @@ def worker_distbase(
     RC = RAND.distbase_dict[__model__](
       D, NET.C, run=run, on_save_csv=F
     )
-    R = column_normalize(RC)
+    G = column_normalize(RC)
+    # Transform data for analysis ----
+    R, lookup, _ = maps[mapping](
+      G, nlog10, lookup, prob, b=bias
+    )
     # Compute RAND Hierarchy ----
     print("Compute Hierarchy")
     RAND_H = Hierarchy(
-      RAND, R[:, :__nodes__], D,
-      __nodes__, linkage, mode,
-      prob=prob, b=bias
+      RAND, G[:, :__nodes__], R[:, :__nodes__], D,
+      __nodes__, linkage, mode, lookup=lookup
     )
     ## Compute features ----
     RAND_H.BH_features_cpp()

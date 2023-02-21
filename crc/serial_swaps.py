@@ -13,6 +13,7 @@ from networks_serial.hrh import HRH
 from networks.structure import MAC
 from networks.swapnet import SWAPNET
 from various.network_tools import *
+from various.data_transformations import maps
 
 def worker_swaps(
   number_of_iterations : int, number_of_inj : int,
@@ -111,12 +112,15 @@ def worker_swaps(
     # Create network ----
     print("Create random graph")
     RAND.random_one_k(run=run, on_save_csv=F)   #****
+    # Transform data for analysis ----
+    R, lookup, _ = maps[mapping](
+      RAND.A, nlog10, lookup, prob, b=bias
+    )
     # Compute RAND Hierarchy ----
     print("Compute Hierarchy")
     RAND_H = Hierarchy(
-      RAND, RAND.A[:, :__nodes__], RAND.D,
-      __nodes__, linkage, mode,
-      prob=prob, b=bias
+      RAND, RAND.A[:, :__nodes__], R[:, :__nodes__], RAND.D,
+      __nodes__, linkage, mode, lookup=lookup
     )
     ## Compute features ----
     RAND_H.BH_features_cpp()

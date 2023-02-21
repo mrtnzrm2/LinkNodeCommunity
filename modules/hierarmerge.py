@@ -1,33 +1,23 @@
-# General libraries ----
-from copy import copy
+# Standard libs ----
 import numpy as np
 import pandas as pd
 import os
-# My libraries ----
+#  Personal libs ----
 from various.network_tools import *
 from modules.colregion import colregion
 from modules.simanalysis import Sim
-
-# Initiliaze process_hclust c++
 import process_hclust as ph
 from la_arbre_a_merde import noeud_arbre
 
-class Node:
-  ### Class that helps in the la abre de merde ###
-  def __init__(self, tip, nodes):
-    self.tip = tip
-    self.nodes = nodes
-
 class Hierarchy(Sim):
   def __init__(
-    self, G, A, D, nodes, linkage, mode,
-    prob=False, sln=False, **kwargs
+    self, G, A, R, D, nodes, linkage, mode, lookup=0
   ):
     # Initialize Sim ---
     super().__init__(
-      nodes, A.copy(), D.copy(), mode,
-      nlog10=G.nlog10, prob=prob, lookup=G.lookup,
-      mapping=G.mapping, topology=G.topology, index=G.index, **kwargs
+      nodes, A, R, D, mode,
+      topology=G.topology, index=G.index,
+      lookup=lookup
     )
     # Set parameters
     self.linkage = linkage
@@ -38,9 +28,9 @@ class Hierarchy(Sim):
     self.plot_path = G.plot_path
     self.subfolder = G.analysis
     # Compute similarity matrix ----
-    self.similarity_by_feature()
+    self.similarity_by_feature_cpp()
     # Compute distance matrix ----
-    self.dist_mat = self.sim_mat.copy()
+    self.dist_mat = self.linksim_matrix
     self.dist_mat[self.dist_mat == 0] = np.nan
     self.dist_mat = 1 - self.dist_mat
     self.dist_mat[np.isnan(self.dist_mat)] = np.nanmax(self.dist_mat) + 100
@@ -50,12 +40,6 @@ class Hierarchy(Sim):
     self.dA = adj2df(
       self.A.copy()[:self.nodes, :]
     )
-    if sln:
-      dSLN = adj2df(
-        self.sln.copy()[:self.nodes, :]
-      )
-      self.dA["sln"] = dSLN.weight
-    self.sln_h_parameters = {}
     ## Take out zeros ----
     self.dA = self.dA.loc[self.dA.weight != 0]
     ## Get some functions
@@ -237,49 +221,6 @@ class Hierarchy(Sim):
           )
         )
 
-  #** Single-linkage code:
-
-  def which_tip(self, tree, nodes):
-    ntip = len(tree)
-    val = [False] * ntip
-    for i, t in enumerate(tree):
-      if len(np.intersect1d(t.nodes, nodes)) >= 1:
-        val[i] = True
-    return val
-
-  def knot(self, tree_i, tree_f, ind_tips, h):
-    print(tree_i[ind_tips[0]].nodes)
-    print(tree_i[ind_tips[1]].nodes)
-    print("________")
-    ### Combine tips ----
-    combine_nodes = np.sort(
-      np.unique(
-        np.concatenate(
-          (
-            tree_i[ind_tips[0]].nodes,
-            tree_i[ind_tips[1]].nodes
-          ),
-          axis=0
-        )
-      )
-    )
-    ### Assign to Z ----
-    self.Z[self.t, 0] = tree_i[ind_tips[0]].tip
-    self.Z[self.t, 1] = tree_i[ind_tips[1]].tip
-    self.Z[self.t, 2] = h
-    self.Z[self.t, 3] = len(combine_nodes)
-    ## Add new tip ----
-    tree_f.append(
-      Node(
-        self.nodes + self.t,
-        combine_nodes
-      )
-    )
-    ## Eliminate used tips ----
-    for j, tip in enumerate(ind_tips):
-      del tree_i[tip - j]
-    self.t += 1
-
   def la_abre_a_merde_cpp(self, features):
     # Get network dataframe ----
     dA =  self.dA.copy()
@@ -328,97 +269,16 @@ class Hierarchy(Sim):
     self.Z = np.array(self.Z)
     self.equivalence = NH.get_equivalence()
     self.equivalence = np.array(self.equivalence)
-
-  def la_abre_a_merde(self, features):
-    from scipy.cluster.hierarchy import cut_tree
-    # Get features and filter over NEC >= 1 ---
-    NEC = np.where(features["NEC"] >= 1)[0]
-    K = features["K"].iloc[NEC]
-    H = features["height"].iloc[NEC]
-    # Elliminate H duplicates in H and K ----
-    H, dpl = np.unique(H, return_index=True)
-    K = K[dpl]
-    # Define the nodes ----
-    tree = []
-    for i in np.arange(self.nodes):
-      tree.append(
-        Node(i, np.array([i]))
-      )
-    # Create Z ----
-    self.Z = np.zeros((self.nodes - 1, 4))
-    # Create network dataframe ----
-    dA = self.dA.copy()
-    # Start loop over partitions ----
-    self.t = 0
-    for k, h in zip(K, H):
-      ## Cut tree ----
-      leaves_ids = cut_tree(
-        self.H,
-        n_clusters = k
-      ).reshape(-1)
-      dA["id"] =  leaves_ids
-      ## Assign tree LC memberships to -1 ----
-      self.minus_one_Dc(dA)
-      ## Get effective LC memberships ----
-      ids = dA.query("id >= 0")["id"].to_numpy()
-      ids = np.sort(np.unique(ids))
-      ## Copy tree ---
-      tree_c = copy(tree)
-      ## Scan partition ----
-      for id in ids:
-        ### Filter id ----
-        dAid = dA.loc[dA["id"] == id]
-        ### Get core nodes ----
-        src = dAid["source"].to_numpy()
-        tgt = dAid["target"].to_numpy()
-        inter = np.unique(
-          np.intersect1d(src, tgt)
-        )
-        if len(inter) > 1:
-          ### Search for compatible parents ----
-          compatible_tip = np.where(
-            self.which_tip(tree_c, inter)
-          )[0]
-          if len(compatible_tip) == 2:
-            self.knot(
-              tree_c, tree_c,
-              compatible_tip,
-              h
-            )
-          elif len(compatible_tip) > 2:
-            ### Copy the compatible tips ----
-            tree_c2 = []
-            for tip in compatible_tip:
-              tree_c2.append(
-                tree_c[tip]
-              )
-            ### Eliminate compatible tips from original ----
-            for j, tip in enumerate(compatible_tip):
-              del tree_c[tip - j]
-            while len(tree_c2) >= 2:
-              if len(tree_c2) > 2:
-                self.knot(
-                  tree_c2, tree_c2,
-                  np.array([0, 1]),
-                  h
-                )
-              elif len(tree_c2) == 2:
-                self.knot(
-                  tree_c2, tree_c,
-                  np.array([0, 1]),
-                  h
-                )
-          tree = tree_c
   
   def stat_cor(self):
     # Copy target and source similarity matrices ----
-    dIN = self.sim1.copy()
+    dIN = self.source_sim_matrix
     dIN[np.isnan(dIN)] = np.nanmin(dIN) - 1
     dIN = adj2df(dIN)
     dIN = dIN.loc[
       dIN["source"] < dIN["target"], "weight"
     ].to_numpy().ravel()
-    dOUT = self.sim2.copy()
+    dOUT = self.target_sim_matrix
     dOUT[np.isnan(dOUT)] = np.nanmin(dOUT) - 1
     dOUT = adj2df(dOUT)
     dOUT = dOUT.loc[
@@ -602,84 +462,3 @@ class Hierarchy(Sim):
     labels = self.colregion.labels[:self.nodes]
     overlap = skim_partition(args[0])
     return np.array([labels[i] for i, l in enumerate(overlap) if l == -1])
-
-  ##########################################################################################
-
-  ## SLN methods ----
-
-  def get_parameter_stan(self, fit : pd.DataFrame, param, shape):
-    mean_shape = np.zeros(shape)
-    std_shape = np.zeros(shape)
-    name_shape = np.zeros(shape)
-    name_shape = name_shape + 120022.393
-    name_shape = name_shape.astype(str)
-    col_names = fit.columns.to_numpy()
-    extracted_names = []
-    extracted_indices = []
-    for col in col_names:
-      if param in col:
-        extracted_names.append(col)
-        s = col.split(".")
-        if len(s) > 1:
-          s = s[1:]
-          s = np.array([int(ii) for ii in s])
-        else: s = np.array([0])
-        extracted_indices.append(s)
-    mean_parameters = fit[extracted_names].mean().to_numpy()
-    std_parameters = fit[extracted_names].std().to_numpy()
-    for i, idx in enumerate(extracted_indices):
-      idx = idx - 1
-      if len(idx) == 1:
-        mean_shape[idx[0]] = mean_parameters[i]
-        std_shape[idx[0]] = std_parameters[i]
-        name_shape[idx[0]] = extracted_names[i]
-      elif len(idx) == 2:
-        mean_shape[idx[0], idx[1]] = mean_parameters[i]
-        std_shape[idx[0], idx[1]] = std_parameters[i]
-        name_shape[idx[0], idx[1]] = extracted_names[i]
-      elif len(idx) == 3:
-        mean_shape[idx[0], idx[1], idx[2]] = mean_parameters[i]
-        std_shape[idx[0], idx[1], idx[2]] = std_parameters[i]
-        name_shape[idx[0], idx[1], idx[2]] = extracted_names[i]
-    return name_shape, mean_shape, std_shape
-
-  def sln_hierarchy_stan(self, supra, infra, labels):
-    sup = supra.copy().astype(np.double)
-    inf = infra.copy().astype(np.double)
-    nolinks = self.A == 0
-    sup[nolinks] = np.nan
-    inf[nolinks] = np.nan
-    ##
-    sup = adj2df(sup)
-    inf = adj2df(inf)
-    sup = sup.loc[~np.isnan(sup.weight)]
-    inf = inf.loc[~np.isnan(inf.weight)]
-    ##
-    target_index = sup.target.to_numpy().astype(int)
-    source_index = sup.source.to_numpy().astype(int)
-    leaves = len(target_index)
-    v1c = np.where(labels == "v1c")[0].astype(int)
-    ##
-    data = {
-      "inj" : self.A.shape[1],
-      "n" : self.A.shape[0],
-      "l" : leaves,
-      "supra" : sup.weight.to_numpy().astype(int),
-      "infra" : inf.weight.to_numpy().astype(int),
-      "tgt" : target_index + 1,
-      "src" : source_index + 1,
-      "v1c" : v1c[0] + 1
-    }
-    ##
-    import stan
-    from STAN_models.SLN.sln_hierarchy_org import beta_binomial
-    posterior = stan.build(beta_binomial, data=data)
-    fit_frame = posterior.sample(
-      num_chains=4, num_warmup=1000, num_samples=1000
-    ).to_frame()
-    ## Get parameters from stan ----
-    par_name = ["beta", "sig"]
-    par_shape = [(self.A.shape[0]), (1)]
-    for par, pshape in zip(par_name, par_shape):
-      para_names, para_mu, para_std = self.get_parameter_stan(fit_frame, par, pshape)
-      self.sln_h_parameters[par] = (para_names, para_mu, para_std)

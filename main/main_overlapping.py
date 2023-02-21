@@ -79,9 +79,8 @@ if __name__ == "__main__":
   if save_datas:
     ## Hierarchy object!! ----
     H = Hierarchy(
-      NET, NET.A, zeros(NET.A.shape),
-      __nodes__, linkage, __mode__,
-      prob=prob
+      NET, NET.A, NET.A, zeros(NET.A.shape),
+      __nodes__, linkage, __mode__
     )
     ## Compute features ----
     H.BH_features_cpp()

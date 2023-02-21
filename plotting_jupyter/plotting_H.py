@@ -8,11 +8,10 @@ import numpy as np
 import os
 # Personal libs ----
 from various.network_tools import *
-from modules.hierarmerge import Hierarchy
 from modules.flatmap import FLATMAP
 
 class Plot_H:
-  def __init__(self, NET, H : Hierarchy, sln=False) -> None:
+  def __init__(self, NET, H, sln=False) -> None:
     ## Attributes ----
     self.linkage = H.linkage
     self.BH = H.BH
@@ -159,7 +158,7 @@ class Plot_H:
       new_partition[partition == c] = i
     return new_partition
   
-  def core_dendrogram(self, R, cmap_name="hls"):
+  def core_dendrogram(self, R, cmap_name="hls", remove_labels=False):
     print("Visualize node-community dendrogram!!!")
     from scipy.cluster import hierarchy
     import matplotlib.colors
@@ -184,14 +183,22 @@ class Plot_H:
           for x in i12)
         link_cols[i+1+len(self.Z)] = c1 if c1 == c2 else dlf_col
       fig, _ = plt.subplots(1, 1)
-      hierarchy.dendrogram(
-        self.Z,
-        labels=self.colregion.labels[
-          :self.nodes
-        ],
-        color_threshold=self.Z[self.nodes - r, 2],
-        link_color_func = lambda k: link_cols[k]
-      )
+      if ~remove_labels:
+        hierarchy.dendrogram(
+          self.Z,
+          labels=self.colregion.labels[
+            :self.nodes
+          ],
+          color_threshold=self.Z[self.nodes - r, 2],
+          link_color_func = lambda k: link_cols[k]
+        )
+      else:
+        hierarchy.dendrogram(
+          self.Z,
+          labels=False,
+          color_threshold=self.Z[self.nodes - r, 2],
+          link_color_func = lambda k: link_cols[k]
+        )
       fig.set_figwidth(10)
       fig.set_figheight(7)
 
@@ -398,7 +405,7 @@ class Plot_H:
             )
     
   def lcmap_dendro(
-    self, K, cmap_name="hls", **kwargs
+    self, K, cmap_name="hls", remove_labels= False, **kwargs
   ):
     print("Visualize k LCs!!!")
     # K loop ----
@@ -450,34 +457,41 @@ class Plot_H:
         cmap_heatmap[1:] = save_colors
       else:
         cmap_heatmap = sns.color_palette(cmap_name, keff)
-      plot = sns.heatmap(
-        dFLN,
-        cmap=cmap_heatmap,
-        # cbar=False,
-        xticklabels=labels,
-        yticklabels=labels
-      )
-      if "font_size" in kwargs.keys():
-        if kwargs["font_size"] > 0:
-          plot.set_xticklabels(
-            plot.get_xmajorticklabels(), fontsize = kwargs["font_size"]
-          )
-          plot.set_yticklabels(
-            plot.get_ymajorticklabels(), fontsize = kwargs["font_size"]
-          )
-      # Setting labels colors ----
-      [t.set_color(i) for i,t in
-        zip(
-          colors,
-          ax.xaxis.get_ticklabels()
+      if ~remove_labels:
+        plot = sns.heatmap(
+          dFLN,
+          cmap=cmap_heatmap,
+          xticklabels=labels,
+          yticklabels=labels
         )
-      ]
-      [t.set_color(i) for i,t in
-        zip(
-          colors,
-          ax.yaxis.get_ticklabels()
+        if "font_size" in kwargs.keys():
+          if kwargs["font_size"] > 0:
+            plot.set_xticklabels(
+              plot.get_xmajorticklabels(), fontsize = kwargs["font_size"]
+            )
+            plot.set_yticklabels(
+              plot.get_ymajorticklabels(), fontsize = kwargs["font_size"]
+            )
+        # Setting labels colors ----
+        [t.set_color(i) for i,t in
+          zip(
+            colors,
+            ax.xaxis.get_ticklabels()
+          )
+        ]
+        [t.set_color(i) for i,t in
+          zip(
+            colors,
+            ax.yaxis.get_ticklabels()
+          )
+        ]
+      else:
+        plot = sns.heatmap(
+          dFLN,
+          cmap=cmap_heatmap,
+          xticklabels=False,
+          yticklabels=False
         )
-      ]
       
   def flatmap_dendro(self, NET, K, R, save=False, **kwargs):
     print("Plot single-linkage flatmap!!!")

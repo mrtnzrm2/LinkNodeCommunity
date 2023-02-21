@@ -13,6 +13,7 @@ from various.network_tools import *
 from plotting_modules.plotting_H import Plot_H
 from plotting_modules.plotting_N import Plot_N
 from networks.distbase import DISTBASE
+from various.data_transformations import maps
 from networks.structure import MAC
 # Declare global variables ----
 __iter__ = 0
@@ -85,15 +86,19 @@ if __name__ == "__main__":
       D, REF.C, run=T, on_save_csv=T
     )
   G = column_normalize(Gn)
+  # Transform data for analysis ----
+  R, lookup, _ = maps[mapping](
+    G, nlog10, lookup, prob, b=bias
+  )
   # Compute Hierarchy ----
   print("Compute Hierarchy")
   # Save ----
   if save_datas:
     ## Hierarchy object!! ----
     H = Hierarchy(
-      NET, G[:, :NET.nodes], D,
+      NET, G[:, :NET.nodes], R[:, :NET.nodes], D,
       __nodes__, linkage, __mode__,
-      prob=prob, b=bias
+      lookup=lookup
     )
     ## Compute features ----
     H.BH_features_cpp()

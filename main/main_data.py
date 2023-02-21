@@ -6,12 +6,13 @@ sys.path.append(os.path.dirname(SCRIPT_DIR))
 # Boolean aliases ----
 T = True
 F = False
-# Import libraries ---- 
+# Personal libs ---- 
 from modules.hierarmerge import Hierarchy
 from plotting_modules.plotting_H import Plot_H
 from plotting_modules.plotting_N import Plot_N
 from modules.colregion import colregion
 from various.network_tools import *
+from various.data_transformations import maps
 from networks.structure import MAC
 # Declare global variables ----
 linkage = "single"
@@ -22,11 +23,11 @@ cut = F
 mode = "ALPHA"
 distance = "MAP3D"
 nature = "original"
+imputation_method = ""
+bias = 0.3
 topology = "MIX"
 mapping = "R2"
 index  = "jacw"
-bias = 0.3
-imputation_method = ""
 opt_score = ["_maxmu", "_X", "_D"]
 # opt_score = ["_maxmu", "_X"]
 save_data = T
@@ -53,15 +54,18 @@ if __name__ == "__main__":
   )
   NET.create_plot_directory()
   NET.create_pickle_directory()
+  # Transform data for analysis ----
+  R, lookup, _ = maps[mapping](
+    NET.A, nlog10, lookup, prob, b=bias
+  )
   # Compute Hierarchy ----
   print("Compute Hierarchy")
   # Save ----
   if save_data:
     ## Hierarchy object!! ----
     H = Hierarchy(
-      NET, NET.A, NET.D,
-      __nodes__, linkage, mode,
-      prob=prob, b=bias
+      NET, NET.A, R, NET.D,
+      __nodes__, linkage, mode, lookup=lookup
     )
     ## Compute features ----
     H.BH_features_cpp()

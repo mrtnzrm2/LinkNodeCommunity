@@ -1,19 +1,19 @@
 import numpy as np
 import pandas as pd
 from scipy.cluster.hierarchy import cut_tree
-# My libraries ----
-from networks.structure import MAC
+# Personal libs ----
 from modules.nodanalysis import NODA
 from various.network_tools import minus_one_Dc
 
 class NODH(NODA):
-  def __init__(self, NET: MAC, n, nlog10=True, lookup=False, **kwargs):
-    super().__init__(NET, n, nlog10, lookup, **kwargs)
+  def __init__(self, nodes : int, NET, R, lookup=0, **kwargs):
+    super().__init__(nodes, NET, R, lookup=lookup, **kwargs)
     self.topology = NET.topology
     self.linkage = NET.linkage
     self.feature_dist = self.select_feature(self.topology)
     self.BH = []
     self.minus_one_Dc = minus_one_Dc
+    self.plot_path = NET.plot_path
 
 
   def hierarchical_clustering(self):
