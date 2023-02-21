@@ -9,6 +9,7 @@ class BASE:
     self.linkage = linkage
     if "version" in kwargs.keys():
       self.version = str(kwargs["version"])
+    else: self.version = ""
     if "mode" in kwargs.keys():
       self.mode = kwargs["mode"]
     else: self.mode = "ALPHA"
