@@ -8,7 +8,7 @@ Dlink is a link community algorithm created to find communities in directed netw
 
  There are several community detection algorithms for different network classes. However, finding communities in **dense**, **directed**, **weighted**, and **heterogeneous** network, as the macaque fraction of labeled neurons (FLN) network (Markov et al. 2011 and 2012), is a still an open question since the it is not clear what a community represent in such complex systems. For that reason, we started to work on an algorithm to overcome the challenges of indentifying communities in this type of networks.
 
- Our journey led us to the link community algorithm which has many important features such as assigning nodes to more than one cluster. Nevertheless, to make it work in our network, we had to add several features to the algorithm that we list below. We have named our algorithm Dlink to distinguish it from the original.
+ Our journey led us to the link community algorithm which has many important features such as assigning nodes to more than one cluster. Nevertheless, to make it work in our network, we had to add several features to the algorithm that we list below. We have baptized the algorithm **Dlink** to distinguish it from the original.
 
 ## Key features
 Some key features that make our algorithm convenient are the following:
