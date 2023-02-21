@@ -440,7 +440,7 @@ def get_r_from_X_diag(k, H, Z, R, nodes):
   aesthetic_ids(dR)
   ##
   den_order = np.array(
-    dendrogram(Z)["ivl"]
+    dendrogram(Z, no_plot=True)["ivl"]
   ).astype(int)
   RR = df2adj(dR, var="id")[:, den_order][den_order, :]
   dR = adj2df(RR)
