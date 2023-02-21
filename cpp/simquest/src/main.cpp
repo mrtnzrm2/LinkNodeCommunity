@@ -13,7 +13,7 @@ std::vector<std::vector<int> > create_id_matrix(
 	const int& M, const int& N
 ) {
 	std::vector<std::vector<int> > id_matrix(N, std::vector<int>(M, 0));
-	int id = 0;
+	int id = 1;
 	for (int i=0; i < M; i++){
 		for (int j=0; j < N; j++){
 			if (matrix[i][j] > 0){
@@ -77,12 +77,12 @@ simquest::simquest(
 	// SOURCE topology
 	else if (topology == 1) {
 		source_matrix = calculate_nodesim_matrix(AIK, N, index);
-		target_matrix = calculate_nodesim_matrix(AIK, N, index);
+		target_matrix = source_matrix;
 	}
 	// TARGET topology
 	else if (topology == 2) {
 		source_matrix = calculate_nodesim_matrix(AKI, N, index);
-		target_matrix = calculate_nodesim_matrix(AKI, N, index);
+		target_matrix = source_matrix;
 	}
 	linksim_matrix = calculate_linksim_matrix(A, N, leaves);
 }
@@ -98,6 +98,7 @@ std::vector<std::vector<double> > simquest::calculate_nodesim_matrix(
 			node_sim_matrix[j][i] = node_sim_matrix[i][j];
 		}
 	}
+	return node_sim_matrix;
 }
 
 std::vector<std::vector<double> > simquest::calculate_linksim_matrix(
@@ -109,19 +110,18 @@ std::vector<std::vector<double> > simquest::calculate_linksim_matrix(
 	for (int i =0; i < N; i++) {
 		for (int j=0; j < N; j++) {
 			row_id = id_matrix[i][j];
-			if (row_id == -1)
-				continue;
+			if (row_id == 0) continue;
 			for (int k=j; k < N; k++) {
 				col_id = id_matrix[i][k];
-				if (k == j && col_id == 0) continue;
-				link_similarity_matrix[row_id][col_id] = target_matrix[j][k];
-				link_similarity_matrix[col_id][row_id] = link_similarity_matrix[row_id][col_id];
+				if (k == j || col_id == 0) continue;
+				link_similarity_matrix[row_id-1][col_id-1] = target_matrix[j][k];
+				link_similarity_matrix[col_id-1][row_id-1] = link_similarity_matrix[row_id][col_id];
 			}
-			for (int k=i; j < N; k++) {
+			for (int k=i; k < N; k++) {
 				col_id = id_matrix[k][j];
-				if (k == i && col_id == 0) continue;
-				link_similarity_matrix[row_id][col_id] = source_matrix[i][k];
-				link_similarity_matrix[col_id][row_id] = link_similarity_matrix[row_id][col_id];
+				if (k == i || col_id == 0) continue;
+				link_similarity_matrix[row_id-1][col_id-1] = source_matrix[i][k];
+				link_similarity_matrix[col_id-1][row_id-1] = link_similarity_matrix[row_id][col_id];
 			}
 		}
 	}

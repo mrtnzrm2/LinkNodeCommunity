@@ -11,13 +11,9 @@ from various.network_tools import *
 from modules.hierarmerge import Hierarchy
 
 class Plot_N:
-  def __init__(self, NET, H : Hierarchy, sln=False) -> None:
+  def __init__(self, NET, H : Hierarchy) -> None:
     # From net ----
     self.path = NET.plot_path
-    if sln:
-      self.sln = NET.sln
-      self.supra = NET.supra
-      self.infra = NET.infra
     # from Hierarchy ----
     self.nodes = H.nodes
     self.linkage = H.linkage
@@ -28,8 +24,8 @@ class Plot_N:
     self.R = H.R
     self.index = H.index
     # Data transformed ----
-    self.aik = H.sim1
-    self.aki = H.sim2
+    self.aik = H.source_sim_matrix
+    self.aki = H.target_sim_matrix
 
   def normal(self, mean, std, color="black"):
     from scipy import stats

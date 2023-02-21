@@ -22,8 +22,8 @@ set_property(GLOBAL PROPERTY _CMAKE_FindGit_GIT_EXECUTABLE_VERSION
 include(ExternalProject)
 ExternalProject_Add(pybind11-populate
                      "UPDATE_DISCONNECTED" "False" "GIT_REPOSITORY" "https://github.com/pybind/pybind11" "GIT_TAG" "v2.2.3"
-                    SOURCE_DIR          "/Users/jmarti53/Documents/Projects/LINKPROJECT/LinkCommunities/cpp/simquest/build/temp.macosx-12-x86_64-cpython-39/simquest/_deps/pybind11-src"
-                    BINARY_DIR          "/Users/jmarti53/Documents/Projects/LINKPROJECT/LinkCommunities/cpp/simquest/build/temp.macosx-12-x86_64-cpython-39/simquest/_deps/pybind11-build"
+                    SOURCE_DIR          "/Users/jmarti53/Documents/Projects/LINKPROJECT/Dlink/cpp/simquest/build/temp.macosx-12-x86_64-cpython-39/simquest/_deps/pybind11-src"
+                    BINARY_DIR          "/Users/jmarti53/Documents/Projects/LINKPROJECT/Dlink/cpp/simquest/build/temp.macosx-12-x86_64-cpython-39/simquest/_deps/pybind11-build"
                     CONFIGURE_COMMAND   ""
                     BUILD_COMMAND       ""
                     INSTALL_COMMAND     ""

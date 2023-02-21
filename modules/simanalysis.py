@@ -19,8 +19,6 @@ class Sim:
     self.D = D
     self.nonzero = (A != 0)
     self.lup = lookup
-    # Get number of rows ----
-    self.rows = self.A.shape[0]
     # Number of connections in the EC component ----
     self.leaves = np.sum(self.A[:nodes, :nodes] != 0).astype(int)
     self.topologies = {
@@ -193,7 +191,7 @@ class Sim:
       raise RuntimeError("Not compatible direction.")
   
   def similarity_by_feature_cpp(self):
-    Quest = squest(
+    Quest = squest.simquest(
       self.A, self.get_aki(), self.get_aik(), self.nodes,
       self.leaves, self.topologies[self.topology],
       self.indices[self.index]

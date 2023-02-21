@@ -3,7 +3,6 @@ import networkx as nx
 import seaborn as sns
 sns.set_theme()
 import matplotlib.pyplot as plt
-from pathlib import Path
 import numpy as np
 import os
 # Personal libs ----
@@ -11,7 +10,7 @@ from various.network_tools import *
 from modules.flatmap import FLATMAP
 
 class Plot_H:
-  def __init__(self, NET, H, sln=False) -> None:
+  def __init__(self, NET, H) -> None:
     ## Attributes ----
     self.linkage = H.linkage
     self.BH = H.BH
@@ -25,13 +24,6 @@ class Plot_H:
     self.leaves = H.leaves
     self.index = H.index
     self.R = H.R
-    ##
-    if sln:
-      self.sln = NET.sln
-      self.supra = NET.supra
-      self.infra = NET.infra
-    ## Methods ----
-    self.minus_one_Dc = H.minus_one_Dc
     # Net ----
     self.path = H.plot_path
     self.areas = NET.struct_labels
@@ -341,7 +333,7 @@ class Plot_H:
         self.H,
         n_clusters = k
       ).reshape(-1)
-      self.minus_one_Dc(dFLN)
+      minus_one_Dc(dFLN)
       self.aesthetic_ids(dFLN)
       keff = np.unique(
         dFLN["id"].to_numpy()
@@ -424,7 +416,7 @@ class Plot_H:
       ##
       dFLN["source_label"] = labels[dFLN.source]
       dFLN["target_label"] = labels[dFLN.target]
-      self.minus_one_Dc(dFLN)
+      minus_one_Dc(dFLN)
       self.aesthetic_ids(dFLN)
       keff = np.unique(dFLN.id)
       keff = keff.shape[0]
@@ -569,7 +561,7 @@ class Plot_H:
     for k in K:
       labels = cut_tree(self.H, k).ravel()
       dA["id"] = labels
-      self.minus_one_Dc(dA)
+      minus_one_Dc(dA)
       self.aesthetic_ids(dA)
       labels = dA.id.to_numpy()
       labels[labels > 0] = labels[labels > 0] - 1
