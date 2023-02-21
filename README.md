@@ -1,14 +1,14 @@
 # Dlink
-An extended version of the link community algorithm to use in directed networks with very heterogeneous weights.
+Dlink is a link community algorithm created to find communities in directed networks with very heterogeneous weights.
 
  ## Introduction
  Welcome everyone! How good of you to spend some of your time taking a look to this software. I consider this software to be an extension of the original link community algorithm (Ahn et al. 2010).
  
- The problem of community dectedtion is very deep since it is connected to the problem of data encoding. Each day, millons of bytes of information are saved by the goverments and companies all around the world. However, all that data is useless unless you can process it and reveal the structures, symmetries, global features, and laws inside. Finding communties is similar to separating the data into homogeneous parts which implies low entropy in the system. In the context of information theory, paritioning the data into clusters with similar features can allow you decode the information faster, a property prominent if the system is under the forces of natural selection.
+ The problem of community dectedtion is very deep since it is connected to the problem of data encoding. Each day, millons of bytes of information are saved by the goverments and companies all around the world. However, all the data is useless unless you can process it and reveal the structures, symmetries, global features, and laws inside it. Finding communties is similar to separating the data into homogeneous pieces. In the context of information theory, paritioning the data into clusters can allow you decode the information faster since the data arranged in the right way, like your cloths when you decide to fold them nicely, is easier to intepret. Networks in the real world naturally form communities since it is the way to minimize the entropy, steps to reach a certain information or execute a particular action, a property crucial if the system is under the forces of natural selection.
 
- There are several community detection algorithms for different network classes. However, the project we are working tries to find communities in a **dense**, **directed**, **weighted**, and **heterogeneous** network, the macaque fraction of labeled neurons (FLN) network (Markov et al. 2011 and 2012). This type of network represents a challenge to any state-of-the-art algorithm. For that reason, we started to work on an algorithm to overcome the challenges of indentifying communities in this network.
+ There are several community detection algorithms for different network classes. However, finding communities in **dense**, **directed**, **weighted**, and **heterogeneous** network, as the macaque fraction of labeled neurons (FLN) network (Markov et al. 2011 and 2012), is a still an open question since the it is not clear what a community represent in such complex systems. For that reason, we started to work on an algorithm to overcome the challenges of indentifying communities in this type of networks.
 
- Our journey led us to the link community algorithm which has many important features such as assigning nodes to more than one cluster. Nevertheless, to make it work in our network, we had to add several features to the algorithm that we list below.
+ Our journey led us to the link community algorithm which has many important features such as assigning nodes to more than one cluster. Nevertheless, to make it work in our network, we had to add several features to the algorithm that we list below. We have named our algorithm Dlink to distinguish it from the original.
 
 ## Key features
 Some key features that make our algorithm convenient are the following:
