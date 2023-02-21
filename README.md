@@ -10,8 +10,8 @@ Dlink is a link community algorithm created to find communities in directed netw
 
 Our journey led us to the link community algorithm, which has many essential features, such as assigning nodes to multiple clusters. Nevertheless, to make it work in the FLN network, we had to add several features to the algorithm we listed below. We have baptized the algorithm **Dlink** to distinguish it from the original. However, the new features do not limit the usage of the algorithm to cortical networks in any directed and simple network (without self-loops and multiple links between the same nodes).
 
-## Key features
-Some key features that make our algorithm convenient are the following:
+## Link community extension
+We had to create new definitions and algorithms to improve the link community algorithm in directed networks. The most important are the following:
 
 1. **New link neighborhood concepts**: We introduce **new** link neighborhood definitions for directed graphs. Our interpretation diverges from the literature, especially from the concept of line digraphs. The new criteria have many graph-theoretical implications that are still undiscovered.
 
