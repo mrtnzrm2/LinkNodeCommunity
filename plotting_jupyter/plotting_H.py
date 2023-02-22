@@ -527,7 +527,7 @@ class Plot_H:
       G,
       pos=pos,
       node_color=node_colors,
-      connectionstyle="arc3,rad=0.1",
+      connectionstyle="arc3,rad=-0.2",
       ax=ax, **kwargs
     )
     fig.set_figwidth(figwidth)
@@ -576,7 +576,7 @@ class Plot_H:
     nx.draw_networkx(
       G, pos=pos,
       edge_color=edge_colors,
-      connectionstyle="arc3,rad=0.1",
+      connectionstyle="arc3,rad=-0.2",
       ax=ax, **kwargs
     )
     fig.set_figwidth(figwidth)
