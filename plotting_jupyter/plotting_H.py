@@ -129,7 +129,7 @@ class Plot_H:
     plt.xscale("log")
     fig.tight_layout()
   
-  def core_dendrogram(self, R, cmap_name="hls", remove_labels=False):
+  def core_dendrogram(self, R, cmap_name="hls", remove_labels=False, figwidth=10, figheight=7):
     print("Visualize node-community dendrogram!!!")
     from scipy.cluster import hierarchy
     import matplotlib.colors
@@ -168,8 +168,8 @@ class Plot_H:
           color_threshold=self.Z[self.nodes - r, 2],
           link_color_func = lambda k: link_cols[k]
         )
-      fig.set_figwidth(10)
-      fig.set_figheight(7)
+      fig.set_figwidth(figwidth)
+      fig.set_figheight(figheight)
 
   def heatmap_pure(self, **kwargs):
     print("Visualize pure logFLN heatmap!!!")
@@ -374,7 +374,8 @@ class Plot_H:
             )
     
   def lcmap_dendro(
-    self, K, cmap_name="hls", remove_labels= False, **kwargs
+    self, K, cmap_name="hls", remove_labels= False,
+    figwidth=18, figheight=15,**kwargs
   ):
     print("Visualize k LCs!!!")
     # K loop ----
@@ -416,8 +417,8 @@ class Plot_H:
       colors = regions.COLOR.loc[match(labels,rlabels)].to_numpy()
       # Create figure ----
       fig, ax = plt.subplots(1, 1)
-      fig.set_figwidth(18)
-      fig.set_figheight(15)
+      fig.set_figwidth(figwidth)
+      fig.set_figheight(figheight)
       # Check colors with and without trees (-1) ---
       if -1 in dFLN:
         save_colors = sns.color_palette(cmap_name, keff - 1)
@@ -489,7 +490,7 @@ class Plot_H:
       F.set_para(kk, R[i], ids)
       F.plot_flatmap(save=save)
 
-  def plot_networx(self, rlabels, cmap_name="", **kwargs):
+  def plot_networx(self, rlabels, cmap_name="husl", figwidth=10, figheight=10, **kwargs):
     print("Draw networkx!!!")
     rlabels = skim_partition(rlabels)
     unique_labels = np.unique(rlabels)
@@ -529,9 +530,10 @@ class Plot_H:
       connectionstyle="arc3,rad=0.1",
       ax=ax, **kwargs
     )
-    fig.tight_layout()
+    fig.set_figwidth(figwidth)
+    fig.set_figheight(figheight)
   
-  def plot_link_communities(self, K, cmap_name="hls", **kwargs):
+  def plot_link_communities(self, K, cmap_name="hls", figwidth=10, figheight=10, **kwargs):
     print("Draw networkx link communities!!!")
     dA = self.dA.copy()
     from scipy.cluster.hierarchy import cut_tree
@@ -577,4 +579,5 @@ class Plot_H:
       connectionstyle="arc3,rad=0.1",
       ax=ax, **kwargs
     )
-    fig.tight_layout()
+    fig.set_figwidth(figwidth)
+    fig.set_figheight(figheight)

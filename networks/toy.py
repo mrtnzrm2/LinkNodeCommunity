@@ -63,14 +63,14 @@ class TOY(BASE):
   """
   def __init__(
     self, A, linkage, nlog10=False, lookup=False, cut=False,
-    mapping="trivial", index="jacp", topolgy="MIX",
+    mapping="trivial", index="jacp", topology="MIX",
     **kwargs
   ) -> None:
     super().__init__(linkage, **kwargs)
     self.nlog10 = nlog10
     self.lookup = lookup
     self.cut = cut
-    self.topology = topolgy
+    self.topology = topology
     self.mapping = mapping
     self.index = index
     self.A = A.copy()
@@ -94,14 +94,16 @@ class TOY(BASE):
     else:
       self.plot_path = join(
         "../plots", "TOY", self.common_path,
-        self.analysis, self.mode, self.topology
+        self.analysis, self.mode,
+        f"{self.topology}_{self.index}_{self.mapping}"
       )
     if "pickle_path" in kwargs.keys():
       self.pickle_path = kwargs["pickle_path"]
     else:
       self.pickle_path = join(
         "../pickle", "TOY", self.common_path,
-        self.analysis, self.mode, self.topology
+        self.analysis, self.mode,
+        f"{self.topology}_{self.index}_{self.mapping}"
       )
     # Overlap ----
     self.overlap = np.array(["UNKNOWN"] * self.nodes)

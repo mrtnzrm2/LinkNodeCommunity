@@ -110,7 +110,7 @@ if __name__ == "__main__":
     for j, score in enumerate(opt_score):
       k, r = get_best_kr(score, H)
       rlabels = get_labels_from_Z(H.Z, r)
-      nocs_membership = H.get_ocn(rlabels)
+      _, nocs_membership = H.get_ocn_discovery(rlabels)
       print(nocs_membership)
       print_principal_memberships(rlabels, H.colregion.labels)
       plot_h.lcmap_dendro(

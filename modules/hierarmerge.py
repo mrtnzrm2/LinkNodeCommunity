@@ -300,7 +300,7 @@ class Hierarchy(Sim):
       NOCS[key] = list(np.unique(NOCS[key]))
     return NOCS
 
-  def discover_overlap_nodes(self, K : int, Cr, labels):
+  def discover_overlap_nodes(self, K : int, Cr, labels, s=2.):
     nocs = {}
     overlap = np.zeros(self.nodes)
     from scipy.cluster.hierarchy import cut_tree
@@ -324,7 +324,7 @@ class Hierarchy(Sim):
     mean_s, std_s = stats_maxsize_linkcom(data)
     ## Grouped data ----
     size =  data.groupby("nodes")["size"].max()
-    x = size < mean_s - 2 * std_s
+    x = size < mean_s - s * std_s
     x = [
       np.where(labels == nd)[0][0] for i, nd in enumerate(x.index) if x.iloc[i]
     ]
@@ -372,9 +372,9 @@ class Hierarchy(Sim):
       ignore_index=True
     )
 
-  def get_ocn_discovery(self, K : int, Cr):
+  def get_ocn_discovery(self, K : int, Cr, s=2.):
     labels = self.colregion.labels[:self.nodes]
-    overlap, noc_covers = self.discover_overlap_nodes(K, Cr, labels)
+    overlap, noc_covers = self.discover_overlap_nodes(K, Cr, labels, s=s)
     if len(overlap) > 0:
       return np.array([labels[i] for i in overlap]), noc_covers
     else:

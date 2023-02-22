@@ -516,12 +516,6 @@ def tree_dominant_nodes(data, labels):
       catch_nodes.append(y)
   return catch_nodes
 
-def KL(p, q, p_h=1):
-  from ctools import KL_divergence
-  kl = KL_divergence(p, q, p_h)
-  print("KL: {:.3f}".format(kl))
-  return kl
-
 def NMI_single(labels, H, on=True, **kwargs):
   if on:
     K = []
