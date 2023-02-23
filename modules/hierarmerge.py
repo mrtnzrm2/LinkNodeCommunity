@@ -161,7 +161,7 @@ class Hierarchy(Sim):
           features,
           pd.DataFrame(
             {
-              "n" : [features.n.iloc[0]],
+              "n" : [features.alpha.iloc[0]],
               "beta" : [features.beta.iloc[0]],
               "K" : 1,
               "height" : [features.height.iloc[-1] * 1.01],

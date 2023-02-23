@@ -1324,7 +1324,10 @@ class Plot_H:
     else:
       print("No average-linkage flatmap")
 
-  def plot_networx(self, r, rlabels, score="", cmap_name="", on=False, **kwargs):
+  def plot_networx(
+    self, r, rlabels, score="", cmap_name="", on=False,
+    remove_labels = False, **kwargs
+  ):
     if on:
       print("Draw networkx!!!")
       rlabels = skim_partition(rlabels)
@@ -1358,13 +1361,22 @@ class Plot_H:
       pos = nx.spring_layout(
         G, pos=pos, iterations=5, seed=212
       )
-      nx.draw_networkx(
-        G,
-        pos=pos,
-        node_color=node_colors,
-        connectionstyle="arc3,rad=0.1",
-        ax=ax, **kwargs
-      )
+      if not remove_labels:
+        nx.draw_networkx(
+          G,
+          pos=pos,
+          node_color=node_colors,
+          connectionstyle="arc3,rad=0.1",
+          ax=ax, **kwargs
+        )
+      else:
+        nx.draw_networkx(
+          G,
+          pos=pos,
+          node_color=node_colors,
+          connectionstyle="arc3,rad=0.1",
+          ax=ax, with_labels=False
+        )
       fig.tight_layout()
       # Arrange path ----
       plot_path = os.path.join(
