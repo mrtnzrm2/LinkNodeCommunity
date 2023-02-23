@@ -39,18 +39,18 @@ if __name__ == "__main__":
   # Load structure ----
   NET = MAC(
     linkage, mode,
-    nlog10=nlog10,
-    lookup=lookup,
+    nlog10 = nlog10,
+    lookup =lookup,
     version = version,
     nature = nature,
     model = imputation_method,
     distance = distance,
     inj = __inj__,
-    topology=topology,
-    index=index,
-    mapping=mapping,
-    cut=cut,
-    b=bias
+    topology = topology,
+    index = index,
+    mapping = mapping,
+    cut = cut,
+    b = bias
   )
   NET.create_plot_directory()
   NET.create_pickle_directory()
