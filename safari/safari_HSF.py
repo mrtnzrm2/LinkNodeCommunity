@@ -15,7 +15,7 @@ from networks.toy import TOY
 from modules.hierarmerge import Hierarchy
 from modules.colregion import colregion
 from plotting_modules.plotting_H import Plot_H
-from various.network_tools import get_best_kr_equivalence, get_labels_from_Z, adj2df, match, print_principal_memberships
+from various.network_tools import get_best_kr_equivalence, get_labels_from_Z, adj2df, match, get_best_kr
 
 def append_letter(list_, letter):
   list_ = [f"{s}_{letter}" for s in list_]
@@ -37,8 +37,8 @@ seed.source = seed.source.to_numpy().astype(str)
 seed.target = seed.target.to_numpy().astype(str)
 seed.source = append_letter(seed.source, "00")
 seed.target = append_letter(seed.target, "00")
-seed.source[seed.source == "0_00"] = "A"
-seed.target[seed.target == "0_00"] = "A"
+seed.source[seed.source == "0_00"] = "A_00"
+seed.target[seed.target == "0_00"] = "A_00"
 
 
 class HSF:
@@ -89,7 +89,10 @@ class HSF:
     return toCenter
 
 if __name__ == "__main__":
-  toy = HSF(seed, "A", 4, 1)
+  toy = HSF(seed, "A_00", 4, 2)
+  perm = np.random.permutation(np.arange(toy.nodes))
+  toy.A = toy.A[perm, :][:, perm]
+  toy.labels = toy.labels[perm]
 
   linkage = "single"
   nlog10 = F
@@ -99,7 +102,7 @@ if __name__ == "__main__":
   mode = "ALPHA"
   topology = "MIX"
   mapping="trivial"
-  index = "jacp"
+  index = "tanimoto"
   opt_score = ["_maxmu", "_X", "_D"]
 
   properties = {
@@ -137,20 +140,17 @@ if __name__ == "__main__":
   plot_h.plot_measurements_D(on=T)
   plot_h.plot_measurements_X(on=T)
   plot_h.plot_measurements_mu(on=T)
-  for j, score in enumerate(opt_score):
+  for score in opt_score:
     k, r = get_best_kr_equivalence(score, H)
     rlabels = get_labels_from_Z(H.Z, r)
     _, nocs_membership = H.get_ocn_discovery(k, rlabels)
     print(nocs_membership)
-    print_principal_memberships(
-      rlabels, NET.struct_labels[:NET.nodes]
-    )
     plot_h.lcmap_dendro(
       [k], cmap_name="husl",
-      font_size=30, remove_labels=T,
+      font_size=7, remove_labels=F,
       score="_"+score, on=T
     )
     plot_h.core_dendrogram(
       [r], score="_"+score,
-      cmap_name="husl", remove_labels=T, on=T
+      cmap_name="husl", remove_labels=F, on=T
     )

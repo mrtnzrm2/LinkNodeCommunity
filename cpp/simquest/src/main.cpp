@@ -171,7 +171,7 @@ double simquest::bin_similarity(
 	int N = u.size();
 	double uv=0., uu=0., vv=0.;
 	for (int i=0; i < N; i++) {
-		if ((u[i] > 0 && v[i] > 0) || (u[i] == 0 && v[i] ==0)) uv++;
+		if ((u[i] != 0 && v[i] != 0) || (u[i] == 0 && v[i] == 0)) uv++;
 		if (u[i] > 0) uu++;
 		if (v[i] > 0) vv++;
 	}

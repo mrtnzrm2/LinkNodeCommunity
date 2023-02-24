@@ -618,7 +618,7 @@ def column_normalize_nan(A):
 def match(a, b):
     b_dict = {x: i for i, x in enumerate(b)}
     return np.array([b_dict.get(x, None) for x in a])
-
+    
 def sort_by_size(ids, nodes):
   # Define location memory ---
   c = 0

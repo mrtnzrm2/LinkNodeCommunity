@@ -474,14 +474,16 @@ class Plot_H:
             self.Z,
             labels=self.colregion.labels[:self.nodes],
             color_threshold=self.Z[self.nodes - r, 2],
-            link_color_func = lambda k: link_cols[k]
+            link_color_func = lambda k: link_cols[k],
+            leaf_rotation=90
           )
         else:
           hierarchy.dendrogram(
             self.Z,
             no_labels=True,
             color_threshold=self.Z[self.nodes - r, 2],
-            link_color_func = lambda k: link_cols[k]
+            link_color_func = lambda k: link_cols[k],
+            leaf_rotation=90
           )
         fig.set_figwidth(10)
         fig.set_figheight(7)
