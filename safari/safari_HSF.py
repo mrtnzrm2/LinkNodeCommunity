@@ -98,15 +98,16 @@ if __name__ == "__main__":
   nlog10 = F
   lookup = F
   prob = F
-  cut = T
+  cut = F
   mode = "ALPHA"
   topology = "MIX"
   mapping="trivial"
-  index = "tanimoto"
-  opt_score = ["_maxmu", "_X", "_D"]
+  index = "bsim"
+  opt_score = ["_maxmu", "_D"]
 
   properties = {
-    "version" : "HSF",
+    "structure" : "HSF",
+    "version" : 3,
     "nlog10" : nlog10,
     "lookup" : lookup,
     "prob" : prob,
@@ -118,7 +119,7 @@ if __name__ == "__main__":
   }
 
   NET = TOY(toy.A, linkage, **properties)
-  NET.set_alpha([15, 30])
+  NET.set_alpha([15])
   NET.create_plot_directory()
   NET.set_labels(toy.labels)
   labels_dict = dict()
@@ -138,19 +139,19 @@ if __name__ == "__main__":
   # Plot H ----
   plot_h = Plot_H(NET, H)
   plot_h.plot_measurements_D(on=T)
-  plot_h.plot_measurements_X(on=T)
-  plot_h.plot_measurements_mu(on=T)
   for score in opt_score:
-    k, r = get_best_kr_equivalence(score, H)
+    k, r = get_best_kr(score, H)
     rlabels = get_labels_from_Z(H.Z, r)
     _, nocs_membership = H.get_ocn_discovery(k, rlabels)
     print(nocs_membership)
+    plot_h.lcmap_pure(
+      [k], cmap_name="husl", labels = rlabels,
+      font_size=7, on=T
+    )
     plot_h.lcmap_dendro(
       [k], cmap_name="husl",
-      font_size=7, remove_labels=F,
-      score="_"+score, on=T
+      font_size=7, score="_"+score, on=T
     )
     plot_h.core_dendrogram(
-      [r], score="_"+score,
-      cmap_name="husl", remove_labels=F, on=T
+      [r], score="_"+score, cmap_name="husl", on=T
     )

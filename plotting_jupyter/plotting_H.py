@@ -171,7 +171,7 @@ class Plot_H:
       fig.set_figwidth(figwidth)
       fig.set_figheight(figheight)
 
-  def heatmap_pure(self, **kwargs):
+  def heatmap_pure(self, figwidth=10, figheight=10, remove_labels=False, **kwargs):
     print("Visualize pure logFLN heatmap!!!")
     if "labels" in kwargs.keys():
       ids = kwargs["labels"]
@@ -199,15 +199,33 @@ class Plot_H:
     ].to_numpy()
     # Create figure ----
     fig, ax = plt.subplots(1, 1)
-    fig.set_figwidth(19)
-    fig.set_figheight(15 * W.shape[0]/ self.nodes)
-    sns.heatmap(
-      W,
-      cmap=sns.color_palette("viridis", as_cmap=True),
-      xticklabels=labels[:self.nodes],
-      yticklabels=labels,
-      ax = ax
-    )
+    fig.set_figwidth(figwidth)
+    fig.set_figheight(figheight)
+    if not remove_labels:
+      plot = sns.heatmap(
+        W,
+        cmap=sns.color_palette("viridis", as_cmap=True),
+        xticklabels=labels[:self.nodes],
+        yticklabels=labels,
+        ax = ax
+      )
+      # Font size ----
+      if "font_size" in kwargs.keys():
+        if kwargs["font_size"] > 0:
+          plot.set_xticklabels(
+            plot.get_xmajorticklabels(), fontsize = kwargs["font_size"]
+          )
+          plot.set_yticklabels(
+            plot.get_ymajorticklabels(), fontsize = kwargs["font_size"]
+          )
+    else:
+      sns.heatmap(
+        W,
+        cmap=sns.color_palette("viridis", as_cmap=True),
+        xticklabels=False,
+        yticklabels=False,
+        ax = ax
+      )
     # Setting labels colors ----
     [t.set_color(i) for i,t in
       zip(
@@ -289,8 +307,13 @@ class Plot_H:
       )
     ]
 
-  def lcmap_pure(self, K, **kwargs):
+  def lcmap_pure(
+    self, K, cmap_name="husl", figwidth=10, figheight=10, remove_labels=False, **kwargs
+  ):
     print("Visualize pure LC memberships!!!")
+    # Get labels ----
+    labels = self.colregion.labels
+    regions = self.colregion.regions
     if "labels" in kwargs.keys():
       ids = kwargs["labels"]
       I, fq = sort_by_size(ids, self.nodes)
@@ -319,45 +342,51 @@ class Plot_H:
       dFLN = df2adj(dFLN, var="id")
       dFLN = dFLN[I, :][:, I]
       dFLN[dFLN == 0] = np.nan
+      dFLN[dFLN > 0] = dFLN[dFLN > 0] - 1
       # dFLN = dFLN.T
       # Configure labels ----
-      labels = self.colregion.labels[I]
-      rlabels = [
-        str(r) for r in self.colregion.regions[
-          "AREA"
-        ]
-      ]
-      colors = self.colregion.regions.loc[
-        match(
-          labels,
-          rlabels
-        ),
-        "COLOR"
-      ].to_numpy()
+      labels =  np.char.lower(labels[I].astype(str))
+      rlabels = np.array([str(r).lower() for r in regions.AREA])
+      colors = regions.COLOR.loc[match(labels, rlabels)].to_numpy()
       # Create figure ----
       fig, ax = plt.subplots(1, 1)
-      fig.set_figwidth(19)
-      fig.set_figheight(15 * dFLN.shape[0]/ self.nodes)
-      sns.heatmap(
-        dFLN,
-        xticklabels=labels[:self.nodes],
-        yticklabels=labels,
-        cmap=sns.color_palette("hls", keff + 1),
-        ax = ax
-      )
-      # Setting labels colors ----
-      [t.set_color(i) for i,t in
-        zip(
-          colors,
-          ax.xaxis.get_ticklabels()
+      fig.set_figwidth(figwidth)
+      fig.set_figheight(figheight)
+      # Check colors with and without trees (-1) ---
+      if -1 in dFLN:
+        save_colors = sns.color_palette(cmap_name, keff - 1)
+        cmap_heatmap = [[]] * keff
+        cmap_heatmap[0] = [199/ 255.0, 0, 57/ 255.0]
+        cmap_heatmap[1:] = save_colors
+      else:
+        cmap_heatmap = sns.color_palette(cmap_name, keff)
+      if not remove_labels:
+        plot = sns.heatmap(
+          dFLN,
+          xticklabels=labels[:self.nodes],
+          yticklabels=labels,
+          cmap=cmap_heatmap,
+          ax = ax
         )
-      ]
-      [t.set_color(i) for i,t in
-        zip(
-          colors,
-          ax.yaxis.get_ticklabels()
+        if "font_size" in kwargs.keys():
+          if kwargs["font_size"] > 0:
+            plot.set_xticklabels(
+              plot.get_xmajorticklabels(), fontsize = kwargs["font_size"]
+            )
+            plot.set_yticklabels(
+              plot.get_ymajorticklabels(), fontsize = kwargs["font_size"]
+            )
+        # Setting labels colors ----
+        [t.set_color(i) for i,t in zip(colors, ax.xaxis.get_ticklabels())]
+        [t.set_color(i) for i,t in zip(colors, ax.yaxis.get_ticklabels())]
+      else:
+        sns.heatmap(
+          dFLN,
+          xticklabels=False,
+          yticklabels=False,
+          cmap=cmap_heatmap,
+          ax = ax
         )
-      ]
       # Add black lines ----
       if flag_fq:
         c = 0

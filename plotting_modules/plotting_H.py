@@ -813,9 +813,12 @@ class Plot_H:
   #   else:
   #     print("No heatmap sln")
 
-  def lcmap_pure(self, K, on=True, **kwargs):
+  def lcmap_pure(self, K, score="", cmap_name="husl", on=True, **kwargs):
     if on:
       print("Visualize pure LC memberships!!!")
+      # Get elemets from colregion ----
+      labels = self.colregion.labels
+      regions = self.colregion.regions
       if "labels" in kwargs.keys():
         ids = kwargs["labels"]
         I, fq = sort_by_size(ids, self.nodes)
@@ -824,9 +827,6 @@ class Plot_H:
         I = np.arange(self.nodes, dtype=int)
         fq = {}
         flag_fq = False
-      if "name" in kwargs.keys():
-        name = kwargs["name"]
-      else: name = ""
       if "order" in kwargs.keys():
         I = kwargs["order"]
       for k in K:
@@ -847,30 +847,29 @@ class Plot_H:
         dFLN = df2adj(dFLN, var="id")
         dFLN = dFLN[I, :][:, I]
         dFLN[dFLN == 0] = np.nan
+        dFLN[dFLN > 0] = dFLN[dFLN > 0] - 1
         # dFLN = dFLN.T
         # Configure labels ----
         labels = self.colregion.labels[I]
-        rlabels = [
-          str(r) for r in self.colregion.regions[
-            "AREA"
-          ]
-        ]
-        colors = self.colregion.regions.loc[
-          match(
-            labels,
-            rlabels
-          ),
-          "COLOR"
-        ].to_numpy()
+        rlabels = [str(r) for r in regions.AREA]
+        colors = regions.COLOR.loc[match(labels, rlabels)].to_numpy()
         # Create figure ----
         fig, ax = plt.subplots(1, 1)
+        # Check colors with and without trees (-1) ---
+        if -1 in dFLN:
+          save_colors = sns.color_palette(cmap_name, keff - 1)
+          cmap_heatmap = [[]] * keff
+          cmap_heatmap[0] = [199/ 255.0, 0, 57/ 255.0]
+          cmap_heatmap[1:] = save_colors
+        else:
+          cmap_heatmap = sns.color_palette(cmap_name, keff)
         fig.set_figwidth(19)
         fig.set_figheight(15 * dFLN.shape[0]/ self.nodes)
         sns.heatmap(
           dFLN,
           xticklabels=labels[:self.nodes],
           yticklabels=labels,
-          cmap=sns.color_palette("hls", keff + 1),
+          cmap=cmap_heatmap,
           ax = ax
         )
         # Setting labels colors ----
@@ -909,7 +908,7 @@ class Plot_H:
         # Save plot ----
         plt.savefig(
           os.path.join(
-            plot_path, "k_{}{}.png".format(k, name)
+            plot_path, "k_{}{}.png".format(k, score)
           ),
           dpi = 300
         )
