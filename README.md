@@ -72,6 +72,8 @@ We have created several examples in Jupyter Notebooks to understand better how t
 
 - BowTie_example_two: In dense weighted networks, NOCs appear not only because of the lack of connections between groups of nodes but also for a contrasting weighted connectivity profile. The link community algorithm can identify this second type of NOC.
 
+- HSF_example: There are hierarchical scale-free networks besides the traditional hierarchical graphs as denser communities inside sparser ones. This network combines the hierarchical structure with the presence of hubs and the lack of scale, i.e., each level of the hierarchy replicates the level below. We can find the clusters in this complex network using a binary similarity index and Dlink.
+
 ## An open end
 There is still plenty of work to do. Some of the points to improve are:
 
