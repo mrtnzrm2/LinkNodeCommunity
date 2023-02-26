@@ -14,7 +14,7 @@ from modules.colregion import colregion
 from numpy import zeros
 from various.network_tools import *
 # Declare global variables ----
-__iter__ = 0
+__iter__ = 1
 __nodes__ = 128
 linkage = "single"
 nlog10 = F

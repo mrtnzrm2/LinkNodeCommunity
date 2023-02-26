@@ -33,7 +33,7 @@ class OVERLAPPING(SCALEFREE):
     labels = np.zeros(self.nodes)
     overlap = dict()
     for i, line in enumerate(lines):
-      labels[i] = line[1]
+      labels[i] = line[1] -1
       if len(line) > 2:
         overlap[line[0] - 1] = [c - 1 for c in line[1:]]
     return labels, overlap
@@ -43,7 +43,7 @@ class OVERLAPPING(SCALEFREE):
     labels = np.zeros(self.nodes)
     overlap = dict()
     for i, line in enumerate(lab):
-      labels[i] = line[1]
+      labels[i] = line[1] - 1
       if len(line) > 2:
         overlap[line[0] - 1] = [c - 1 for c in line[1:]]
     return labels, overlap
@@ -127,7 +127,7 @@ class OVERLAPPING(SCALEFREE):
           )
           print(self.overlap)
           if "on_save_pickle" in kwargs.keys():
-            print("\nNetwork saved in pickle format\n")
+            print("\n\t**** Network saved in pickle format****\n")
             if kwargs["on_save_pickle"]:
               self.save_class(
                 {
@@ -292,7 +292,7 @@ class OVERLAPPING(SCALEFREE):
       fp = len(FP)
       sep = tn / (tn + fp)
       print(
-        "sen = {:.7f}\nsp = {:.7f}".format(sen, sep)
+        "sen = {:.4f}\nsp = {:.4f}".format(sen, sep)
       )
       return sen, sep
     else:
