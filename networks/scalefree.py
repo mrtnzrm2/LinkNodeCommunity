@@ -58,7 +58,7 @@ class SCALEFREE:
     # Create paths ----
     self.wdn_path =  join(getcwd(), "cpp/WDN")
     self.plot_path = join(
-      "../plots", self.common_path, 
+      "../plots", self.common_path, self.analysis,
       mode, self.subfolder
     )
     self.pickle_path = join(
@@ -88,9 +88,6 @@ class SCALEFREE:
         self.common_path,
         "{}_{}".format(key, self.parameters[key])
       )
-    self.common_path = join(
-      self.common_path, self.analysis
-    )
 
   def paramters2list(self):
     fortunato = ""

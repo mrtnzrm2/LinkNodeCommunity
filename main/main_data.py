@@ -25,9 +25,9 @@ distance = "MAP3D"
 nature = "original"
 imputation_method = ""
 topology = "MIX"
-mapping = "R2"
-index  = "jacw"
-bias = 0.3
+mapping = "trivial"
+index  = "bsim"
+bias = ""
 opt_score = ["_maxmu", "_X", "_D"]
 # opt_score = ["_maxmu", "_X"]
 save_data = T
@@ -53,7 +53,7 @@ if __name__ == "__main__":
     b = bias
   )
   NET.create_plot_directory()
-  NET.create_pickle_directory()
+  # NET.create_pickle_directory()
   # Transform data for analysis ----
   R, lookup, _ = maps[mapping](
     NET.A, nlog10, lookup, prob, b=bias
@@ -78,7 +78,7 @@ if __name__ == "__main__":
     save_class(
       H, NET.pickle_path,
       "hanalysis_{}".format(H.subfolder),
-      on=T
+      on=F
     )
   else:
     H = read_class(
@@ -87,11 +87,9 @@ if __name__ == "__main__":
     )
   # Picasso ----
   plot_h = Plot_H(NET, H)
-  plot_h.Mu_plotly(on=T) #
-  plot_h.D_plotly(on=T) #
-  plot_h.X_plotly(on=T) #
-  plot_h.order_parameter_plotly(on=T) #
-  plot_h.susceptibility_plotly(on=T) #
+  plot_h.plot_measurements_D(on=T)
+  plot_h.plot_measurements_mu(on=T)
+  plot_h.plot_measurements_X(on=T)
   plot_n = Plot_N(NET, H)
   plot_n.A_vs_dis(NET.A, s=5, on=F, reg=T)
   plot_n.projection_probability(
