@@ -33,12 +33,14 @@ save_data = T
 par = {
   "-N" : "{}".format(str(__nodes__)),
   "-k" : "25.0",
-  "-maxk" : "100",
+  "-maxk" : "50.0",
   "-mut" : "0.2",
   "-muw" : "0.2",
   "-beta" : "2.5",
-  "-t1" : "2.5",
-  "-t2" : "2.5"
+  "-t1" : "2",
+  "-t2" : "1",
+  "-nmin" : "5",
+  "-nmax" : "20"
 }
 if __name__ == "__main__":
   # Create EDR network ----
@@ -88,16 +90,11 @@ if __name__ == "__main__":
     )
   # Plot H ----
   plot_h = Plot_H(NET, H, sln=F)
-  plot_h.Mu_plotly(on=T)
-  plot_h.D_plotly(on=T)
-  plot_h.X_plotly(on=T)
-  # Plot N ----
-  plot_n = Plot_N(NET, H)
-  plot_n.A_vs_dis(NET.A, s=5, on=F)
-  plot_n.histogram_weight(on=T)
-  plot_n.plot_aki(s=1, on=F)
+  plot_h.plot_measurements_D(on=T)
+  plot_h.plot_measurements_mu(on=T)
+  plot_h.plot_measurements_X(on=T)
   plot_h.heatmap_pure(
-    0, name = "_GT_{}".format(number_of_communities),
+    0, score = "_GT_{}".format(number_of_communities),
     labels = NET.labels, on=T
   )
   # Find best k partition ----
@@ -108,13 +105,10 @@ if __name__ == "__main__":
     if np.nan in rlabels:
         print("Warning: Impossible node dendrogram")
         break
-    #Prints ----
-    nmi = AD_NMI_label(
-      NET.labels, rlabels,
-      on=T
-    )
+    ## Prints ----
+    nmi = AD_NMI_label(NET.labels, rlabels, on=T)
+    ## Plots ----
     plot_h.core_dendrogram([r], on=F)
-    ## Single linkage ----
     plot_h.heatmap_pure(
       r, on=T, labels = rlabels, name=f"{r}_{nmi:.4f}"
     )

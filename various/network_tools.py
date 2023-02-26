@@ -268,9 +268,9 @@ def bar_data(dA, nodes, labels, norm=False):
     )
   return data
 
-def print_principal_memberships(Cr, labels):
+def reverse_partition(Cr, labels):
   skm = skim_partition(Cr)
-  s = np.unique(skm)
+  s = np.unique(skm).astype(int)
   s = s[s != -1]
   k = {
     r : [] for r in s
@@ -278,7 +278,10 @@ def print_principal_memberships(Cr, labels):
   for i, r in enumerate(skm):
     if r == -1: continue
     k[r].append(labels[i])
-  print(k)
+  return k
+
+def print_principal_memberships(Cr, labels):
+  print(reverse_partition(Cr, labels))
 
 def get_H_from_BH(H):
   h = pd.DataFrame()
@@ -573,7 +576,7 @@ def AD_NMI_overlap(gt, pred, overlap, on=True):
     y = [i for i in y if i not in x]
     from sklearn.metrics import adjusted_mutual_info_score
     nmi = adjusted_mutual_info_score(gt[y], pred[y])
-    print("ADNMI: {}".format(nmi))
+    print("ADNMI: {:.4f}".format(nmi))
     return nmi
   else:
     return -1

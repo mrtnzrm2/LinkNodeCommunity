@@ -9,8 +9,6 @@ F = False
 #Import libraries ----
 from modules.hierarmerge import Hierarchy
 from plotting_modules.plotting_H import Plot_H
-from plotting_modules.plotting_N import Plot_N
-from plotting_modules.plotting_overlap import PLOT_O
 from networks.overlapping import OVERLAPPING
 from modules.colregion import colregion
 from numpy import zeros
@@ -22,11 +20,11 @@ linkage = "single"
 nlog10 = F
 lookup = F
 prob = F
-cut = T
+cut = F
 run = T
 topology = "SOURCE"
 mapping = "trivial"
-index  = "cos"
+index  = "bsim"
 __mode__ = "ALPHA"
 opt_score = ["_maxmu", "_X", "_D"]
 save_datas = T
@@ -35,15 +33,17 @@ opar = {
   "-N" : "{}".format(
     str(__nodes__)
   ),
-  "-k" : "25.0",
-  "-maxk" : "100",
+  "-k" : "7.0",
+  "-maxk" : "50.0",
   "-mut" : "0.2",
-  "-muw" : "0.4",
+  "-muw" : "0.2",
   "-beta" : "2.5",
-  "-t1" : "2.5",
-  "-t2" : "2.5",
+  "-t1" : "2",
+  "-t2" : "1",
+  "-nmin" : "5",
+  "-nmax" : "20",
   "-on" : "10",
-  "-om" : "2"
+  "-om" : "3"
 }
 if __name__ == "__main__":
   # Create EDR network ----
@@ -99,57 +99,36 @@ if __name__ == "__main__":
     )
   # Plot H ----
   plot_h = Plot_H(NET, H)
-  plot_h.Mu_plotly(on=T)
-  plot_h.D_plotly(on=T)
-  plot_h.X_plotly(on=T)
-  # Plot O ----
-  plot_o = PLOT_O(NET, H)
-  # Plot N ----
-  plot_n = Plot_N(NET, H)
-  plot_n.A_vs_dis(NET.A, s=5, on=F)
-  plot_n.histogram_weight(on=F)
-  plot_n.plot_aki(s=1, on=F)
+  plot_h.plot_measurements_D(on=T)
+  plot_h.plot_measurements_mu(on=T)
+  plot_h.plot_measurements_X(on=T)
+  plot_h.heatmap_pure(
+    0, score = "_GT", labels = NET.labels, on=T
+  )
   for score in opt_score:
     # Find best k partition ----
     k, r = get_best_kr_equivalence(score, H)
     rlabels = get_labels_from_Z(H.Z, r)
+    nocs, noc_covers = H.get_ocn_discovery(k, rlabels)
     #Prints ----
     nmi = AD_NMI_overlap(
       NET.labels, rlabels, NET.overlap, on=T
     )
-    plot_h.heatmap_pure(
-      r, name = "_GT",
-      labels = NET.labels, on=T
+    sen, sep = NET.overlap_score_discovery(
+      k, nocs, H.colregion.labels[:H.nodes], on=T
     )
-    ##
-    # sen, sep = NET.overlap_score(
-    #   H, [k], rlabels, on=T
-    # )
-    sen, sep = NET.overlap_score_discovery( H, k, rlabels, on=T)
-    ##
+    omega = NET.omega_index(
+      rlabels, noc_covers, H.colregion.labels[:H.nodes], on=T
+    )
+    ## Plots ---
     plot_h.core_dendrogram(
       [r], on=T, score="_"+score
     )
-    ## Single linkage ----
     plot_h.heatmap_pure(
       r, on=T, labels = rlabels,
       score=f"{r}_{nmi:.4f}"
     )
-    plot_h.heatmap_dendro(
-      r, on=T, score="_"+score
-    )
     plot_h.lcmap_dendro(
       [k], on=T, score="_"+score
-    )
-    plot_h.lcmap_pure(
-      [k],
-      labels = NET.labels,
-      on = F
-    )
-    plot_o.bar_node_membership(
-      [k], labels = rlabels, on=F
-    )
-    plot_o.bar_node_overlap(
-      [k], NET.overlap,on=F
     )
   print("End!")

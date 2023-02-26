@@ -2,11 +2,11 @@
 Dlink is a link community algorithm created to find communities in directed networks with heterogeneous weights.
 
  ## Introduction
- Welcome everyone! How good of you to spend some time looking at this software. I consider this software an extension of the original link community algorithm (Ahn et al., 2010).
+ Welcome everyone! How good of you to spend some time looking at this software. I consider this software an extension of the original link community algorithm ([Ahn et al., 2010](https://doi.org/10.1038/nature09182)).
  
  The problem of community detection is profound since it is connected to the problem of data encoding. Each day, millions of bytes of information are saved by governments and companies all around the world. However, all the data is only helpful if you can process it and reveal its structures, symmetries, global features, and laws. Finding communities is like separating the data into homogeneous pieces. In the context of information theory, partitioning the data into clusters can allow you to decode the information faster since the data is arranged correctly, like your clothes when you decide to fold them nicely, which is easier to interpret. Networks in the real world naturally form communities since it is the way to minimize entropy, steps to reach specific information or execute a particular action, a property crucial if the system is under the forces of natural selection.
 
- There are several community detection algorithms for different network classes. However, finding communities in **dense**, **directed**, **weighted**, and **heterogeneous** networks, as the macaque fraction of labeled neurons (FLN) network (Markov et al. 2011 and 2012), is still an open question since it is not clear what a community representative in such complex systems with many degrees of freedom. Therefore, we started to work on an algorithm to overcome the challenges of identifying communities in this type of network.
+ There are several community detection algorithms for different network classes. However, finding communities in **dense**, **directed**, **weighted**, and **heterogeneous** networks, as the macaque fraction of extrinsic labeled neurons (FLNe) network (Markov et al. 2011 and 2012), is still an open question since it is not clear what a community representative in such complex systems with many degrees of freedom. Therefore, we started to work on an algorithm to overcome the challenges of identifying communities in this type of network.
 
 Our journey led us to the link community algorithm, which has many essential features, such as assigning nodes to multiple clusters. Nevertheless, to make it work in the FLN network, we had to add several features to the algorithm we listed below. We have baptized the algorithm **Dlink** to distinguish it from the original. However, the new features allow the usage of the algorithm to cortical networks in any directed and simple network (without self-loops and multiple links between the same nodes).
 
@@ -23,6 +23,9 @@ We had to create new definitions and algorithms to improve the link community al
 
 ## Why is it different from the rest of the community detection algorithms?
 
+The network that we are analysing is the fraction of extrinsic labeled neurons, FLNe, representing the bandwidth between cortical areas in the macaque monkey. The network is known to be dense, directed, heterogeneous, and, because of experimental challenges, only a subgraph from the total graph is known. The complete network hast 106 nodes and is denoted as $G_{106\times 106}$; however, we have a subset $G_{106\times 57}$ representing the inlinks to $57$ areas from the all the nodes. Our goal is to find communities in the edge-complete subgraph $G_{57\times 57}$ but considering the whole measured subgrpah $G_{106\times 57}$. Currently, there are not many community detection algorithms that can find partitions in a subgraph using the information of the connections outside of the graph, as happens in our case.
+
+ 
 
 ## Pybind11 C++ libraries
 

@@ -20,9 +20,9 @@ class PLOT_OS_SF(PLOT_S_SF):
       data = self.data_overlap.copy()
       print(self.data_overlap.groupby("c").mean())
       # Create figure ----
+      fig, ax = plt.subplots(1, 3)
       if c:
         data["c"] = [s.replace("_", "") for s in data["c"]]
-        fig, ax = plt.subplots(1,2)
         sns.histplot(
           data=data,
           x = "sensitivity",
@@ -30,15 +30,6 @@ class PLOT_OS_SF(PLOT_S_SF):
           hue = "c",
           **kwargs
         )
-      else:
-        fig, ax = plt.subplots(1,2)
-        sns.histplot(
-          data=data,
-          x = "sensitivity",
-          ax = ax[0]
-        )
-      # Create figure ACC2 ----
-      if kwargs["c"]:
         sns.histplot(
           data=data,
           x = "specificity",
@@ -46,14 +37,31 @@ class PLOT_OS_SF(PLOT_S_SF):
           hue = "c",
           **kwargs
         )
+        sns.histplot(
+          data=data,
+          x = "omega",
+          ax = ax[2],
+          hue = "c",
+          **kwargs
+        )
       else:
+        sns.histplot(
+          data=data,
+          x = "sensitivity",
+          ax = ax[0]
+        )
         sns.histplot(
           data=data,
           x = "specificity",
           ax = ax[1]
         )
+        sns.histplot(
+          data=data,
+          x = "omega",
+          ax = ax[2]
+        )
       # figure custom ---
-      fig.set_figwidth(12)
+      fig.set_figwidth(16)
       # Arrange path ----
       plot_path = join(
         self.plot_path, "Features"

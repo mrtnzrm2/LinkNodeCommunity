@@ -35,7 +35,7 @@ class OVERLAPPING(SCALEFREE):
     for i, line in enumerate(lines):
       labels[i] = line[1]
       if len(line) > 2:
-        overlap[line[0] - 1] = line[1:]
+        overlap[line[0] - 1] = [c - 1 for c in line[1:]]
     return labels, overlap
 
   def read_dat_multicolumns_cpp(self, lab):
@@ -45,7 +45,7 @@ class OVERLAPPING(SCALEFREE):
     for i, line in enumerate(lab):
       labels[i] = line[1]
       if len(line) > 2:
-        overlap[line[0] - 1] = line[1:]
+        overlap[line[0] - 1] = [c - 1 for c in line[1:]]
     return labels, overlap
 
   def random_WDN_overlap(self, run=True, **kwargs):
@@ -106,7 +106,9 @@ class OVERLAPPING(SCALEFREE):
           mut = parameters["-mut"],
           muw = parameters["-muw"],
           on = parameters["-on"],
-          om = parameters["-om"]
+          om = parameters["-om"],
+          nmin = parameters["-nmin"],
+          nmax = parameters["-nmax"]
         )
         self.dA = np.array(A.get_network())
         if len(self.dA) == 0:
@@ -125,6 +127,7 @@ class OVERLAPPING(SCALEFREE):
           )
           print(self.overlap)
           if "on_save_pickle" in kwargs.keys():
+            print("\nNetwork saved in pickle format\n")
             if kwargs["on_save_pickle"]:
               self.save_class(
                 {
@@ -245,17 +248,37 @@ class OVERLAPPING(SCALEFREE):
       return sen, sep
     else:
       return -1, -1
+    
+  def omega_index_format(self, node_partition, noc_covers : dict, node_labels):
+    rev = reverse_partition(node_partition, node_labels)
+    for noc in noc_covers.keys():
+      for cover in noc_covers[noc]:
+        if cover == -1: continue
+        else:
+          if str(noc) not in rev[cover]: rev[cover].append(str(noc))
+    return rev
 
-  def overlap_score_discovery(self, H : Hierarchy, K : int, Cr, on=False):
+  def omega_index(self, node_partition, noc_covers, node_labels, on=False):
+    if on:
+      from various.omega import Omega
+      gt_noc_cover = self.overlap
+      gt_node_partition = self.labels
+      gt_covers = self.omega_index_format(gt_node_partition, gt_noc_cover, node_labels)
+      pred_covers = self.omega_index_format(node_partition, noc_covers, node_labels)
+      omega = Omega(pred_covers, gt_covers).omega_score
+      print(f"Omega index: {omega:.4f}")
+    else: omega = -1
+    return omega
+
+  def overlap_score_discovery(self, K : int, nocs, labels, on=False):
     if on:
       if K == 1: return np.nan, np.nan
-      nocs_ids, nocs_dics = H.get_ocn_discovery(K, Cr)
-      # print(nocs_dics)
-      # print(self.overlap)
-      ALL = set(H.colregion.labels[:H.nodes])
-      PRED = set(nocs_ids)
+      # Ground-truth partition prep. ----
       gt = self.overlap.keys()
       GT = set([str(g) for g in gt])
+      ## Sensitivity/Specificity ----
+      ALL = set(labels)
+      PRED = set(nocs)
       # sensitivity = tp / P
       TP = GT.intersection(PRED)
       tp = len(TP)

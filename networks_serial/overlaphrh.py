@@ -9,10 +9,11 @@ class OVERLAPHRH(SCALEHRH):
     super().__init__(linkage)
     self.data_overlap = pd.DataFrame()
 
-  def set_overlap_scores(self, acc1, acc2, **kwargs):
+  def set_overlap_scores(self, omega, acc1, acc2, **kwargs):
     if "score" in kwargs.keys():
       subdata = pd.DataFrame(
         {
+          "omega" : [omega],
           "sensitivity" : [acc1],
           "specificity" : [acc2],
           "iter" : [self.iter],
@@ -22,6 +23,7 @@ class OVERLAPHRH(SCALEHRH):
     else:
       subdata = pd.DataFrame(
         {
+          "omega" : [omega],
           "sensitivity" : [acc1],
           "specificity" : [acc2],
           "iter" : [self.iter],

@@ -33,12 +33,14 @@ save_hierarchy = F
 par = {
   "-N" : "{}".format(str(__nodes__)),
   "-k" : "7.0",
-  "-maxk" : "100",
+  "-maxk" : "50.0",
   "-mut" : "0.2",
   "-muw" : "0.2",
   "-beta" : "2.5",
-  "-t1" : "2.5",
-  "-t2" : "2.5"
+  "-t1" : "2",
+  "-t2" : "1",
+  "-nmin" : "5",
+  "-nmax" : "20"
 }
 # Print summary ----
 print("Number of iterations:")

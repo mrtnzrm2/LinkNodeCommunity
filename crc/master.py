@@ -39,7 +39,7 @@ array_distbase = pd.DataFrame(
 worker = ["scalefree"]
 cut = [F]
 topology = ["TARGET", "SOURCE", "MIX"]
-indices = ["jacw", "jacp", "cos"]
+indices = ["jacw", "jacp", "cos", "bsim"]
 kav = [7, 25]
 mut = [0.2, 0.4]
 muw = [0.2, 0.4]
@@ -62,7 +62,7 @@ array_scalefree = pd.DataFrame(
 worker = ["overlap"]
 cut = [F]
 topology = ["TARGET", "SOURCE", "MIX"]
-indices = ["jacw", "jacp", "cos"]
+indices = ["jacw", "jacp", "cos", "bsim"]
 kav = [7, 25]
 mut = [0.2, 0.4]
 muw = [0.2, 0.4]
@@ -138,10 +138,10 @@ def NoGodsNoMaster(number_of_iterations, t):
     lookup = F
     prob = F
     run = T
-    maxk = 100
+    maxk = 50
     beta = 2.5
-    t1 = 2.5
-    t2 = 2.5
+    t1 = 2
+    t2 = 1
     mapping = "trivial"
     if array.loc["cut"] == "True": cut = T
     else: cut = F
@@ -158,10 +158,12 @@ def NoGodsNoMaster(number_of_iterations, t):
     lookup = F
     prob = F
     run = T
-    maxk = 100
+    maxk = 50
     beta = 2.5
-    t1 = 2.5
-    t2 = 2.5
+    t1 = 2
+    t2 = 1
+    nmin = 5
+    nmax = 20
     on = 10
     mapping = "trivial"
     if array.loc["cut"] == "True": cut = T
@@ -171,7 +173,7 @@ def NoGodsNoMaster(number_of_iterations, t):
       lookup, prob, cut, run, array.loc["topology"],
       mapping, array.loc["index"],
       array.loc["kav"], maxk, array.loc["mut"], array.loc["muw"],
-      beta, t1, t2, on , int(array.loc["om"])
+      beta, t1, t2, nmin, nmax, on , int(array.loc["om"])
     )
   elif array.loc["worker"] == "swaps":
     number_of_inj = 57

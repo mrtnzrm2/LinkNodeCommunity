@@ -173,12 +173,16 @@ class SCALEFREE:
       numeric_param[k] = float(parameters[k])
     if "-on" in parameters.keys():
       numeric_param["-on"] = int(parameters["-on"])
+    else: numeric_param["-on"] = -1
     if "-om" in self.parameters.keys():
       numeric_param["-om"] = int(parameters["-om"])
+    else: numeric_param["-om"] = -1
     if "-nmin" in self.parameters.keys():
       numeric_param["-nmin"] = int(parameters["-nmin"])
+    else: numeric_param["-nmin"] = -1
     if "-nmax" in self.parameters.keys():
       numeric_param["-nmax"] = int(parameters["-nmax"])
+    else: numeric_param["-nmax"] = -1
     return numeric_param
 
   def random_WDN_cpp(self, run=True, **kwargs):
@@ -194,7 +198,9 @@ class SCALEFREE:
           t2 = parameters["-t2"],
           beta = parameters["-beta"],
           mut = parameters["-mut"],
-          muw = parameters["-muw"]
+          muw = parameters["-muw"],
+          nmin = parameters["-nmin"],
+          nmax = parameters["-nmax"]
         )
         self.dA = np.array(A.get_network())
         self.dA[:, :2] -= 1

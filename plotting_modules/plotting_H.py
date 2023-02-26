@@ -433,7 +433,7 @@ class Plot_H:
       plt.close()
     else: print("No ntrees iterations")
   
-  def core_dendrogram(self, R, score="", cmap_name="hls", remove_labels=False, on=False):
+  def core_dendrogram(self, R : list, score="", cmap_name="hls", remove_labels=False, on=False):
     if on:
       print("Visualize node-community dendrogram!!!")
       # Arrange path ----

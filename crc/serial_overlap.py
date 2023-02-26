@@ -20,7 +20,7 @@ def worker_overlap(
   nlog10 : bool, lookup : bool, prob : bool, cut : bool, run : bool,
   topology : str, mapping : str, index : str,
   kav : float, maxk : int, mut : float, muw : float, beta : float,
-  t1 : float, t2 : float, on :int, om : int
+  t1 : float, t2 : float,  nmin : int, nmax : int, on :int, om : int
 ):
   # Declare global variables NET ----
   MAXI = number_of_iterations
@@ -40,6 +40,8 @@ def worker_overlap(
     "-beta" : f"{beta}",
     "-t1" : f"{t1}",
     "-t2" : f"{t2}",
+    "-nmin" : f"{nmin}",
+    "-nmax" : f"{nmax}",
     "-on" : f"{on}",
     "-om" : f"{om}"
   }
@@ -115,18 +117,20 @@ def worker_overlap(
           "Best K: {}\nBest R: {}".format(k, r)
         )
         rlabels = get_labels_from_Z(RAND_H.Z, r)
+        nocs, noc_covers = RAND_H.get_ocn_discovery(k, rlabels)
+        sen, sep = RAND.overlap_score_discovery(
+          k, nocs, RAND_H.colregion.labels[:RAND_H.nodes], on=T
+        )
+        omega = RAND.omega_index(
+          rlabels, noc_covers, RAND_H.colregion.labels[:RAND_H.nodes]
+        )
         # NMI between ground-truth and pred labels ----
         data.set_nmi_nc_overlap(
           RAND.labels, rlabels, RAND.overlap,
           score = score
         )
-        # Accuracy and false-positive ratio of
-        # multicommunity nodes ----
-        sen, sep = RAND.overlap_score_discovery(
-          RAND_H, k, rlabels, on=T
-        )
         data.set_overlap_scores(
-          sen, sep, score = score
+          omega, sen, sep, score = score
         )
     i += 1
   # Save ----

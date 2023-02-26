@@ -38,12 +38,14 @@ opar = {
     str(__nodes__)
   ),
   "-k" : "7.0",
-  "-maxk" : "100",
+  "-maxk" : "50.0",
   "-mut" : "0.2",
   "-muw" : "0.2",
   "-beta" : "2.5",
-  "-t1" : "2.5",
-  "-t2" : "2.5",
+  "-t1" : "2",
+  "-t2" : "1",
+  "-nmin" : "5",
+  "-nmax" : "20",
   "-on" : "10",
   "-om" : "2"
 }
@@ -119,17 +121,20 @@ if __name__ == "__main__":
           "Best K: {}\nBest R: {}".format(k, r)
         )
         rlabels = get_labels_from_Z(RAND_H.Z, r)
+        nocs, noc_covers = RAND_H.get_ocn_discovery(k, rlabels)
+        sen, sep = RAND.overlap_score_discovery(
+          k, nocs, RAND_H.colregion.labels[:RAND_H.nodes], on=T
+        )
+        omega = RAND.omega_index(
+          rlabels, noc_covers, RAND_H.colregion.labels[:RAND_H.nodes]
+        )
         # NMI between ground-truth and pred labels ----
         data.set_nmi_nc_overlap(
           RAND.labels, rlabels, RAND.overlap,
           score = score
         )
-        # Accuracy and false-positive ratio of
-        # multicommunity nodes ----
-        # sen, sep = RAND.overlap_score(RAND_H, [k], rlabels, on=T)
-        sen, sep = RAND.overlap_score_discovery(RAND_H, k, rlabels, on=T)
         data.set_overlap_scores(
-          sen, sep, score = score
+          omega, sen, sep, score = score
         )
     # Save ----
     if isinstance(RAND_H, Hierarchy):
