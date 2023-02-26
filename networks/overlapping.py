@@ -248,23 +248,14 @@ class OVERLAPPING(SCALEFREE):
       return sen, sep
     else:
       return -1, -1
-    
-  def omega_index_format(self, node_partition, noc_covers : dict, node_labels):
-    rev = reverse_partition(node_partition, node_labels)
-    for noc in noc_covers.keys():
-      for cover in noc_covers[noc]:
-        if cover == -1: continue
-        else:
-          if str(noc) not in rev[cover]: rev[cover].append(str(noc))
-    return rev
 
   def omega_index(self, node_partition, noc_covers, node_labels, on=False):
     if on:
       from various.omega import Omega
       gt_noc_cover = self.overlap
       gt_node_partition = self.labels
-      gt_covers = self.omega_index_format(gt_node_partition, gt_noc_cover, node_labels)
-      pred_covers = self.omega_index_format(node_partition, noc_covers, node_labels)
+      gt_covers = omega_index_format(gt_node_partition, gt_noc_cover, node_labels)
+      pred_covers = omega_index_format(node_partition, noc_covers, node_labels)
       omega = Omega(pred_covers, gt_covers).omega_score
       print(f"Omega index: {omega:.4f}")
     else: omega = -1

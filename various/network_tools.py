@@ -280,8 +280,10 @@ def reverse_partition(Cr, labels):
     k[r].append(labels[i])
   return k
 
-def print_principal_memberships(Cr, labels):
-  print(reverse_partition(Cr, labels))
+def nocs2parition(partition: dict, nocs: dict):
+  for noc in nocs.keys():
+    for cover in nocs[noc]:
+      if noc not in partition[cover]: partition[cover].append(noc)
 
 def get_H_from_BH(H):
   h = pd.DataFrame()
@@ -733,3 +735,8 @@ def adj2df(A):
     }
   )
   return dA
+
+def omega_index_format(node_partition, noc_covers : dict, node_labels):
+  rev = reverse_partition(node_partition, node_labels)
+  nocs2parition(rev, noc_covers)
+  return rev

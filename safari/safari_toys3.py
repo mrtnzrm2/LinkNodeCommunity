@@ -97,7 +97,6 @@ if __name__ == "__main__":
     rlabels = get_labels_from_Z(H.Z, r)
     _, nocs_membership = H.get_ocn_discovery(k, rlabels)
     print(nocs_membership)
-    print_principal_memberships(rlabels, H.colregion.labels)
     plot_h.lcmap_dendro(
       [k], cmap_name="deep",
       font_size=30, score="_"+score, on=T

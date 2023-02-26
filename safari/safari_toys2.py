@@ -7,13 +7,13 @@ T = True
 F = False
 # Stadard python libs ----
 import numpy as np
+from various.omega import Omega
 # Personal libs ----
 from networks.toy import TOY
 from modules.hierarmerge import Hierarchy
 from modules.colregion import colregion
 from plotting_modules.plotting_H import Plot_H
-from various.network_tools import get_labels_from_Z, get_best_kr, print_principal_memberships
-
+from various.network_tools import *
 # Declare global variables ----
 linkage = "single"
 nlog10 = F
@@ -38,6 +38,11 @@ properties = {
   "topology" : topology,
   "index" : index,
   "mode" : mode
+}
+
+gt_covers = {
+  0 : ["A", "B", "C", "D"],
+  1 : ["A", "E", "F", "G"]
 }
 
 def make_toys(linkage, **kwargs):
@@ -107,16 +112,18 @@ if __name__ == "__main__":
     H.set_colregion(L)
     # Plot H ----
     plot_h = Plot_H(net, H)
+    ## Omega ---
     for j, score in enumerate(opt_score):
       k, r = get_best_kr(score, H)
       rlabels = get_labels_from_Z(H.Z, r)
-      _, nocs_membership = H.get_ocn_discovery(rlabels)
-      print(nocs_membership)
-      print_principal_memberships(rlabels, H.colregion.labels)
+      _, nocs = H.get_ocn_discovery(k, rlabels)
+      noc_covers = omega_index_format(rlabels, nocs, H.colregion.labels)
+      omega = Omega(noc_covers, gt_covers).omega_score
+      print(f"Omega index: {omega:.4f}")
       plot_h.lcmap_dendro(
         [k], cmap_name="deep",
         font_size=30,
-        score="_"+score+"_"+toy_names[i], on=T
+        score="_"+score+"_"+toy_names[i], on=F
       )
       plot_h.plot_networx(
         r, rlabels, score="_"+score+"_"+toy_names[i],
@@ -125,9 +132,9 @@ if __name__ == "__main__":
       plot_h.plot_networx_link_communities(
         [k], score="_"+score+"_"+toy_names[i],
         cmap_name="deep",
-        on=T, labels=labels_dict
+        on=F, labels=labels_dict
       )
       plot_h.core_dendrogram(
         [r], score="_"+score+"_"+toy_names[i],
-        on=T, cmap_name="deep"
+        on=F, cmap_name="deep"
       )

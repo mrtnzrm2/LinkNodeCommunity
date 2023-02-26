@@ -14,7 +14,7 @@ from modules.colregion import colregion
 from numpy import zeros
 from various.network_tools import *
 # Declare global variables ----
-__iter__ = 1
+__iter__ = 2
 __nodes__ = 128
 linkage = "single"
 nlog10 = F
@@ -88,14 +88,12 @@ if __name__ == "__main__":
     H.la_abre_a_merde_cpp(H.BH[0])
     H.set_colregion(L)
     save_class(
-      H, NET.pickle_path,
-      "hanalysis_{}".format(H.subfolder),
+      H, NET.pickle_path, "hanalysis_{}".format(H.subfolder),
       on=F
     )
   else:
     H = read_class(
-      NET.pickle_path,
-      "hanalysis_{}".format(NET.subfolder)
+      NET.pickle_path, "hanalysis_{}".format(NET.subfolder)
     )
   # Plot H ----
   plot_h = Plot_H(NET, H)

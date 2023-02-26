@@ -111,12 +111,9 @@ if __name__ == "__main__":
     NET.overlap, NET.data_nocs = H.get_ocn_discovery(k, rlabels)
     H.set_overlap_labels(NET.overlap, score)
     print("\nNode memberships and their areas:\n")
-    print_principal_memberships(
-      rlabels, NET.struct_labels[:NET.nodes]
-    )
+    print(omega_index_format(rlabels, NET.struct_labels[:NET.nodes]))
     print(
-      "\nAreas with predicted overlapping communities:\n",
-      NET.data_nocs
+      "\nAreas with predicted overlapping communities:\n", NET.data_nocs
     )
     # Plot H ----
     plot_h.core_dendrogram([r], on=T) #

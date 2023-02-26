@@ -127,23 +127,23 @@ if __name__ == "__main__":
     for score in opt_score:
       k, r = get_best_kr_equivalence(score, H)
       rlabels = get_labels_from_Z(H.Z, r)
-      net.overlap, _ = H.get_ocn(rlabels)
+      net.overlap, noc_covers = H.get_ocn_discovery(k, rlabels)
       H.set_overlap_labels(net.overlap, score)
       plot_h.lcmap_dendro(
         [k], cmap_name="deep",
         font_size=30,
-        score="_"+score+"_"+toy_names[i], on=T
+        score="_"+score+"_"+toy_names[i], on=F
       )
       plot_h.plot_networx(
         r, rlabels, score="_"+score+"_"+toy_names[i],
-        on=T, labels=labels_dict, cmap_name="deep"
+        on=F, labels=labels_dict, cmap_name="deep"
       )
       plot_h.plot_networx_link_communities(
         [k], score="_"+score+"_"+toy_names[i],
         cmap_name="deep",
-        on=T, labels=labels_dict
+        on=F, labels=labels_dict
       )
       plot_h.core_dendrogram(
         [r], score="_"+score+"_"+toy_names[i],
-        on=T, cmap_name="deep"
+        on=F, cmap_name="deep"
       )
