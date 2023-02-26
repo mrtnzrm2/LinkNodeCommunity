@@ -283,7 +283,8 @@ def reverse_partition(Cr, labels):
 def nocs2parition(partition: dict, nocs: dict):
   for noc in nocs.keys():
     for cover in nocs[noc]:
-      if noc not in partition[cover]: partition[cover].append(noc)
+      if cover == -1: continue
+      if str(noc) not in partition[cover]: partition[cover].append(str(noc))
 
 def get_H_from_BH(H):
   h = pd.DataFrame()
