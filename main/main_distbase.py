@@ -132,10 +132,8 @@ if __name__ == "__main__":
   plot_n.plot_akis(D, s=5, on=F)
   for score in opt_score:
     # Get best K and R ----
-    k, r = get_best_kr_equivalence(score, H)
-    print(
-      "Best K: {}\nBest R: {}".format(k, r)
-    )
+    k, r = get_best_kr(score, H)
+    print("Best K: {}\nBest R: {}".format(k, r))
     rlabels = get_labels_from_Z(H.Z, r)
     # Overlap ----
     ocn, _ = H.get_ocn_discovery(k, rlabels)

@@ -95,19 +95,14 @@ def worker_scalefree(
     for score in opt_score:
       print("Score: {}".format(score))
       # Get best k, r for given score ----
-      k, r = get_best_kr_equivalence(score, RAND_H)
+      k, r = get_best_kr(score, RAND_H)
       # Single linkage part ----
-      print(
-        "Best K: {}\nBest R: {}".format(k, r)
-      )
+      print("Best K: {}\nBest R: {}".format(k, r))
       rlabels = get_labels_from_Z(RAND_H.Z, r)
       if np.nan in rlabels:
         print("*** BAD dendrogram")
         break
-      data.set_nmi_nc(
-        RAND.labels, rlabels,
-        score = score
-      )
+      data.set_nmi_nc(RAND.labels, rlabels, score = score)
     if np.sum(np.isnan(rlabels)) == 0: i += 1
   # Save ----
   if isinstance(RAND_H, Hierarchy):

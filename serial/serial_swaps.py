@@ -14,10 +14,10 @@ from plotting_modules.plotting_serial import PLOT_S
 from plotting_modules.plotting_H import Plot_H
 from networks.structure import MAC
 from networks.swapnet import SWAPNET
-from various.network_tools import *
 from various.data_transformations import maps
+from various.network_tools import *
 # Declare global variables NET ----
-MAXI = 502
+MAXI = 3
 linkage = "single"
 nlog10 = T
 lookup = F
@@ -26,20 +26,20 @@ cut = F
 run = T
 distance = "MAP3D"
 nature = "original"
-topology = "SOURCE"
+topology = "MIX"
 mapping = "R2"
 index = "jacw"
 mode = "ALPHA"
 imputation_method = ""
 opt_score = ["_maxmu", "_X", "_D"]
-save_data = F
-save_hierarchy = F
+save_data = T
+save_hierarchy = T
 # Declare global variables DISTBASE ----
 __inj__ = 57
 __nodes__ = 57
 __version__ = 220830
 __model__ = "1k"
-bias = 1e-5
+bias = 0.3
 # T test ----
 alternative = "less"
 # Print summary ----
@@ -87,11 +87,15 @@ if __name__ == "__main__":
   data = HRH(NET_H, L)
   RAND_H = 0
   for score in opt_score:
+    k, r = get_best_kr(score, NET_H)
+    rlabels = get_labels_from_Z(NET_H.Z, r)
     overlap_labels = NET_H.overlap.labels.loc[
       NET_H.overlap.score == score
     ].to_numpy()
     data.set_overlap_data_one(overlap_labels, score)
-    data.set_nodes_labels_single(NET_H, score)
+    data.set_nodes_labels(rlabels, score)
+    # Cover
+    data.set_cover_one(NET_H.cover[score], score)
   # RANDOM networks ----
   from numpy import arange
   serie = arange(MAXI)
@@ -133,6 +137,7 @@ if __name__ == "__main__":
         # Saving statistics ----
         data.set_data_homogeneity_zero(RAND_H.R)
         data.set_data_measurements_zero(RAND_H, i)
+        data.set_stats(RAND_H)
         save_class(
           RAND_H, RAND.pickle_path,
           "hanalysis_{}".format(RAND_H.subfolder),
@@ -150,17 +155,18 @@ if __name__ == "__main__":
       plot_h.D_plotly(on=F)
       for score in opt_score:
         # Get best k, r for given score ----
-        k, r = get_best_kr_equivalence(score, RAND_H)
+        k, r = get_best_kr(score, RAND_H)
         RAND_H.set_kr(k, r, score)
         data.set_kr_zero(RAND_H)
         # Add iteartion to data----
         rlabels = get_labels_from_Z(RAND_H.Z, r)
         plot_h.core_dendrogram([r], on=F)
-        data.set_stats(RAND_H)
-        data.set_nmi_nc(rlabels, score)
         # Overlap ----
-        RAND_H.set_colregion(L)
-        ocn, _ = RAND_H.get_ocn_discovery(k, rlabels)
+        ocn, subcover = RAND_H.get_ocn_discovery(k, rlabels)
+        cover = omega_index_format(
+          rlabels, subcover, RAND_H.colregion.labels[:RAND_H.nodes]
+        )
+        data.set_clustering_similarity(rlabels, cover, score)
         data.set_overlap_data_zero(ocn, score)
     # Save ----
     if isinstance(RAND_H, Hierarchy):
@@ -202,5 +208,5 @@ if __name__ == "__main__":
   plot_s.plot_measurements_ordp(on=T)
   for score in opt_score:
     plot_s.histogram_krs(score=score, on=T)
-    plot_s.histogram_nmi(score, on=T)
+    plot_s.histogram_clustering_similarity(score, on=T)
   

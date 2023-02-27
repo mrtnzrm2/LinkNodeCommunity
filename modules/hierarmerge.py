@@ -25,7 +25,7 @@ class Hierarchy(Sim):
     self.beta = G.Beta
     self.pickle_path = G.pickle_path
     self.plot_path = G.plot_path
-    self.subfolder = G.analysis
+    self.subfolder = G.subfolder
     # Compute similarity matrix ----
     self.similarity_by_feature_cpp()
     # Compute distance matrix ----
@@ -45,6 +45,8 @@ class Hierarchy(Sim):
     self.stat_cor()
     # Overlaps ----
     self.overlap = pd.DataFrame()
+    # Cover ---
+    self.cover = {}
     # KR ----
     self.kr = pd.DataFrame()
 
@@ -371,6 +373,9 @@ class Hierarchy(Sim):
       [self.overlap, subdata],
       ignore_index=True
     )
+  
+  def set_cover(self, cover, score):
+    self.cover[score] = cover
 
   def get_ocn_discovery(self, K : int, Cr, s=2.):
     labels = self.colregion.labels[:self.nodes]

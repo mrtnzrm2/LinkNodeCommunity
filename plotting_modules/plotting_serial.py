@@ -60,39 +60,49 @@ class PLOT_S:
       )
     else: print("No TNH")
   
-  def histogram_nmi(self, score, on=True, **kwargs):
+  def histogram_clustering_similarity(self, score, on=True, **kwargs):
     if on:
-      print("Plot serial nmi histogram!!!")
+      print("Plot clustering similarity histogram!!!")
       subdata = self.data.loc[self.data.score == score]
       # Average score ----
-      print(
-        "Mean score: {:3f}".format(subdata["NMI"].mean())
-      )
+      print(subdata.groupby("sim").mean().reset_index())
       # Create figure ----
-      _, ax = plt.subplots(1, 1)
       if "c" in kwargs.keys():
         if kwargs["c"]:
           subdata["c"] = [s.replace("_", "") for s in subdata["c"]]
-          sns.histplot(
+          g = sns.FacetGrid(
             data=subdata,
-            x="NMI",
+            col="sim",
+            sharex=False, sharey=False,
+            aspect=1.3, height=6
+          )
+          g.map_dataframe(
+            sns.histplot,
+            x="values",
             stat="probability",
             hue="c"
           )
+          g.legend()
       else:
-        sns.histplot(
+        g = sns.FacetGrid(
           data=subdata,
-          stat="probability",
-          x="NMI"
+          col="sim",
+          sharex=False, sharey=False,
+          aspect=1.3, height=6
         )
-      ax.text(
-        0.5, 1.05,
-        r"$\mu$" + f": {subdata.NMI.mean():.4f}    " + r"$\sigma$" + f": {subdata.NMI.std():.4f}",
-        horizontalalignment='center',
-        verticalalignment='center',
-        transform=ax.transAxes
-      )
-      plt.xlabel("ADJ_NMI")
+        g.map_dataframe(
+          sns.histplot,
+          x="values",
+          stat="probability"
+        )
+      # ax.text(
+      #   0.5, 1.05,
+      #   r"$\mu$" + f": {subdata.NMI.mean():.4f}    " + r"$\sigma$" + f": {subdata.NMI.std():.4f}",
+      #   horizontalalignment='center',
+      #   verticalalignment='center',
+      #   transform=ax.transAxes
+      # )
+      # plt.xlabel("ADJ_NMI")
       # Arrange path ----
       plot_path = join(
         self.plot_path, "Features"
@@ -104,14 +114,14 @@ class PLOT_S:
       # Save plot ----
       plt.savefig(
         join(
-          plot_path, "adj_hist_{}_{}.png".format(
+          plot_path, "clustering_similarity_{}_{}.png".format(
             self.linkage, score
           )
         ),
         dpi=300
       )
     else:
-      print("No serial nmi Histogram")
+      print("No clustering similarity histogram")
   
   def plot_stats(self, alternative="greater", on=True, **kwargs):
     if on:

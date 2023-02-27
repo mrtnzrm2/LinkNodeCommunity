@@ -85,11 +85,16 @@ def worker_swaps(
   data = HRH(NET_H, L)
   RAND_H = 0
   for score in opt_score:
+    k, r = get_best_kr(score, NET_H)
+    rlabels = get_labels_from_Z(NET_H.Z, r)
+    # Overlap
     overlap_labels = NET_H.overlap.labels.loc[
       NET_H.overlap.score == score
     ].to_numpy()
     data.set_overlap_data_one(overlap_labels, score)
-    data.set_nodes_labels_single(NET_H, score)
+    data.set_nodes_labels(rlabels, score)
+    # Cover
+    data.set_cover_one(NET_H.cover[score], score)
   # RANDOM networks ----
   from numpy import arange
   serie = arange(MAXI)
@@ -126,27 +131,24 @@ def worker_swaps(
     RAND_H.BH_features_cpp()
     ## Compute lq arbre de merde ----
     RAND_H.la_abre_a_merde_cpp(RAND_H.BH[0])
-    RAND.set_colregion(L)
+    RAND_H.set_colregion(L)
     # Saving statistics ----
     data.set_data_homogeneity_zero(RAND_H.R)
     data.set_data_measurements_zero(RAND_H, i)
-    save_class(
-      RAND_H, RAND.pickle_path,
-      "hanalysis_{}".format(RAND_H.subfolder),
-      on=F
-    )
+    data.set_stats(RAND_H)
     for score in opt_score:
       # Get best k, r for given score ----
-      k, r = get_best_kr_equivalence(score, RAND_H)
+      k, r = get_best_kr(score, RAND_H)
       RAND_H.set_kr(k, r, score)
       data.set_kr_zero(RAND_H)
       # Add iteartion to data----
       rlabels = get_labels_from_Z(RAND_H.Z, r)
-      data.set_stats(RAND_H)
-      data.set_nmi_nc(rlabels, score)
       # Overlap ----
-      RAND_H.set_colregion(L)
-      ocn, _ = RAND_H.get_ocn_discovery(k, rlabels)
+      ocn, subcover = RAND_H.get_ocn_discovery(k, rlabels)
+      cover = omega_index_format(
+        rlabels, subcover, RAND_H.colregion.labels[:RAND_H.nodes]
+      )
+      data.set_clustering_similarity(rlabels, cover, score)
       data.set_overlap_data_zero(ocn, score)
   # Save ----
   if isinstance(RAND_H, Hierarchy):

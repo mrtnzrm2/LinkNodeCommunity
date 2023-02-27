@@ -3,6 +3,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from os.path import join
+from various.omega import Omega
 # Personal libs ----
 from various.network_tools import *
 from various.similarity_indices import NT
@@ -24,6 +25,8 @@ class HRH:
     self.data = pd.DataFrame()
     # Node community membership ----
     self.labels_nc = pd.DataFrame()
+    # Cover ----
+    self.cover = {}
     # Overlap ----
     self.data_overlap = pd.DataFrame()
     # Homonegenity ----
@@ -36,7 +39,6 @@ class HRH:
     self.kr = pd.DataFrame()
     self.set_kr_one(H)
     # Set save_class as method ----
-    self.minus_one_Dc = H.minus_one_Dc
     self.save_class = save_class
     self.read_class = read_class
     # Set stats ----
@@ -134,10 +136,10 @@ class HRH:
       ignore_index=True
     )
 
-  def set_nodes_labels_single(self, H : Hierarchy, score):
-    # Set labels from data ----
-    k, r = get_best_kr(score, H)
-    labels =  get_labels_from_Z(H.Z, r)
+  def set_cover_one(self, cover, score):
+    self.cover[score] = cover
+
+  def set_nodes_labels(self, labels, score):
     sublabels = pd.DataFrame(
       {
         "id" : labels,
@@ -173,25 +175,24 @@ class HRH:
         "id" : labels
       }
     )
-    self.minus_one_Dc(d)
+    minus_one_Dc(d)
     return d["id"].to_numpy()
 
   def set_iter(self, it):
     self.iter = it
 
-  def set_nmi_nc(self, l2, score):
-    labels = self.labels_nc.id.loc[
-      self.labels_nc.score == score
-    ].to_numpy()
+  def set_clustering_similarity(self, l2, cover, score):
+    labels = self.labels_nc.id.loc[self.labels_nc.score == score].to_numpy()
     #create subdata ----
     subdata = pd.DataFrame(
       {
-        "NMI" : [
-          AD_NMI_label(labels, l2)
+        "sim" : ["NMI", "OMEGA"],
+        "values" : [
+          AD_NMI_label(labels, l2), omega_index(cover, self.cover[score])
         ],
-        "c" : ["node community"],
-        "iter" : [self.iter],
-        "score" : [score]
+        "c" : ["node community"] * 2,
+        "iter" : [self.iter] * 2,
+        "score" : [score] * 2
       }
     )
     # Merge with data ----

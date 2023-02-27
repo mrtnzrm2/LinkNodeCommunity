@@ -25,11 +25,10 @@ distance = "MAP3D"
 nature = "original"
 imputation_method = ""
 topology = "MIX"
-mapping = "trivial"
-index  = "bsim"
-bias = ""
+mapping = "R2"
+index  = "jacw"
+bias = 0.3
 opt_score = ["_maxmu", "_X", "_D"]
-# opt_score = ["_maxmu", "_X"]
 save_data = T
 version = 220830
 __nodes__ = 57
@@ -52,8 +51,8 @@ if __name__ == "__main__":
     cut = cut,
     b = bias
   )
+  NET.create_pickle_directory()
   NET.create_plot_directory()
-  # NET.create_pickle_directory()
   # Transform data for analysis ----
   R, lookup, _ = maps[mapping](
     NET.A, nlog10, lookup, prob, b=bias
@@ -101,20 +100,16 @@ if __name__ == "__main__":
   for score in opt_score:
     print(f"Find node partition using {score}")
     # Get best K and R ----
-    k, r = get_best_kr_equivalence(score, H)
+    k, r = get_best_kr(score, H)
     H.set_kr(k, r, score=score)
-    print(
-      "Best K: {}\nBest R: {}".format(k, r)
-    )
+    print("Best K: {}\nBest R: {}".format(k, r))
     rlabels = get_labels_from_Z(H.Z, r)
     # Overlap ----
-    NET.overlap, NET.data_nocs = H.get_ocn_discovery(k, rlabels)
+    NET.overlap, subcover = H.get_ocn_discovery(k, rlabels)
     H.set_overlap_labels(NET.overlap, score)
-    print("\nNode memberships and their areas:\n")
-    print(omega_index_format(rlabels, NET.struct_labels[:NET.nodes]))
-    print(
-      "\nAreas with predicted overlapping communities:\n", NET.data_nocs
-    )
+    print("\n\tAreas with predicted overlapping communities:\n", subcover, "\n")
+    cover = omega_index_format(rlabels, subcover, NET.struct_labels[:NET.nodes])
+    H.set_cover(cover, score)
     # Plot H ----
     plot_h.core_dendrogram([r], on=T) #
     plot_h.lcmap_pure(

@@ -11,15 +11,15 @@ from numpy import arange
 # Import network libraries ----
 from modules.hierarmerge import Hierarchy
 from networks_serial.hrh import HRH
-from various.network_tools import *
 from modules.colregion import colregion
 from plotting_modules.plotting_serial import PLOT_S
 from plotting_modules.plotting_o_serial import PLOT_OS
 from networks.structure import MAC
 from networks.distbase import DISTBASE
 from various.data_transformations import maps
+from various.network_tools import *
 # Declare global variables NET ----
-MAXI = 502
+MAXI = 3
 linkage = "single"
 nlog10 = T
 lookup = F
@@ -29,13 +29,13 @@ run = T
 distance = "MAP3D"
 nature = "original"
 mode = "ALPHA"
-topology = "SOURCE"
+topology = "MIX"
 mapping = "R2"
 index  = "jacw"
 imputation_method = ""
 opt_score = ["_maxmu", "_X", "_D"]
-save_data = F
-save_hierarchy = F
+save_data = T
+save_hierarchy = T
 # Statistic test ----
 alternative = "less"
 # Declare global variables DISTBASE ----
@@ -43,9 +43,9 @@ total_nodes = 106
 __inj__ = 57
 __nodes__ = 57
 __version__ = 220830
-__model__ = "DEN"
+__model__ = "M"
 __bin__ = 12
-bias = 1e-5
+bias = 0.3
 # Print summary ----
 print("For NET parameters:")
 print(
@@ -91,11 +91,15 @@ if __name__ == "__main__":
   # Create hrh class ----
   data = HRH(NET_H, L)
   for score in opt_score:
+    k, r = get_best_kr(score, NET_H)
+    rlabels = get_labels_from_Z(NET_H.Z, r)
     overlap_labels = NET_H.overlap.labels.loc[
       NET_H.overlap.score == score
     ].to_numpy()
     data.set_overlap_data_one(overlap_labels, score)
-    data.set_nodes_labels_single(NET_H, score)
+    data.set_nodes_labels(rlabels, score)
+    # Cover
+    data.set_cover_one(NET_H.cover[score], score)
   RAND_H = 0
   # RANDOM networks ----
   serie = arange(MAXI)
@@ -156,14 +160,14 @@ if __name__ == "__main__":
       data.set_stats(RAND_H)
       for score in opt_score:
         # Get k from RAND_H ----
-        k, r = get_best_kr_equivalence(score, RAND_H)
+        k, r = get_best_kr(score, RAND_H)
         RAND_H.set_kr(k, r, score)
         data.set_kr_zero(RAND_H)
         rlabels = get_labels_from_Z(RAND_H.Z, r)
-        data.set_nmi_nc(rlabels[:__inj__], score)
         # Overlap ----
-        # ocn = RAND_H.get_ocn(rlabels)
-        ocn, _ = RAND_H.get_ocn_discovery(k, rlabels) ## change <-----
+        ocn, subcover = RAND_H.get_ocn_discovery(k, rlabels)
+        cover = omega_index_format(rlabels, subcover, RAND_H.colregion.labels[:RAND_H.nodes])
+        data.set_clustering_similarity(rlabels, cover, score)
         data.set_overlap_data_zero(ocn, score)
     if isinstance(RAND_H, Hierarchy):
       data.set_subfolder(RAND_H.subfolder)
@@ -191,10 +195,7 @@ if __name__ == "__main__":
   print("Statistical analysis")
   plot_s = PLOT_S(data)
   plot_s.scatterplot_NH(on=T)
-  plot_s.plot_stats(
-    alternative=alternative,
-    on=T,
-  )
+  plot_s.plot_stats(alternative=alternative, on=T)
   plot_s.plot_measurements_D(on=T)
   plot_s.plot_measurements_X(on=T)
   plot_s.plot_measurements_mu(on=T)
@@ -208,5 +209,5 @@ if __name__ == "__main__":
   plot_o = PLOT_OS(data)
   for score in opt_score:
     plot_s.histogram_krs(score=score, on=T)
-    plot_s.histogram_nmi(score, on=T)
+    plot_s.histogram_clustering_similarity(score, on=T)
     plot_o.histogram_overlap(score, on=T)

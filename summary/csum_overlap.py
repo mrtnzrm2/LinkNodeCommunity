@@ -21,7 +21,7 @@ def draw_heatmap(*args, **kwargs):
 
 # Declare iter variables ----
 topologies = ["TARGET", "SOURCE", "MIX"]
-indices = ["jacw", "jacp", "cos"]
+indices = ["jacw", "jacp", "cos", "bsim"]
 KAV = [7, 25]
 MUT = [0.2, 0.4]
 MUW = [0.2, 0.4]
@@ -55,12 +55,14 @@ if __name__ == "__main__":
     opar = {
       "-N" : "{}".format(str(__nodes__)),
       "-k" : f"{kav}.0",
-      "-maxk" : "100",
+      "-maxk" : "50",
       "-mut" : f"{mut}",
       "-muw" : f"{muw}",
       "-beta" : "2.5",
-      "-t1" : "2.5",
-      "-t2" : "2.5",
+      "-t1" : "2",
+      "-t2" : "1",
+      "-nmin" : "5",
+      "-nmax" : "20",
       "-on" : "10",
       "-om" : "2"
     }
@@ -81,15 +83,16 @@ if __name__ == "__main__":
         THE_DF, 
         pd.DataFrame(
           {
-            "NMI" : data.data.NMI.to_numpy().astype(float),
+            "NMI" : data.data.value[data.data.sim == "NMI"].to_numpy().astype(float),
+            "OMEGA" : data.data.value[data.data.sim == "OMEGA"].to_numpy().astype(float),
             "TPR":  data.data_overlap.sensitivity.astype(float),
             "FPR":  1 - data.data_overlap.specificity.astype(float),
             "score" : data.data.c,
             "topology": [topology] * data.data.shape[0],
-            "index" : [index] * data.data.shape[0],
-            "kav" : [int(kav)] * data.data.shape[0],
-            "mut" : [float(mut)] * data.data.shape[0],
-            "muw" : [float(muw)] * data.data.shape[0],
+            "index" : [index] * data.data.shape[0] / 2,
+            "kav" : [int(kav)] * data.data.shape[0] / 2,
+            "mut" : [float(mut)] * data.data.shape[0] / 2,
+            "muw" : [float(muw)] * data.data.shape[0] / 2
           }
         )
       ], ignore_index=T
@@ -110,12 +113,14 @@ if __name__ == "__main__":
     opar = {
       "-N" : "{}".format(str(__nodes__)),
       "-k" : f"{kav}",
-      "-maxk" : "100",
+      "-maxk" : "50",
       "-mut" : f"{mut}",
       "-muw" : f"{muw}",
       "-beta" : "2.5",
-      "-t1" : "2.5",
-      "-t2" : "2.5",
+      "-t1" : "2",
+      "-t2" : "1",
+      "-nmin" : "5",
+      "-nmax" : "20",
       "-on" : "10",
       "-om" : "2"
     }

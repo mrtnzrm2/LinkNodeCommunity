@@ -115,11 +115,9 @@ if __name__ == "__main__":
         )
       for score in opt_score:
         # Get best k, r for given score ----
-        k, r = get_best_kr_equivalence(score, RAND_H)
+        k, r = get_best_kr(score, RAND_H)
         # Single linkage part ----
-        print(
-          "Best K: {}\nBest R: {}".format(k, r)
-        )
+        print("Best K: {}\nBest R: {}".format(k, r))
         rlabels = get_labels_from_Z(RAND_H.Z, r)
         nocs, noc_covers = RAND_H.get_ocn_discovery(k, rlabels)
         sen, sep = RAND.overlap_score_discovery(

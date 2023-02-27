@@ -93,7 +93,7 @@ if __name__ == "__main__":
     for score in opt_score:
       print(f"Find node partition using {score}")
       # Get best K and R ----
-      k, r = get_best_kr_equivalence(score, H)
+      k, r = get_best_kr(score, H)
       H.set_kr(k, r, score=score)
       rlabels = get_labels_from_Z(H.Z, r)
       # Overlap ----

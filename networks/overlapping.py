@@ -256,8 +256,7 @@ class OVERLAPPING(SCALEFREE):
       gt_node_partition = self.labels
       gt_covers = omega_index_format(gt_node_partition, gt_noc_cover, node_labels)
       pred_covers = omega_index_format(node_partition, noc_covers, node_labels)
-      omega = Omega(pred_covers, gt_covers).omega_score
-      print(f"Omega index: {omega:.4f}")
+      omega = omega_index(pred_covers, gt_covers)
     else: omega = -1
     return omega
 

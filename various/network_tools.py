@@ -4,6 +4,7 @@ pd.options.mode.chained_assignment = None
 from os.path import join, exists
 from os import remove
 import pickle as pk
+from various.omega import Omega
 
 def skim_partition(partition):
   par = partition.copy()
@@ -19,9 +20,7 @@ def skim_partition(partition):
 
 def Dc_id(dA, id):
   # Filter dataframe ----
-  dAid = dA.loc[
-    dA.id == id
-  ]
+  dAid = dA.loc[dA.id == id]
   # Get source nodes ----
   src = dAid.source.to_numpy()
   src = set(src)
@@ -139,9 +138,7 @@ def predicted_D_frequency(D, C, nodes, bins, npoints=100, **kwargs):
   ## Get prob ----
   pred = linear_fit(x, y)
   x = np.linspace(
-    np.min(D[D > 0]),
-    np.max(D),
-    npoints
+    np.min(D[D > 0]),np.max(D), npoints
   ).reshape(-1, 1)
   prob = pred.predict(x)
   return d_range, x.reshape(-1), prob, np.zeros(prob.shape), pred
@@ -741,3 +738,8 @@ def omega_index_format(node_partition, noc_covers : dict, node_labels):
   rev = reverse_partition(node_partition, node_labels)
   nocs2parition(rev, noc_covers)
   return rev
+
+def omega_index(cover_1 : dict, cover_2 : dict):
+  omega = Omega(cover_1, cover_2).omega_score
+  print(f"Omega: {omega:.4f}")
+  return omega
