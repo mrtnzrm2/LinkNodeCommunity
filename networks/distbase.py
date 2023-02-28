@@ -208,7 +208,7 @@ class DISTBASE(EDR):
           self.lb
         )
         NET = np.array(NET)
-        print("NET density: {:.5f}".format(
+        print("NET EC density: {:.5f}".format(
             self.den(NET)
           )
         )

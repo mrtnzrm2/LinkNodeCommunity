@@ -17,7 +17,7 @@ from networks.overlapping import OVERLAPPING
 from modules.colregion import colregion
 from various.network_tools import *
 # Declare global variables NET ----
-MAXI = 500
+MAXI = 4
 __nodes__ = 128
 linkage = "single"
 nlog10 = F
@@ -25,13 +25,13 @@ lookup = F
 prob = F
 cut = F
 run = T
-topology = "MIX"
+topology = "SOURCE"
 mapping = "trivial"
-index = "jacp"
+index = "bsim"
 __mode__ = "ALPHA"
 opt_score = ["_maxmu", "_X", "_D"]
-save_data = F
-save_hierarchy = F
+save_data = T
+save_hierarchy = T
 # Overlapping WDN paramters ----
 opar = {
   "-N" : "{}".format(
@@ -44,8 +44,8 @@ opar = {
   "-beta" : "2.5",
   "-t1" : "2",
   "-t2" : "1",
-  "-nmin" : "5",
-  "-nmax" : "20",
+  "-nmin" : "2",
+  "-nmax" : "10",
   "-on" : "10",
   "-om" : "2"
 }
@@ -124,11 +124,11 @@ if __name__ == "__main__":
           k, nocs, RAND_H.colregion.labels[:RAND_H.nodes], on=T
         )
         omega = RAND.omega_index(
-          rlabels, noc_covers, RAND_H.colregion.labels[:RAND_H.nodes]
+          rlabels, noc_covers, RAND_H.colregion.labels[:RAND_H.nodes], on=T
         )
         # NMI between ground-truth and pred labels ----
         data.set_nmi_nc_overlap(
-          RAND.labels, rlabels, RAND.overlap,
+          RAND.labels, rlabels, RAND.overlap, noc_covers, omega,
           score = score
         )
         data.set_overlap_scores(
@@ -166,16 +166,20 @@ if __name__ == "__main__":
   # Plotting ----
   print("Statistical analysis")
   plot_os = PLOT_OS_SF(data)
-  plot_os.plot_measurements_D(on=T)
-  plot_os.plot_measurements_D_noodle(on=T)
-  plot_os.plot_measurements_X(on=T)
-  plot_os.plot_measurements_X_noodle(on=T)
-  plot_os.plot_measurements_mu(on=T)
-  plot_os.plot_measurements_mu_noodle(on=T)
-  plot_os.plot_measurements_ntrees(on=T)
-  plot_os.plot_measurements_ntrees_noodle(on=T)
-  plot_os.plot_measurements_ordp(on=T)
-  plot_os.plot_measurements_ordp_noodle(on=T)
-  plot_os.ROC_OCN(on=T, hue_norm=opt_score)
-  plot_os.histogram_overlap_scores(on=T, c=T, hue_norm=opt_score)
-  plot_os.histogram_nmi(on=T, c=T, hue_norm=opt_score)
+  # plot_os.plot_measurements_D(on=T)
+  # plot_os.plot_measurements_D_noodle(on=T)
+  # plot_os.plot_measurements_X(on=T)
+  # plot_os.plot_measurements_X_noodle(on=T)
+  # plot_os.plot_measurements_mu(on=T)
+  # plot_os.plot_measurements_mu_noodle(on=T)
+  # plot_os.plot_measurements_ntrees(on=T)
+  # plot_os.plot_measurements_ntrees_noodle(on=T)
+  # plot_os.plot_measurements_ordp(on=T)
+  # plot_os.plot_measurements_ordp_noodle(on=T)
+  plot_os.ROC_OCN(on=T, c=True, hue_norm=[s.replace("_", "") for s in opt_score])
+  plot_os.histogram_overlap_scores(
+    on=T, c=T, hue_norm=[s.replace("_", "") for s in opt_score]
+  )
+  plot_os.histogram_clustering_similarity(
+    on=T, c=T, hue_norm=[s.replace("_", "") for s in opt_score]
+  )

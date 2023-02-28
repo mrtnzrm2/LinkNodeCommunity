@@ -37,7 +37,7 @@ save_data = T
 version = 220830
 __nodes__ = 57
 __inj__ = 57
-bias = 0.1
+bias = 0.3
 
 # Start main ----
 if __name__ == "__main__":
@@ -56,8 +56,9 @@ if __name__ == "__main__":
       inj = __inj__,
       topology=topology,
       index=index, mapping=mapping,
-      cut=cut
+      cut=cut, b = bias
     )
+    NET.create_pickle_directory()
     # Transform data for analysis ----
     R, lookup, _ = maps[mapping](
       NET.A, nlog10, lookup, prob, b=bias
@@ -95,14 +96,14 @@ if __name__ == "__main__":
       # Get best K and R ----
       k, r = get_best_kr(score, H)
       H.set_kr(k, r, score=score)
+      print("\n\tBest K: {}\nBest R: {}\n".format(k, r))
       rlabels = get_labels_from_Z(H.Z, r)
       # Overlap ----
       NET.overlap, NET.data_nocs = H.get_ocn_discovery(k, rlabels)
       H.set_overlap_labels(NET.overlap, score)
-      print(
-        "Areas with predicted overlapping communities:\n",
-        NET.overlap
-      )
+      print("\n\tAreas with predicted overlapping communities:\n",  NET.data_nocs, "\n")
+      cover = omega_index_format(rlabels,  NET.data_nocs, NET.struct_labels[:NET.nodes])
+      H.set_cover(cover, score)
     save_class(
       H, NET.pickle_path,
       "hanalysis_{}".format(H.subfolder),

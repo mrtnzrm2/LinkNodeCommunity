@@ -30,7 +30,7 @@ def worker_distbase(
   distance = "MAP3D"
   mode = "ALPHA"
   imputation_method = ""
-  opt_score = ["_maxmu", "_X", "_D"]  
+  opt_score = ["_maxmu", "_X"]  
   # Statistic test ----
   alternative = "less"
   # Declare global variables DISTBASE ----

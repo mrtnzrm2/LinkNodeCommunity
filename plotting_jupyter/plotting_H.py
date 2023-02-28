@@ -58,6 +58,7 @@ class Plot_H:
       y="mu",
       hue="beta"
     ).set(xscale="log")
+    g.add_legend()
 
   def plot_measurements_D(self, **kwargs):
     print("Plot D iterations")

@@ -384,52 +384,45 @@ class PLOT_S_SF:
       plt.close()
     else: print("No order parameter iterations")
 
-  def histogram_nmi(self, c=True, on=True, **kwargs):
+  def histogram_clustering_similarity(self, c=True, on=True, **kwargs):
     if on:
-      print("Plot serial nmi histogram!!!")
+      print("Plot serial clustering similarity histogram!!!")
       data = self.data.copy()
+      print(data)
       # Zero NMI ----
-      data.NMI.loc[np.isnan(data.NMI)] = 0
+      data["values"].loc[np.isnan(data.sim == "NMI")] = 0
+      data["values"].loc[np.isnan(data.sim == "OMEGA")] = 0
       data.c = [s.replace("_", "") for s in data.c]
-      # Average score ----
-      mean_scores = data.groupby("c").mean()
-      std_scores = data.groupby("c").std()
-      mean_scores["SD"] = std_scores.NMI.to_numpy()
-      mean_scores = mean_scores[["NMI", "SD"]]
-      mean_scores.NMI = np.round(mean_scores.NMI, 2)
-      mean_scores.SD = np.round(mean_scores.SD, 2)
-      mean_scores["score"] = mean_scores.index
-      mean_scores = mean_scores[["score", "NMI", "SD"]]
-      mean_scores.columns = ["", r"$\mu$", r"$\sigma$"]
-      print("Mean score:")
-      print(mean_scores)
-      # Create figure ----
-      fig, ax = plt.subplots(1, 1)
-      ## Add box ----
-      table = plt.table(
-        cellText=mean_scores.values,
-        colLabels=mean_scores.columns,
-        bbox=[0.3, -0.5, 0.4, 0.28]
-      )
-      table.set_fontsize(8)
       if c:
-        sns.histplot(
+        g = sns.FacetGrid(
           data=data,
-          x="NMI",
-          stat="probability",
+          col="sim",
           hue="c",
-          ax=ax,
-          **kwargs
+          sharex=False, sharey=False,
+          aspect=1.3, height=6
         )
-      else:
-        sns.histplot(
-          data=data,
+        g.map_dataframe(
+          sns.histplot,
+          x="values",
           stat="probability",
-          x="NMI",
+          alpha=0.6,
           **kwargs
         )
-      plt.xlabel("ADJ_NMI")
-      plt.subplots_adjust(bottom=0.32)
+        g.add_legend()
+      else:
+        g = sns.FacetGrid(
+          data=data,
+          col="sim",
+          sharex=False, sharey=False,
+          aspect=1.3, height=6
+        )
+        g.map_dataframe(
+          sns.histplot,
+          x="values",
+          stat="probability",
+          **kwargs
+        )
+      # plt.subplots_adjust(bottom=0.32)
       # Arrange path ----
       plot_path = join(
         self.plot_path, "Features"
@@ -449,7 +442,7 @@ class PLOT_S_SF:
       )
       plt.close()
     else:
-      print("No serial nmi Histogram")
+      print("No serial clustering similarity Histogram")
   
   def plot_stats(self, alternative="greater", on=True, **kwargs):
     if on:

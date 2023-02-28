@@ -18,7 +18,7 @@ def worker_scalefree(
   nlog10 : bool, lookup : bool, prob : bool, cut : bool, run : bool,
   topology : str, mapping : str, index : str,
   kav : float, maxk : int, mut : float, muw :float, beta : float,
-  t1 : float, t2 : float
+  t1 : float, t2 : float, nmin : int, nmax : int
 ):
   # Declare global variables NET ----
   MAXI = number_of_iterations
@@ -35,7 +35,9 @@ def worker_scalefree(
     "-muw" : f"{muw}",
     "-beta" : f"{beta}",
     "-t1" : f"{t1}",
-    "-t2" : f"{t2}"
+    "-t2" : f"{t2}",
+    "-nmin" : f"{nmin}",
+    "-nmax" : f"{nmax}"
   }
   # Print summary ----
   print(f"Number of iterations: {MAXI}")

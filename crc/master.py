@@ -20,7 +20,7 @@ from crc.serial_swaps import worker_swaps
 THE_ARRAY = pd.DataFrame()
 ## distbase ----
 worker = ["distbase"]
-distbases = ["DEN"]
+distbases = ["DEN", "M"]
 cut = [F]
 topology = ["TARGET", "SOURCE", "MIX"]
 list_of_lists = itertools.product(
@@ -40,9 +40,9 @@ worker = ["scalefree"]
 cut = [F]
 topology = ["TARGET", "SOURCE", "MIX"]
 indices = ["jacw", "jacp", "cos", "bsim"]
-kav = [7, 25]
-mut = [0.2, 0.4]
-muw = [0.2, 0.4]
+kav = [7, 15]
+mut = [0.1, 0.3, 0.5]
+muw = [0.1, 0.5]
 list_of_lists = itertools.product(
   *[cut, topology, indices, kav, mut, muw]
 )
@@ -63,10 +63,10 @@ worker = ["overlap"]
 cut = [F]
 topology = ["TARGET", "SOURCE", "MIX"]
 indices = ["jacw", "jacp", "cos", "bsim"]
-kav = [7, 25]
-mut = [0.2, 0.4]
-muw = [0.2, 0.4]
-om = [2]
+kav = [7, 15]
+mut = [0.1, 0.3, 0.5]
+muw = [0.1, 0.5]
+om = [2, 5]
 list_of_lists = itertools.product(
   *[cut, topology, indices, kav, mut, muw, om]
 )
@@ -123,7 +123,7 @@ def NoGodsNoMaster(number_of_iterations, t):
     run = T
     mapping = "R2"
     index = "jacw"
-    bias = 1e-5
+    bias = 0.3
     if array.loc["cut"] == "True": cut = T
     else: cut = F
     worker_distbase(
@@ -138,10 +138,12 @@ def NoGodsNoMaster(number_of_iterations, t):
     lookup = F
     prob = F
     run = T
-    maxk = 50
+    maxk = 30
     beta = 2.5
     t1 = 2
     t2 = 1
+    nmin = 2
+    nmax = 10
     mapping = "trivial"
     if array.loc["cut"] == "True": cut = T
     else: cut = F
@@ -150,7 +152,7 @@ def NoGodsNoMaster(number_of_iterations, t):
       lookup, prob, cut, run, array.loc["topology"],
       mapping, array.loc["index"],
       array.loc["kav"], maxk, array.loc["mut"], array.loc["muw"],
-      beta, t1, t2
+      beta, t1, t2, nmin, nmax
     )
   elif array.loc["worker"] == "overlap":
     number_of_nodes = 128
@@ -158,12 +160,12 @@ def NoGodsNoMaster(number_of_iterations, t):
     lookup = F
     prob = F
     run = T
-    maxk = 50
+    maxk = 30
     beta = 2.5
     t1 = 2
     t2 = 1
-    nmin = 5
-    nmax = 20
+    nmin = 2
+    nmax = 10
     on = 10
     mapping = "trivial"
     if array.loc["cut"] == "True": cut = T
@@ -185,7 +187,7 @@ def NoGodsNoMaster(number_of_iterations, t):
     run = T
     mapping = "R2"
     index = "jacw"
-    bias = 1e-5
+    bias = 0.3
     if array.loc["cut"] == "True": cut = T
     else: cut = F
     worker_swaps(
@@ -203,4 +205,4 @@ if __name__ == "__main__":
   from collections import Counter
   print(Counter(THE_ARRAY.worker))
   print(THE_ARRAY.iloc[t - 1])
-  # NoGodsNoMaster(number_of_iterations, t)
+  NoGodsNoMaster(number_of_iterations, t)

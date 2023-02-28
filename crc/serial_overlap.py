@@ -120,11 +120,12 @@ def worker_overlap(
           k, nocs, RAND_H.colregion.labels[:RAND_H.nodes], on=T
         )
         omega = RAND.omega_index(
-          rlabels, noc_covers, RAND_H.colregion.labels[:RAND_H.nodes]
+          rlabels, noc_covers, RAND_H.colregion.labels[:RAND_H.nodes], on=T
         )
         # NMI between ground-truth and pred labels ----
         data.set_nmi_nc_overlap(
-          RAND.labels, rlabels, RAND.overlap, score = score
+          RAND.labels, rlabels, RAND.overlap, noc_covers,
+          score = score
         )
         data.set_overlap_scores(
           omega, sen, sep, score = score

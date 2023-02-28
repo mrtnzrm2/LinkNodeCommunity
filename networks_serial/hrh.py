@@ -188,7 +188,8 @@ class HRH:
       {
         "sim" : ["NMI", "OMEGA"],
         "values" : [
-          AD_NMI_label(labels, l2), omega_index(cover, self.cover[score])
+          AD_NMI_overlap(labels, l2, self.cover[score], cover),
+          omega_index(cover, self.cover[score])
         ],
         "c" : ["node community"] * 2,
         "iter" : [self.iter] * 2,

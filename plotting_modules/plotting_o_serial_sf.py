@@ -28,21 +28,21 @@ class PLOT_OS_SF(PLOT_S_SF):
           x = "sensitivity",
           ax = ax[0],
           hue = "c",
-          **kwargs
+          # **kwargs
         )
         sns.histplot(
           data=data,
           x = "specificity",
           ax = ax[1],
           hue = "c",
-          **kwargs
+          # **kwargs
         )
         sns.histplot(
           data=data,
           x = "omega",
           ax = ax[2],
           hue = "c",
-          **kwargs
+          # **kwargs
         )
       else:
         sns.histplot(
@@ -83,7 +83,7 @@ class PLOT_OS_SF(PLOT_S_SF):
     else:
       print("No overlap scores histogram")
 
-  def ROC_OCN(self, on=False, **kwargs):
+  def ROC_OCN(self, on=False, c=True, **kwargs):
     if on:
       print("ROC_OCN")
       data = self.data_overlap.copy()
@@ -91,7 +91,7 @@ class PLOT_OS_SF(PLOT_S_SF):
       data = data.sort_values(by="FPR", ignore_index=True)
       # Create figure ----
       fig, ax = plt.subplots(1, 1)
-      if "c" in data.columns:
+      if c:
         data["c"] = [s.replace("_", "") for s in data["c"]]
         scores = np.unique(data.c)
         cmap = sns.color_palette("deep", len(scores))
@@ -113,7 +113,7 @@ class PLOT_OS_SF(PLOT_S_SF):
           s=15,
           palette=cmap,
           ax=ax,
-          **kwargs
+          # **kwargs
         )
       else:
         sns.scatterplot(

@@ -105,10 +105,10 @@ if __name__ == "__main__":
     print("Best K: {}\nBest R: {}".format(k, r))
     rlabels = get_labels_from_Z(H.Z, r)
     # Overlap ----
-    NET.overlap, subcover = H.get_ocn_discovery(k, rlabels)
+    NET.overlap, NET.data_nocs = H.get_ocn_discovery(k, rlabels)
     H.set_overlap_labels(NET.overlap, score)
-    print("\n\tAreas with predicted overlapping communities:\n", subcover, "\n")
-    cover = omega_index_format(rlabels, subcover, NET.struct_labels[:NET.nodes])
+    print("\n\tAreas with predicted overlapping communities:\n",  NET.data_nocs, "\n")
+    cover = omega_index_format(rlabels,  NET.data_nocs, NET.struct_labels[:NET.nodes])
     H.set_cover(cover, score)
     # Plot H ----
     plot_h.core_dendrogram([r], on=T) #

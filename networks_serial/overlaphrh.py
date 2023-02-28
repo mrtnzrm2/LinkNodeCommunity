@@ -34,23 +34,29 @@ class OVERLAPHRH(SCALEHRH):
       [self.data_overlap, subdata], ignore_index=True
     )
   
-  def set_nmi_nc_overlap(self, l1, l2, overlap, **kwargs):
+  def set_nmi_nc_overlap(self, l1, l2, cover1, cover2, omega, **kwargs):
     if "score" in kwargs.keys():
       #create subdata ----
       subdata = pd.DataFrame(
         {
-          "NMI" : [AD_NMI_overlap(l1, l2, overlap)],
-          "c" : [kwargs["score"]],
-          "iter" : [self.iter]
+          "sim" : ["NMI", "OMEGA"],
+          "values" : [
+            AD_NMI_overlap(l1, l2, cover1, cover2),  omega
+          ],
+          "c" : [kwargs["score"]] * 2,
+          "iter" : [self.iter] * 2
         }
       )
     else:
       #create subdata ----
       subdata = pd.DataFrame(
         {
-          "NMI" : [AD_NMI_overlap(l1, l2, overlap)],
-          "c" : ["node communities"],
-          "iter" : [self.iter]
+           "sim" : ["NMI", "OMEGA"],
+          "values" : [
+            AD_NMI_overlap(l1, l2, cover1, cover2),  omega,
+          ],
+          "iter" : [self.iter] * 2,
+          "c" : ["node communities"] * 2
         }
       )
     # Merge with data ----

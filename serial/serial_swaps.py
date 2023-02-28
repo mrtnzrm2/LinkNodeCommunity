@@ -31,7 +31,7 @@ mapping = "R2"
 index = "jacw"
 mode = "ALPHA"
 imputation_method = ""
-opt_score = ["_maxmu", "_X", "_D"]
+opt_score = ["_maxmu", "_X"]
 save_data = T
 save_hierarchy = T
 # Declare global variables DISTBASE ----
@@ -206,7 +206,8 @@ if __name__ == "__main__":
   plot_s.plot_measurements_mu(on=T)
   plot_s.plot_measurements_ntrees(on=T)
   plot_s.plot_measurements_ordp(on=T)
+  plot_s.histogram_clustering_similarity(on=T, c=T, hue_norm=opt_score)
   for score in opt_score:
     plot_s.histogram_krs(score=score, on=T)
-    plot_s.histogram_clustering_similarity(score, on=T)
+    
   

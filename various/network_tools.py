@@ -281,6 +281,7 @@ def nocs2parition(partition: dict, nocs: dict):
   for noc in nocs.keys():
     for cover in nocs[noc]:
       if cover == -1: continue
+      if cover not in partition.keys(): continue
       if str(noc) not in partition[cover]: partition[cover].append(str(noc))
 
 def get_H_from_BH(H):
@@ -536,7 +537,7 @@ def NMI_single(labels, H, on=True, **kwargs):
         n_clusters=k
       ).reshape(-1)
       from sklearn.metrics import normalized_mutual_info_score
-      nmi = normalized_mutual_info_score(labels, h_ids)
+      nmi = normalized_mutual_info_score(labels, h_ids, average_method="max")
       print("NMI({}): {}".format(k, nmi))
 
 def NMI_average(gt, K, R, WSBM, on=True):
@@ -554,28 +555,33 @@ def NMI_average(gt, K, R, WSBM, on=True):
 def NMI_label(gt, pred, on=True):
   if on:
     from sklearn.metrics import normalized_mutual_info_score
-    nmi = normalized_mutual_info_score(gt, pred)
+    nmi = normalized_mutual_info_score(gt, pred, average_method="max")
     print("NMI: {}".format(nmi))
     return nmi
 
 def AD_NMI_label(gt, pred, on=True):
   if on:
-    from sklearn.metrics import adjusted_mutual_info_score
     if np.sum(np.isnan(pred)) > 0: nmi = np.nan
     elif len(np.unique(pred)) == 1: nmi = np.nan
     else:
-      nmi = adjusted_mutual_info_score(gt, pred)
+      from sklearn.metrics import adjusted_mutual_info_score
+      nmi = adjusted_mutual_info_score(gt, pred, average_method="max")
     print("ADNMI: {}".format(nmi))
     return nmi
 
-def AD_NMI_overlap(gt, pred, overlap, on=True):
+def AD_NMI_overlap(gt, pred, cover1, cover2, on=True):
   if on:
-    x = list(overlap.keys())
-    n = gt.shape[0]
-    y = np.arange(n)
-    y = [i for i in y if i not in x]
-    from sklearn.metrics import adjusted_mutual_info_score
-    nmi = adjusted_mutual_info_score(gt[y], pred[y])
+    if np.sum(np.isnan(pred)) > 0: nmi = np.nan
+    elif len(np.unique(pred)) == 1: nmi = np.nan
+    else:
+      gtx = np.array([int(k) for k, v in cover1.items() if len(v) > 1])
+      predx = np.array([int(k) for k, v in cover2.items() if len(v) > 1])
+      gtxx = gt.copy()
+      predxx = pred.copy()
+      gtxx[gtx] = -1
+      predxx[predx] = -1
+      from sklearn.metrics import adjusted_mutual_info_score
+      nmi = adjusted_mutual_info_score(gtxx, predxx, average_method="max")
     print("ADNMI: {:.4f}".format(nmi))
     return nmi
   else:
@@ -739,7 +745,21 @@ def omega_index_format(node_partition, noc_covers : dict, node_labels):
   nocs2parition(rev, noc_covers)
   return rev
 
+def reverse_cover(cover: dict, labels):
+  cover_indices = set()
+  for k, v in cover.items():
+    cover_indices = cover_indices.union(set(v))
+  rev = {k : [] for k in cover_indices}
+  for k, v in cover.items():
+    for vv in v:
+      rev[vv].append(labels[k])
+  return rev
+
+
 def omega_index(cover_1 : dict, cover_2 : dict):
-  omega = Omega(cover_1, cover_2).omega_score
+  if len(cover_1) == 1 and len(cover_2) == 1:
+    omega = np.nan
+  else:
+    omega = Omega(cover_1, cover_2).omega_score
   print(f"Omega: {omega:.4f}")
   return omega

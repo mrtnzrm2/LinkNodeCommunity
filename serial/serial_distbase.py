@@ -33,7 +33,7 @@ topology = "MIX"
 mapping = "R2"
 index  = "jacw"
 imputation_method = ""
-opt_score = ["_maxmu", "_X", "_D"]
+opt_score = ["_maxmu", "_X"]
 save_data = T
 save_hierarchy = T
 # Statistic test ----
@@ -194,20 +194,21 @@ if __name__ == "__main__":
   # Plotting ----
   print("Statistical analysis")
   plot_s = PLOT_S(data)
-  plot_s.scatterplot_NH(on=T)
-  plot_s.plot_stats(alternative=alternative, on=T)
-  plot_s.plot_measurements_D(on=T)
-  plot_s.plot_measurements_X(on=T)
-  plot_s.plot_measurements_mu(on=T)
-  plot_s.plot_measurements_ntrees(on=T)
-  plot_s.plot_measurements_ordp(on=T)
-  plot_s.plot_measurements_D_noodle(on=T)
-  plot_s.plot_measurements_X_noodle(on=T)
-  plot_s.plot_measurements_mu_noodle(on=T)
-  plot_s.plot_measurements_ntrees_noodle(on=T)
-  plot_s.plot_measurements_ordp_noodle(on=T)
+  # plot_s.plot_stats(alternative=alternative, on=T)
+  # plot_s.plot_measurements_D(on=T)
+  # plot_s.plot_measurements_X(on=T)
+  # plot_s.plot_measurements_mu(on=T)
+  # plot_s.plot_measurements_ntrees(on=T)
+  # plot_s.plot_measurements_ordp(on=T)
+  # plot_s.plot_measurements_D_noodle(on=T)
+  # plot_s.plot_measurements_X_noodle(on=T)
+  # plot_s.plot_measurements_mu_noodle(on=T)
+  # plot_s.plot_measurements_ntrees_noodle(on=T)
+  # plot_s.plot_measurements_ordp_noodle(on=T)
+  plot_s.histogram_clustering_similarity(
+    on=T, c=T, hue_norm=[s.replace("_", "") for s in opt_score]
+  )
   plot_o = PLOT_OS(data)
   for score in opt_score:
     plot_s.histogram_krs(score=score, on=T)
-    plot_s.histogram_clustering_similarity(score, on=T)
     plot_o.histogram_overlap(score, on=T)

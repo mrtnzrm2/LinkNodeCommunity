@@ -41,12 +41,22 @@ class OVERLAPPING(SCALEFREE):
   def read_dat_multicolumns_cpp(self, lab):
     # Create labels and overlap ----
     labels = np.zeros(self.nodes)
-    overlap = dict()
+    cover = dict()
+    cover_indices = set()
     for i, line in enumerate(lab):
-      labels[i] = line[1] - 1
-      if len(line) > 2:
-        overlap[line[0] - 1] = [c - 1 for c in line[1:]]
-    return labels, overlap
+      cover[line[0] - 1] = [c - 1 for c in line[1:]]
+      cover_indices = cover_indices.union(set(cover[line[0] - 1]))
+    cover_indices = np.array(list(cover_indices))
+    max_cover_index = np.max(cover_indices)
+    for i, line in enumerate(lab):
+      if len(line) == 2:
+        labels[i] = cover[line[0] - 1][0]
+      elif len(line) > 2:
+        labels[i] = max_cover_index + 1
+        max_cover_index += 1
+      else:
+        raise Warning("Empty line or node without cover membership")
+    return labels, cover
 
   def random_WDN_overlap(self, run=True, **kwargs):
     if run:
@@ -64,7 +74,7 @@ class OVERLAPPING(SCALEFREE):
         )
         self.A = df2adj(self.dA.copy())
         self.labels, self.overlap = self.read_data_multicolumns()
-        print(self.overlap)
+        print({k : v for k, v in self.overlap.items() if len(v) > 1})
         if "on_save_pickle" in kwargs.keys():
           if kwargs["on_save_pickle"]:
             self.save_class(
@@ -125,10 +135,10 @@ class OVERLAPPING(SCALEFREE):
           self.labels, self.overlap = self.read_dat_multicolumns_cpp(
             A.get_communities()
           )
-          print(self.overlap)
+          print({k : v for k, v in self.overlap.items() if len(v) > 1})
           if "on_save_pickle" in kwargs.keys():
-            print("\n\t**** Network saved in pickle format****\n")
             if kwargs["on_save_pickle"]:
+              print("\n\t**** Network saved in pickle format****\n")
               self.save_class(
                 {
                   "dA" : self.dA,
@@ -251,10 +261,7 @@ class OVERLAPPING(SCALEFREE):
 
   def omega_index(self, node_partition, noc_covers, node_labels, on=False):
     if on:
-      from various.omega import Omega
-      gt_noc_cover = self.overlap
-      gt_node_partition = self.labels
-      gt_covers = omega_index_format(gt_node_partition, gt_noc_cover, node_labels)
+      gt_covers = reverse_cover(self.overlap, node_labels)
       pred_covers = omega_index_format(node_partition, noc_covers, node_labels)
       omega = omega_index(pred_covers, gt_covers)
     else: omega = -1
@@ -264,7 +271,7 @@ class OVERLAPPING(SCALEFREE):
     if on:
       if K == 1: return np.nan, np.nan
       # Ground-truth partition prep. ----
-      gt = self.overlap.keys()
+      gt = [k for k, v in self.overlap.items() if len(v) == 1]
       GT = set([str(g) for g in gt])
       ## Sensitivity/Specificity ----
       ALL = set(labels)
