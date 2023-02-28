@@ -14,7 +14,7 @@ from modules.colregion import colregion
 from numpy import zeros
 from various.network_tools import *
 # Declare global variables ----
-__iter__ = 2
+__iter__ = 3
 __nodes__ = 128
 linkage = "single"
 nlog10 = F
@@ -22,7 +22,7 @@ lookup = F
 prob = F
 cut = F
 run = T
-topology = "SOURCE"
+topology = "TARGET"
 mapping = "trivial"
 index  = "bsim"
 __mode__ = "ALPHA"
@@ -34,14 +34,14 @@ opar = {
     str(__nodes__)
   ),
   "-k" : "7.0",
-  "-maxk" : "50.0",
-  "-mut" : "0.2",
-  "-muw" : "0.2",
+  "-maxk" : "30.0",
+  "-mut" : "0.1",
+  "-muw" : "0.1",
   "-beta" : "2.5",
   "-t1" : "2",
   "-t2" : "1",
-  "-nmin" : "5",
-  "-nmax" : "20",
+  "-nmin" : "2",
+  "-nmax" : "10",
   "-on" : "10",
   "-om" : "3"
 }
@@ -58,6 +58,7 @@ if __name__ == "__main__":
     index=index,
     cut=cut
   )
+  NET.set_alpha([6, 20])
   NET.create_plot_path()
   NET.create_pickle_path()
   # Create network ----
@@ -105,12 +106,12 @@ if __name__ == "__main__":
   )
   for score in opt_score:
     # Find best k partition ----
-    k, r = get_best_kr_equivalence(score, H)
+    k, r = get_best_kr(score, H)
     rlabels = get_labels_from_Z(H.Z, r)
     nocs, noc_covers = H.get_ocn_discovery(k, rlabels)
     #Prints ----
     nmi = AD_NMI_overlap(
-      NET.labels, rlabels, NET.overlap, on=T
+      NET.labels, rlabels, NET.overlap, noc_covers, on=T
     )
     sen, sep = NET.overlap_score_discovery(
       k, nocs, H.colregion.labels[:H.nodes], on=T

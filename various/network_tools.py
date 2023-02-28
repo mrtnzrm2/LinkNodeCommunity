@@ -575,11 +575,12 @@ def AD_NMI_overlap(gt, pred, cover1, cover2, on=True):
     elif len(np.unique(pred)) == 1: nmi = np.nan
     else:
       gtx = np.array([int(k) for k, v in cover1.items() if len(v) > 1])
-      predx = np.array([int(k) for k, v in cover2.items() if len(v) > 1])
       gtxx = gt.copy()
-      predxx = pred.copy()
       gtxx[gtx] = -1
-      predxx[predx] = -1
+      predxx = pred.copy()
+      predx = np.array([int(k) for k, v in cover2.items() if len(v) > 1])
+      if len(predx) > 0: 
+        predxx[predx] = -1
       from sklearn.metrics import adjusted_mutual_info_score
       nmi = adjusted_mutual_info_score(gtxx, predxx, average_method="max")
     print("ADNMI: {:.4f}".format(nmi))

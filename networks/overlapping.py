@@ -154,14 +154,14 @@ class OVERLAPPING(SCALEFREE):
         self.A = WDN["A"]
         self.labels = WDN["labels"]
         self.overlap = WDN["overlap"]
-        print(self.overlap)
+        print({k : v for k, v in self.overlap.items() if len(v) > 1})
     else:
       WDN = self.read_class(self.pickle_path, "WDN_cpp")
       self.dA = WDN["dA"]
       self.A = WDN["A"]
       self.labels = WDN["labels"]
       self.overlap = WDN["overlap"]
-      print(self.overlap)
+      print({k : v for k, v in self.overlap.items() if len(v) > 1})
 
   def set_colregion(self, colregion):
     self.colregion = colregion
