@@ -171,8 +171,8 @@ if __name__ == "__main__":
         data.set_overlap_data_zero(ocn, score)
     if isinstance(RAND_H, Hierarchy):
       data.set_subfolder(RAND_H.subfolder)
-      data.set_plot_path(RAND_H)
-      data.set_pickle_path(RAND_H)
+      data.set_plot_path(RAND_H, bias=bias)
+      data.set_pickle_path(RAND_H, bias=bias)
       print("Save data")
       save_class(
         data, data.pickle_path,

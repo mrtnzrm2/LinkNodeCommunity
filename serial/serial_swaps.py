@@ -110,6 +110,7 @@ if __name__ == "__main__":
         mode, i,
         topology=topology,
         nature = nature,
+        model = __model__,
         mapping=mapping, index=index,
         distance = distance,
         nlog10 = nlog10, lookup = lookup,
@@ -172,8 +173,8 @@ if __name__ == "__main__":
     # Save ----
     if isinstance(RAND_H, Hierarchy):
       data.set_subfolder(RAND_H.subfolder)
-      data.set_plot_path(RAND_H)
-      data.set_pickle_path(RAND_H)
+      data.set_plot_path(RAND_H, bias=bias)
+      data.set_pickle_path(RAND_H, bias=bias)
       print("Save data")
       save_class(
         data, data.pickle_path,
@@ -181,9 +182,10 @@ if __name__ == "__main__":
       )
   else:
     data = read_class(
-      "../pickle/RAN/swaps/MAC/{}/FLN/{}/1k/{}/{}/{}".format(
+      "../pickle/RAN/swaps/MAC/{}/FLN/{}/{}/{}/{}/{}".format(
         __version__,
         distance,
+        __model__,
         NET.analysis,
         mode,
         NET.subfolder

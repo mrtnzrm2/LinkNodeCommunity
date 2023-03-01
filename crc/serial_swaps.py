@@ -110,7 +110,7 @@ def worker_swaps(
       topology=topology,
       nature = nature,
       distance = distance,
-      model = imputation_method,
+      model = __model__,
       nlog10 = nlog10, lookup = lookup,
       cut=cut, b=bias
     )
@@ -153,14 +153,12 @@ def worker_swaps(
   # Save ----
   if isinstance(RAND_H, Hierarchy):
     data.set_subfolder(RAND_H.subfolder)
-    data.set_plot_path(RAND_H)
-    data.set_pickle_path(RAND_H)
+    data.set_plot_path(RAND_H, bias=bias)
+    data.set_pickle_path(RAND_H, bias=bias)
     print("Save data")
     save_class(
       data, data.pickle_path,
-      "series_{}".format(
-        number_of_iterations
-      )
+      "series_{}".format(number_of_iterations)
     )
   print("End")
   

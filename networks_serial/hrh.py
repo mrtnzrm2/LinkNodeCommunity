@@ -202,7 +202,7 @@ class HRH:
       ignore_index=True
     )
 
-  def set_pickle_path(self, H : Hierarchy):
+  def set_pickle_path(self, H : Hierarchy, bias=0):
      # Get pickle location ----
     pickle_path = H.pickle_path.split("/")
     self.pickle_path = ""
@@ -210,23 +210,27 @@ class HRH:
       self.pickle_path = join(
         self.pickle_path, pickle_path[i]
       )
-      if pickle_path[i] == self.subfolder: break
+      if pickle_path[i] == H.analysis: break
     self.pickle_path = join(
       self.pickle_path, H.mode, H.subfolder
     )
+    if bias != 0:
+      self.pickle_path = join(self.pickle_path, f"b_{bias}")
     Path(self.pickle_path).mkdir(exist_ok=True, parents=True)
 
-  def set_plot_path(self, H : Hierarchy):
+  def set_plot_path(self, H : Hierarchy, bias=0):
     plot_path = H.plot_path.split("/")
     self.plot_path = ""
     for i in np.arange(len(plot_path)):
       self.plot_path = join(
         self.plot_path, plot_path[i]
       )
-      if plot_path[i] == self.subfolder: break
+      if plot_path[i] == H.analysis: break
     self.plot_path = join(
       self.plot_path, H.mode, H.subfolder
     )
+    if bias != 0:
+      self.plot_path = join(self.plot_path, f"b_{bias}")
     Path(self.plot_path).mkdir(exist_ok=True, parents=True)
 
   def set_overlap_data_zero(self, overlap, score):

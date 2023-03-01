@@ -26,6 +26,7 @@ class Hierarchy(Sim):
     self.pickle_path = G.pickle_path
     self.plot_path = G.plot_path
     self.subfolder = G.subfolder
+    self.analysis = G.analysis
     # Compute similarity matrix ----
     self.similarity_by_feature_cpp()
     # Compute distance matrix ----
