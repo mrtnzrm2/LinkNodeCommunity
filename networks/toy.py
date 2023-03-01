@@ -74,6 +74,7 @@ class TOY(BASE):
     self.mapping = mapping
     self.index = index
     self.A = A.copy()
+    self.subfolder = f"{topology}_{index}_{mapping}"
     self.nodes, self.rows = A.shape
     # Set ANALYSIS NAME ----
     self.analysis = linkage.upper() + "_{}_{}".format(

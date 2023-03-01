@@ -107,9 +107,9 @@ array_swaps = pd.DataFrame(
   }
 )
 ## Merge arrays -----------------
-THE_ARRAY = pd.concat([THE_ARRAY, array_distbase], ignore_index=True)
-THE_ARRAY = pd.concat([THE_ARRAY, array_scalefree], ignore_index=True)
-THE_ARRAY = pd.concat([THE_ARRAY, array_overlap], ignore_index=True)
+# THE_ARRAY = pd.concat([THE_ARRAY, array_distbase], ignore_index=True)
+# THE_ARRAY = pd.concat([THE_ARRAY, array_scalefree], ignore_index=True)
+# THE_ARRAY = pd.concat([THE_ARRAY, array_overlap], ignore_index=True)
 THE_ARRAY = pd.concat([THE_ARRAY, array_swaps], ignore_index=True)
 
 def NoGodsNoMaster(number_of_iterations, t):
@@ -207,4 +207,4 @@ if __name__ == "__main__":
   from collections import Counter
   print(Counter(THE_ARRAY.worker))
   print(THE_ARRAY.iloc[t - 1])
-  NoGodsNoMaster(number_of_iterations, t)
+  # NoGodsNoMaster(number_of_iterations, t)
