@@ -17,7 +17,7 @@ from various.data_transformations import maps
 # Iterable varaibles ----
 cut = [F]
 topologies = ["MIX", "TARGET", "SOURCE"]
-bias = [1e-5]
+bias = [1e-5, 0.1, 0.3, 0.5]
 list_of_lists = itertools.product(
   *[cut, topologies, bias]
 )
