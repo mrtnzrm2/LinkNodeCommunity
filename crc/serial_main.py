@@ -17,8 +17,9 @@ from various.data_transformations import maps
 # Iterable varaibles ----
 cut = [F]
 topologies = ["MIX", "TARGET", "SOURCE"]
+bias = [1e-5]
 list_of_lists = itertools.product(
-  *[cut, topologies]
+  *[cut, topologies, bias]
 )
 list_of_lists = np.array(list(list_of_lists))
 # Declare global variables ----
@@ -32,16 +33,15 @@ mapping = "R2"
 index = "jacw"
 mode = "ALPHA"
 imputation_method = ""
-opt_score = ["_maxmu", "_X", "_D"]
+opt_score = ["_maxmu", "_X"]
 save_data = T
 version = 220830
 __nodes__ = 57
 __inj__ = 57
-bias = 0.3
-
 # Start main ----
 if __name__ == "__main__":
-  for _cut_, topology in list_of_lists:
+  for _cut_, topology, bias in list_of_lists:
+    bias = float(bias)
     if _cut_ == "True":
       cut = T
     else: cut = F

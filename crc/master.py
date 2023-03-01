@@ -23,8 +23,9 @@ worker = ["distbase"]
 distbases = ["DEN", "M"]
 cut = [F]
 topology = ["TARGET", "SOURCE", "MIX"]
+bias = [1e-5, 0.1, 0.3, 0.5]
 list_of_lists = itertools.product(
-  *[distbases, cut, topology]
+  *[distbases, cut, topology, bias]
 )
 list_of_lists = np.array(list(list_of_lists))
 array_distbase = pd.DataFrame(
@@ -32,7 +33,8 @@ array_distbase = pd.DataFrame(
     "worker" : worker * list_of_lists.shape[0],
     "distbase" : list_of_lists[:, 0].astype(str),
     "cut" : list_of_lists[:, 1],
-    "topology" : list_of_lists[:, 2].astype(str)
+    "topology" : list_of_lists[:, 2].astype(str),
+    "bias" : list_of_lists[:, 3].astype(float) 
   }
 )
 ## scalefree -----------------
@@ -91,15 +93,17 @@ array_overlap = array_overlap.loc[
 worker = ["swaps"]
 cut = [F]
 topology = ["TARGET", "SOURCE", "MIX"]
+bias = [1e-5, 0.1, 0.3, 0.5]
 list_of_lists = itertools.product(
-  *[cut, topology]
+  *[cut, topology, bias]
 )
 list_of_lists = np.array(list(list_of_lists))
 array_swaps = pd.DataFrame(
   {
     "worker" : worker * list_of_lists.shape[0],
     "cut" : list_of_lists[:, 0],
-    "topology" : list_of_lists[:, 1].astype(str)
+    "topology" : list_of_lists[:, 1].astype(str),
+    "bias" : list_of_lists[:, 2].astype(float) 
   }
 )
 ## Merge arrays -----------------
@@ -123,14 +127,13 @@ def NoGodsNoMaster(number_of_iterations, t):
     run = T
     mapping = "R2"
     index = "jacw"
-    bias = 0.3
     if array.loc["cut"] == "True": cut = T
     else: cut = F
     worker_distbase(
       number_of_iterations, number_of_inj, number_of_nodes,
       total_number_nodes, version, array.loc["distbase"],
       nlog10, lookup, prob, cut, run, array.loc["topology"],
-      mapping, index, bias
+      mapping, index, array.loc["bias"]
     )
   elif array.loc["worker"] == "scalefree":
     number_of_nodes = 128
@@ -187,13 +190,12 @@ def NoGodsNoMaster(number_of_iterations, t):
     run = T
     mapping = "R2"
     index = "jacw"
-    bias = 0.3
     if array.loc["cut"] == "True": cut = T
     else: cut = F
     worker_swaps(
       number_of_iterations, number_of_inj, number_of_nodes,
       version, nlog10, lookup, prob, cut,
-      run, array.loc["topology"], mapping, index, bias
+      run, array.loc["topology"], mapping, index, array.loc["bias"]
     )
   else:
     raise ValueError("Worker does not exists!!!")

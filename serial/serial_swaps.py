@@ -12,6 +12,7 @@ from modules.colregion import colregion
 from networks_serial.hrh import HRH
 from plotting_modules.plotting_serial import PLOT_S
 from plotting_modules.plotting_H import Plot_H
+from plotting_modules.plotting_o_serial import PLOT_OS
 from networks.structure import MAC
 from networks.swapnet import SWAPNET
 from various.data_transformations import maps
@@ -206,8 +207,12 @@ if __name__ == "__main__":
   plot_s.plot_measurements_mu(on=T)
   plot_s.plot_measurements_ntrees(on=T)
   plot_s.plot_measurements_ordp(on=T)
-  plot_s.histogram_clustering_similarity(on=T, c=T, hue_norm=opt_score)
+  plot_s.histogram_clustering_similarity(
+    on=T, c=T, hue_norm=[s.replace("_", "") for s in opt_score]
+  )
+  plot_o = PLOT_OS(data)
   for score in opt_score:
     plot_s.histogram_krs(score=score, on=T)
+    plot_o.histogram_overlap(score, on=T)
     
   

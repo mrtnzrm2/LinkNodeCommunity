@@ -124,7 +124,7 @@ def worker_overlap(
         )
         # NMI between ground-truth and pred labels ----
         data.set_nmi_nc_overlap(
-          RAND.labels, rlabels, RAND.overlap, noc_covers,
+          RAND.labels, rlabels, RAND.overlap, noc_covers, omega,
           score = score
         )
         data.set_overlap_scores(
