@@ -5,6 +5,7 @@
 #include <cmath>
 #include <algorithm>
 #include<ctime> // time
+#include "hclust-cpp/fastcluster.h"
 
 #include <pybind11/stl.h>
 #include <pybind11/pybind11.h>

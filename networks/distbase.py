@@ -44,8 +44,11 @@ class DISTBASE(EDR):
       self.subfolder, "b_"+str(self.b)
     ) 
     self.csv_path = os.path.join(
-      "../CSV", self.common_path, mode,
-      self.subfolder
+      "../CSV", self.folder, self.random,
+      self.subject, self.version,
+      self.structure, self.distance,
+      self.model, "BIN_{}".format(bin),
+      self.iter
     )
     self.dist_path = os.path.join(
       "../CSV", self.subject,

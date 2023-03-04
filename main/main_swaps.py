@@ -24,7 +24,7 @@ cut = F
 run = T
 __model__ = "1k"
 distance = "MAP3D"
-topology = "MIX"
+topology = "TARGET"
 mapping = "R2"
 index  = "jacw"
 __mode__ = "ALPHA"
@@ -51,8 +51,8 @@ if __name__ == "__main__":
     cut=cut, b=bias
   )
   NET.create_csv_path()
-  NET.create_pickle_path()
-  NET.create_plot_path()
+  # NET.create_pickle_path()
+  # NET.create_plot_path()
   # Create network ----
   print("Create random graph")
   NET.random_one_k(run=run, on_save_csv=T)
@@ -79,28 +79,31 @@ if __name__ == "__main__":
     H.set_colregion(L)
     save_class(
       H, NET.pickle_path,
-      "hanalysis_{}".format(H.subfolder)
+      "hanalysis_{}".format(H.subfolder),
+      on=F
     )
   else:
     H = read_class(
       NET.pickle_path,
       "hanalysis_{}".format(NET.subfolder)
     )
+  # Entropy ----
+  hierarchical_entropy(H.Z, H.nodes, on=T)
   # Plot H ----
   plot_h = Plot_H(NET, H)
-  plot_h.Mu_plotly(on=T)
-  plot_h.X_plotly(on=T)
-  plot_h.D_plotly(on=T)
+  plot_h.Mu_plotly(on=F)
+  plot_h.X_plotly(on=F)
+  plot_h.D_plotly(on=F)
   # Plot N ----
   plot_n = Plot_N(NET, H)
-  plot_n.A_vs_dis(NET.A, s=5, on=T)
+  plot_n.A_vs_dis(NET.A, s=5, on=F)
   plot_n.A_vs_dis(NET.C, s=5, name="count", on=F)
   plot_n.histogram_weight(on=F)
   plot_n.projection_probability(
     NET.A[:, :__nodes__], bins=12, on=F
   )
   plot_n.plot_akis(
-    NET.D, s=5, on=T
+    NET.D, s=5, on=F
   )
   for score in opt_score:
     print(f"Find node partition using {score}")
@@ -114,16 +117,16 @@ if __name__ == "__main__":
     NET.overlap, _ = H.get_ocn_discovery(k, rlabels)
     H.set_overlap_labels(NET.overlap, score)
     ## Single linkage ----
-    plot_h.core_dendrogram([r], on=T)
+    plot_h.core_dendrogram([r], on=F)
     plot_h.heatmap_pure(
-      r, on=T, labels = rlabels,
+      r, on=F, labels = rlabels,
       score="_"+score
     )
     plot_h.heatmap_dendro(
       r, on=F, score="_"+score
     )
     plot_h.lcmap_dendro(
-      [k], on=T, score="_"+score
+      [k], on=F, score="_"+score
     )
   print("End!")
   # #@@ Todo:

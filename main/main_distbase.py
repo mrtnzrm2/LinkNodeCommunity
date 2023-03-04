@@ -25,7 +25,7 @@ cut = F
 distance = "MAP3D"
 nature = "original"
 __mode__ = "ALPHA"
-topology = "MIX"
+topology = "SOURCE"
 mapping = "R2"
 index  = "jacw"
 imputation_method = ""
@@ -73,9 +73,9 @@ if __name__ == "__main__":
     mapping=mapping, index=index, version = __version__,
     lb=lb, b=bias, model=__model__
   )
-  NET.create_plot_path()
+  # NET.create_plot_path()
   NET.create_csv_path()
-  NET.create_pickle_path()
+  # NET.create_pickle_path()
   L = colregion(NET)
   NET.set_labels(L.labels)
   # Create distance matrix ----
@@ -100,10 +100,12 @@ if __name__ == "__main__":
       __nodes__, linkage, __mode__,
       lookup=lookup
     )
-    ## Compute features ----
+    ## Compute quality functions ----
     H.BH_features_cpp()
     ## Compute lq arbre de merde ----
     H.la_abre_a_merde_cpp(H.BH[0])
+    # Add labels ----
+    H.set_colregion(L)
     save_class(
       H, NET.pickle_path,
       "hanalysis_{}".format(H.subfolder),
@@ -114,12 +116,13 @@ if __name__ == "__main__":
       NET.pickle_path,
       "hanalysis_{}".format(NET.subfolder),
     )
-  H.set_colregion(L)
+  # Entropy ----
+  hierarchical_entropy(H.Z, H.nodes, on=T)
   # Plot H ----
   plot_h = Plot_H(NET, H)
-  plot_h.Mu_plotly(on=T)
-  plot_h.X_plotly(on=T)
-  plot_h.D_plotly(on=T)
+  plot_h.Mu_plotly(on=F)
+  plot_h.X_plotly(on=F)
+  plot_h.D_plotly(on=F)
   # Plot N ----
   plot_n = Plot_N(NET, H)
   plot_n.A_vs_dis(G[:, :__nodes__], on=F)
@@ -144,7 +147,7 @@ if __name__ == "__main__":
     plot_h.heatmap_dendro(r, on=F)
     plot_h.lcmap_dendro([k], on=F)
     plot_h.flatmap_dendro(
-      NET, [k], [r], on=T, EC=T #
+      NET, [k], [r], on=F, EC=T #
     )
   save_class(
     H, NET.pickle_path,

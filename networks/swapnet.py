@@ -59,7 +59,10 @@ class SWAPNET(EDR):
       self.subfolder, "b_"+str(self.b)
     )
     self.csv_path = os.path.join(
-      "../CSV", self.common_path, self.subfolder
+      "../CSV", self.folder, self.random,
+      self.subject, self.version,
+      self.structure, self.distance,
+      self.model, str(self.iter) 
     )
     self.pickle_path = os.path.join(
       "../pickle", self.common_path, mode, self.subfolder,
