@@ -756,7 +756,6 @@ def reverse_cover(cover: dict, labels):
       rev[vv].append(labels[k])
   return rev
 
-
 def omega_index(cover_1 : dict, cover_2 : dict):
   if len(cover_1) == 1 and len(cover_2) == 1:
     omega = np.nan
@@ -764,3 +763,22 @@ def omega_index(cover_1 : dict, cover_2 : dict):
     omega = Omega(cover_1, cover_2).omega_score
   print(f"Omega: {omega:.4f}")
   return omega
+
+def hierarchical_entropy(Z, L : int, on=False):
+  if on:
+    from collections import Counter
+    from scipy.cluster.hierarchy import cut_tree
+    Sh = 0
+    for l in np.arange(L - 1, 1, -1):
+      Ml = l + 1
+      partition = cut_tree(Z, l).ravel()
+      partition = Counter(partition)
+      partition = dict(partition)
+      Mul = np.array(list(partition.values()))
+      Pul = Mul.copy() / Ml
+      Pul = np.log(Pul)
+      Sh -= np.dot(Mul, Pul)
+    Sh /= L
+    print(f"\n\tHierarchical entropy: {Sh}\n")
+    return Sh
+    
