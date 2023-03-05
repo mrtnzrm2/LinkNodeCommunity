@@ -35,7 +35,6 @@ mode = "ALPHA"
 imputation_method = ""
 opt_score = ["_maxmu", "_X"]
 save_data = T
-save_hierarchy = T
 # Declare global variables DISTBASE ----
 __inj__ = 57
 __nodes__ = 57
@@ -88,16 +87,6 @@ if __name__ == "__main__":
   # Create hrh class ----
   data = HRH(NET_H, L)
   RAND_H = 0
-  for score in opt_score:
-    k, r = get_best_kr(score, NET_H)
-    rlabels = get_labels_from_Z(NET_H.Z, r)
-    overlap_labels = NET_H.overlap.labels.loc[
-      NET_H.overlap.score == score
-    ].to_numpy()
-    data.set_overlap_data_one(overlap_labels, score)
-    data.set_nodes_labels(rlabels, score)
-    # Cover
-    data.set_cover_one(NET_H.cover[score], score)
   # RANDOM networks ----
   from numpy import arange
   serie = arange(MAXI)
@@ -127,35 +116,24 @@ if __name__ == "__main__":
       )
       # Compute RAND Hierarchy ----
       print("Compute Hierarchy")
-      if save_hierarchy:
-        RAND_H = Hierarchy(
-          RAND, RAND.A[:, :__nodes__], R[:, :__nodes__], RAND.D,
-          __nodes__, linkage, mode, lookup=lookup
-        )
-        ## Compute features ----
-        RAND_H.BH_features_cpp()
-        ## Compute lq arbre de merde ----
-        RAND_H.la_abre_a_merde_cpp(RAND_H.BH[0])
-        RAND_H.set_colregion(L)
-        # Saving statistics ----
-        data.set_data_homogeneity_zero(RAND_H.R)
-        data.set_data_measurements_zero(RAND_H, i)
-        data.set_stats(RAND_H)
-        # Entropy ----
-        HS = Hierarchical_Entropy(RAND_H.Z, RAND_H.nodes)
-        HS.Z2dict("short")
-        s, sv, sh = HS.S(HS.tree)
-        data.set_entropy_zero([s, sv, sh])
-        save_class(
-          RAND_H, RAND.pickle_path,
-          "hanalysis_{}".format(RAND_H.subfolder),
-          on=F
-        )
-      else:
-        RAND_H = read_class(
-          RAND.pickle_path,
-          "hanalysis_{}".format(RAND.subfolder),
-        )
+      RAND_H = Hierarchy(
+        RAND, RAND.A[:, :__nodes__], R[:, :__nodes__], RAND.D,
+        __nodes__, linkage, mode, lookup=lookup
+      )
+      ## Compute features ----
+      RAND_H.BH_features_cpp()
+      ## Compute lq arbre de merde ----
+      RAND_H.la_abre_a_merde_cpp(RAND_H.BH[0])
+      RAND_H.set_colregion(L)
+      # Saving statistics ----
+      data.set_data_homogeneity_zero(RAND_H.R)
+      data.set_data_measurements_zero(RAND_H, i)
+      data.set_stats(RAND_H)
+      # Entropy ----
+      HS = Hierarchical_Entropy(RAND_H.Z, RAND_H.nodes)
+      HS.Z2dict("short")
+      s, sv, sh = HS.S(HS.tree)
+      data.set_entropy_zero([s, sv, sh])
       # Plot ----
       plot_h = Plot_H(RAND, RAND_H)
       plot_h.Mu_plotly(on=F)
@@ -215,6 +193,7 @@ if __name__ == "__main__":
   plot_s.plot_measurements_mu(on=T)
   plot_s.plot_measurements_ntrees(on=T)
   plot_s.plot_measurements_ordp(on=T)
+  plot_s.plot_entropy(on=T)
   plot_s.histogram_clustering_similarity(
     on=T, c=T, hue_norm=[s.replace("_", "") for s in opt_score]
   )

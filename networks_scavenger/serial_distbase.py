@@ -7,17 +7,12 @@ sys.path.append(os.path.dirname(SCRIPT_DIR))
 T = True
 F = False
 # Standard libraries ----
+import numpy as np
 import itertools
 # Import network libraries ----
-from modules.hierarmerge import Hierarchy
-from networks_serial.hrh import HRH
-from modules.colregion import colregion
 from plotting_modules.plotting_serial import PLOT_S
 from plotting_modules.plotting_o_serial import PLOT_OS
-from networks.structure import MAC
-from networks.distbase import DISTBASE
-from various.data_transformations import maps
-from various.network_tools import *
+from various.network_tools import read_class
 # Declare iter variables ----
 topologies = ["TARGET", "SOURCE", "MIX"]
 distbases = ["M", "DEN"]
@@ -104,6 +99,7 @@ if __name__ == "__main__":
     plot_s.plot_measurements_mu_noodle(on=T)
     plot_s.plot_measurements_ntrees_noodle(on=T)
     plot_s.plot_measurements_ordp_noodle(on=T)
+    plot_s.plot_entropy(on=T)
     plot_s.histogram_clustering_similarity(
       on=T, c=T, hue_norm=[s.replace("_", "") for s in opt_score]
     )

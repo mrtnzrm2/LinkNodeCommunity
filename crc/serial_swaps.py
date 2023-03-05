@@ -6,7 +6,9 @@ sys.path.append(os.path.dirname(SCRIPT_DIR))
 # Boolean aliases ----
 T = True
 F = False
-# Import libraries ----
+# Standard libs ----
+import numpy as np
+# Personal libs ----
 from modules.hierarmerge import Hierarchy
 from modules.colregion import colregion
 from modules.hierarentropy import Hierarchical_Entropy
@@ -85,20 +87,8 @@ def worker_swaps(
   # Create hrh class ----
   data = HRH(NET_H, L)
   RAND_H = 0
-  for score in opt_score:
-    k, r = get_best_kr(score, NET_H)
-    rlabels = get_labels_from_Z(NET_H.Z, r)
-    # Overlap
-    overlap_labels = NET_H.overlap.labels.loc[
-      NET_H.overlap.score == score
-    ].to_numpy()
-    data.set_overlap_data_one(overlap_labels, score)
-    data.set_nodes_labels(rlabels, score)
-    # Cover
-    data.set_cover_one(NET_H.cover[score], score)
   # RANDOM networks ----
-  from numpy import arange
-  serie = arange(MAXI)
+  serie = np.arange(MAXI)
   print("Create random networks ----")
   for i in serie:
     print("***\tIteration: {}".format(i))

@@ -11,9 +11,10 @@ import itertools
 # Import libraries ---- 
 from modules.hierarmerge import Hierarchy
 from modules.colregion import colregion
-from various.network_tools import *
+from modules.hierarentropy import Hierarchical_Entropy
 from networks.structure import MAC
 from various.data_transformations import maps
+from various.network_tools import *
 # Iterable varaibles ----
 cut = [F]
 topologies = ["MIX", "TARGET", "SOURCE"]
@@ -34,7 +35,6 @@ index = "jacw"
 mode = "ALPHA"
 imputation_method = ""
 opt_score = ["_maxmu", "_X"]
-save_data = T
 version = 220830
 __nodes__ = 57
 __inj__ = 57
@@ -65,32 +65,23 @@ if __name__ == "__main__":
     )
     # Compute Hierarchy ----
     print("Compute Hierarchy")
-    # Save ----
-    if save_data:
-      ## Hierarchy object!! ----
-      H = Hierarchy(
-        NET, NET.A, R, NET.D,
-        __nodes__, linkage, mode, lookup=lookup
-      )
-      ## Compute features ----
-      H.BH_features_cpp()
-      ## Compute lq arbre de merde ----
-      H.la_abre_a_merde_cpp(H.BH[0])
-      # Set labels to network ----
-      L = colregion(NET)
-      H.set_colregion(L)
-      # Save ----
-      save_class(
-        H, NET.pickle_path,
-        "hanalysis_{}".format(H.subfolder),
-        on=F
-      )
-    else:
-      H = read_class(
-        NET.pickle_path,
-        "hanalysis_{}".format(NET.subfolder),
-        on=F
-      )
+    ## Hierarchy object!! ----
+    H = Hierarchy(
+      NET, NET.A, R, NET.D,
+      __nodes__, linkage, mode, lookup=lookup
+    )
+    ## Compute features ----
+    H.BH_features_cpp()
+    ## Compute lq arbre de merde ----
+    H.la_abre_a_merde_cpp(H.BH[0])
+    # Set labels to network ----
+    L = colregion(NET)
+    H.set_colregion(L)
+    # Entropy ----
+    HS = Hierarchical_Entropy(H.Z, H.nodes)
+    HS.Z2dict("short")
+    s, sv, sh = HS.S(HS.tree)
+    H.entropy = [s, sv, sh]
     for score in opt_score:
       print(f"Find node partition using {score}")
       # Get best K and R ----

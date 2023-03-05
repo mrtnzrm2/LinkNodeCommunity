@@ -7,7 +7,7 @@ sys.path.append(os.path.dirname(SCRIPT_DIR))
 T = True
 F = False
 # Standard libraries ----
-from numpy import arange
+import numpy as np
 # Import network libraries ----
 from modules.hierarmerge import Hierarchy
 from modules.colregion import colregion
@@ -85,19 +85,8 @@ def worker_distbase(
   # Create hrh class ----
   data = HRH(NET_H, L)
   RAND_H = 0
-  for score in opt_score:
-    k, r = get_best_kr(score, NET_H)
-    rlabels = get_labels_from_Z(NET_H.Z, r)
-    # Overlap
-    overlap_labels = NET_H.overlap.labels.loc[
-      NET_H.overlap.score == score
-    ].to_numpy()
-    data.set_overlap_data_one(overlap_labels, score)
-    data.set_nodes_labels(rlabels, score)
-    # Cover
-    data.set_cover_one(NET_H.cover[score], score)
   # RANDOM networks ----
-  serie = arange(MAXI)
+  serie = np.arange(MAXI)
   print("Create random networks ----")
   for i in serie:
     print("Iteration: {}".format(i))

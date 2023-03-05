@@ -6,12 +6,12 @@ sys.path.append(os.path.dirname(SCRIPT_DIR))
 # Boolean aliases ----
 T = True
 F = False
-# Import libraries ----
 ## Standard libs ----
+import numpy as np
 import itertools
 ## Personal libs ----
 from plotting_modules.plotting_o_serial_sf import PLOT_OS_SF
-from various.network_tools import *
+from various.network_tools import read_class
 # Declare iter variables ----
 topologies = ["TARGET", "SOURCE", "MIX"]
 indices = ["jacw", "jacp", "cos"]
@@ -34,8 +34,6 @@ run = T
 mapping = "trivial"
 __mode__ = "ALPHA"
 opt_score = ["_maxmu", "_X", "_D"]
-save_data = F
-save_hierarchy = F
 # Start main ----
 if __name__ == "__main__":
   for topology, index, kav, mut, muw in list_of_lists:
@@ -96,4 +94,6 @@ if __name__ == "__main__":
     plot_os.plot_measurements_ordp_noodle(on=T)
     plot_os.ROC_OCN(on=T, hue_order=opt_score)
     plot_os.histogram_overlap_scores(on=T, c=T, hue_order=opt_score)
-    plot_os.histogram_nmi(on=T, c=T, hue_norm=opt_score)
+    plot_os.histogram_clustering_similarity(
+      on=T, c=T, hue_norm=[s.replace("_", "") for s in opt_score]
+    )

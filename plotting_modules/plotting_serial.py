@@ -14,6 +14,7 @@ class PLOT_S:
     self.stats = hrh.stats
     self.NH = hrh.data_homoegeity
     self.measures = hrh.data_measures
+    self.entropy = hrh.entropy
     self.kr = hrh.kr
     self.plot_path = hrh.plot_path
     self.linkage = hrh.linkage
@@ -802,6 +803,44 @@ class PLOT_S:
       )
       plt.close()
     else: print("No order parameter noodle iterations")
+  
+  def plot_entropy(self, s=3, on=True):
+    if on:
+      print("Plot Entropy!!!")
+      fig, ax = plt.subplots(1, 1)
+      sns.scatterplot(
+        data=self.entropy,
+        x = "Sh",
+        y = "Sv",
+        hue = "S",
+        s = s,
+        palette=sns.color_palette("viridis"),
+        ax = ax
+      )
+      sns.scatterplot(
+        data=self.entropy[self.entropy.data == "1"],
+        x = "Sh",
+        y = "Sv",
+        color = "#C70039",
+        s = s/1.5,
+        ax = ax
+      )
+      fig.tight_layout()
+      # Arrange path ----
+      plot_path = join(
+        self.plot_path, "Features"
+      )
+      # Crate path ----
+      Path(
+        plot_path
+      ).mkdir(exist_ok=True, parents=True)
+      # Save plot ----
+      plt.savefig(
+        join(plot_path, "entropy.png"),
+        dpi=300
+      )
+      plt.close()
+    else: print("No stats")
 
 
 

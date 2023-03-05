@@ -29,6 +29,8 @@ class HRH:
     self.cover = {}
     # Overlap ----
     self.data_overlap = pd.DataFrame()
+    # Partition, labels, & covers ----
+    self.set_various_labels(H)
     # Homonegenity ----
     self.data_homoegeity = pd.DataFrame()
     self.set_data_homogeneity_one()
@@ -51,13 +53,24 @@ class HRH:
   def set_subfolder(self, subfolder):
     self.subfolder = subfolder
 
+  def set_various_labels(self, NET_H : Hierarchy):
+    for i in np.arange(NET_H.kr.shape[0]):
+      r = NET_H.kr.R.iloc[i]
+      score = NET_H.kr.score.iloc[i]
+      rlabels = get_labels_from_Z(self.Z, r)
+      overlap_labels = NET_H.overlap.labels.loc[NET_H.overlap.score == score].to_numpy()
+      self.set_overlap_data_one(overlap_labels, score)
+      self.set_nodes_labels(rlabels, score)
+      # Cover
+      self.set_cover_one(NET_H.cover[score], score)
+
   def set_entropy_one(self, s):
     self.entropy = pd.concat(
       [
         self.entropy,
         pd.DataFrame(
           {
-            "S" : [s[0]], "Sv" : [sv[1]], "Sh" : [sh[2]], "data" : ["1"]
+            "S" : [s[0]], "Sv" : [s[1]], "Sh" : [s[2]], "data" : ["1"]
           }
         )
       ], ignore_index=True
