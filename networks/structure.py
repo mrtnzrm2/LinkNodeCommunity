@@ -125,6 +125,8 @@ class MAC(base):
         "../CSV/Regions",
         "Table_areas_regions_09_2019.csv"
       )
+    # entropy ----
+    self.entropy = np.array([0, 0, 0])
     # NOCS labels ----
     self.overlap = np.array(["UNKNOWN"] * self.nodes)
     # NOCS labels and memberships ----

@@ -38,6 +38,9 @@ class HRH:
     # K ,R ----
     self.kr = pd.DataFrame()
     self.set_kr_one(H)
+    # Entropy ----
+    self.entropy = pd.DataFrame()
+    self.set_entropy_one(H.entropy)
     # Set save_class as method ----
     self.save_class = save_class
     self.read_class = read_class
@@ -47,6 +50,30 @@ class HRH:
 
   def set_subfolder(self, subfolder):
     self.subfolder = subfolder
+
+  def set_entropy_one(self, s):
+    self.entropy = pd.concat(
+      [
+        self.entropy,
+        pd.DataFrame(
+          {
+            "S" : [s[0]], "Sv" : [sv[1]], "Sh" : [sh[2]], "data" : ["1"]
+          }
+        )
+      ], ignore_index=True
+    )
+
+  def set_entropy_zero(self, s):
+    self.entropy = pd.concat(
+      [
+        self.entropy,
+        pd.DataFrame(
+          {
+            "S" : [s[0]], "Sv" : [s[1]], "Sh" : [s[2]], "data" : ["0"]
+          }
+        )
+      ], ignore_index=True
+    )
 
   def set_kr_one(self, H : Hierarchy):
     self.kr = pd.concat(

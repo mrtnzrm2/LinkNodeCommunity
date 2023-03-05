@@ -10,12 +10,13 @@ F = False
 from numpy import arange
 # Import network libraries ----
 from modules.hierarmerge import Hierarchy
-from networks_serial.hrh import HRH
-from various.network_tools import *
 from modules.colregion import colregion
+from modules.hierarentropy import Hierarchical_Entropy
+from networks_serial.hrh import HRH
 from networks.structure import MAC
 from networks.distbase import DISTBASE
 from various.data_transformations import maps
+from various.network_tools import *
 
 def worker_distbase(
   number_of_iterations : int, number_of_inj : int,
@@ -138,6 +139,11 @@ def worker_distbase(
     data.set_data_homogeneity_zero(RAND_H.R)
     data.set_data_measurements_zero(RAND_H, i)
     data.set_stats(RAND_H)
+    # Entropy ----
+    HS = Hierarchical_Entropy(RAND_H.Z, RAND_H.nodes)
+    HS.Z2dict("short")
+    s, sv, sh = HS.S(HS.tree)
+    data.set_entropy_zero([s, sv, sh])
     for score in opt_score:
       # Get k from RAND_H ----
       k, r = get_best_kr(score, RAND_H)

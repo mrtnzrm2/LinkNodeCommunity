@@ -9,6 +9,7 @@ F = False
 # Import libraries ----
 from modules.hierarmerge import Hierarchy
 from modules.colregion import colregion
+from modules.hierarentropy import Hierarchical_Entropy
 from networks_serial.hrh import HRH
 from networks.structure import MAC
 from networks.swapnet import SWAPNET
@@ -136,6 +137,11 @@ def worker_swaps(
     data.set_data_homogeneity_zero(RAND_H.R)
     data.set_data_measurements_zero(RAND_H, i)
     data.set_stats(RAND_H)
+    # Entropy ----
+    HS = Hierarchical_Entropy(RAND_H.Z, RAND_H.nodes)
+    HS.Z2dict("short")
+    s, sv, sh = HS.S(HS.tree)
+    data.set_entropy_zero([s, sv, sh])
     for score in opt_score:
       # Get best k, r for given score ----
       k, r = get_best_kr(score, RAND_H)

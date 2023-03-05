@@ -50,6 +50,8 @@ class Hierarchy(Sim):
     self.cover = {}
     # KR ----
     self.kr = pd.DataFrame()
+    # Entropy ----
+    self.entropy = []
 
   def set_kr(self, k, r, score=""):
     self.kr = pd.concat(

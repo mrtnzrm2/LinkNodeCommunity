@@ -9,10 +9,11 @@ F = False
 # Import libraries ----
 from modules.hierarmerge import Hierarchy
 from modules.colregion import colregion
-from networks_serial.hrh import HRH
+from modules.hierarentropy import Hierarchical_Entropy
 from plotting_modules.plotting_serial import PLOT_S
 from plotting_modules.plotting_H import Plot_H
 from plotting_modules.plotting_o_serial import PLOT_OS
+from networks_serial.hrh import HRH
 from networks.structure import MAC
 from networks.swapnet import SWAPNET
 from various.data_transformations import maps
@@ -140,6 +141,11 @@ if __name__ == "__main__":
         data.set_data_homogeneity_zero(RAND_H.R)
         data.set_data_measurements_zero(RAND_H, i)
         data.set_stats(RAND_H)
+        # Entropy ----
+        HS = Hierarchical_Entropy(RAND_H.Z, RAND_H.nodes)
+        HS.Z2dict("short")
+        s, sv, sh = HS.S(HS.tree)
+        data.set_entropy_zero([s, sv, sh])
         save_class(
           RAND_H, RAND.pickle_path,
           "hanalysis_{}".format(RAND_H.subfolder),

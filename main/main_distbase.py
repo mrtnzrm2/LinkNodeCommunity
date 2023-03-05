@@ -9,12 +9,13 @@ F = False
 #Import libraries ----
 from modules.hierarmerge import Hierarchy
 from modules.colregion import colregion
-from various.network_tools import *
+from modules.hierarentropy import Hierarchical_Entropy
 from plotting_modules.plotting_H import Plot_H
 from plotting_modules.plotting_N import Plot_N
-from networks.distbase import DISTBASE
 from various.data_transformations import maps
+from networks.distbase import DISTBASE
 from networks.structure import MAC
+from various.network_tools import *
 # Declare global variables ----
 __iter__ = 0
 linkage = "single"
@@ -25,7 +26,7 @@ cut = F
 distance = "MAP3D"
 nature = "original"
 __mode__ = "ALPHA"
-topology = "SOURCE"
+topology = "MIX"
 mapping = "R2"
 index  = "jacw"
 imputation_method = ""
@@ -117,7 +118,9 @@ if __name__ == "__main__":
       "hanalysis_{}".format(NET.subfolder),
     )
   # Entropy ----
-  hierarchical_entropy(H.Z, H.nodes, on=T)
+  HS = Hierarchical_Entropy(H.Z, H.nodes)
+  HS.Z2dict("short")
+  s, sv, sh = HS.S(HS.tree)
   # Plot H ----
   plot_h = Plot_H(NET, H)
   plot_h.Mu_plotly(on=F)

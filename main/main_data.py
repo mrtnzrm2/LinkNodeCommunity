@@ -89,6 +89,7 @@ if __name__ == "__main__":
   HS = Hierarchical_Entropy(H.Z, H.nodes)
   HS.Z2dict("short")
   s, sv, sh = HS.S(HS.tree)
+  H.entropy = [s, sv, sh]
   # Picasso ----
   plot_h = Plot_H(NET, H)
   plot_h.plot_measurements_D(on=F)
@@ -117,7 +118,7 @@ if __name__ == "__main__":
     H.set_cover(cover, score)
     # Plot H ----
     plot_h.core_dendrogram([r], on=F) #
-    plot_h.lcmap_pure([k], labels = rlabels, on=F)                         #
+    plot_h.lcmap_pure([k], labels = rlabels, on=F) #
     plot_h.heatmap_pure(r, on=F, labels = rlabels) #
     plot_h.heatmap_dendro(r, on=F) #
     plot_h.lcmap_dendro([k], on=F) #
@@ -129,5 +130,4 @@ if __name__ == "__main__":
     "hanalysis_{}".format(H.subfolder)
   )
   print("End!")
-
   # #@@ Todo:
