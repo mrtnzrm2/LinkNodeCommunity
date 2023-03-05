@@ -6,10 +6,10 @@
 #include <numeric> 
 #include <cmath>
 #include "hclust-cpp/fastcluster.h"
-#include <pybind11/stl.h>
-#include <pybind11/pybind11.h>
+// #include <pybind11/stl.h>
+// #include <pybind11/pybind11.h>
 
-namespace py = pybind11;
+// namespace py = pybind11;
 
 double mean(std::vector<double> &v) {
   if (v.size() == 0) {
@@ -367,6 +367,29 @@ double Xm(std::vector<T> & v) {
   return xm2 / xm;
 }
 
+class process_hclust {
+  private:
+    // 0: K
+    std::vector<int> K;
+    // 1: Height
+    std::vector<double> Height;
+    // 3: NEC
+    std::vector<int> NEC;
+    // 4: mu
+    std::vector<double> MU;
+    // 5: D
+    std::vector<double> D;
+    // 6: ntrees
+    std::vector<int> ntrees;
+    // 7: Percolation susceptability (X)
+    std::vector<double> X;
+    // 8: Order parameters m(t)
+    std::vector<int> m;
+    // 9: Susceptibility xm(t)
+    std::vector<double> XM;
+
+};
+
 std::vector<std::vector<double> > process_hclust_fast(
   int& n,
   std::vector<std::vector<double> >& distmat,
@@ -515,51 +538,51 @@ std::vector<std::vector<double> > process_hclust_fast(
   return features_main;
 }
 
-int get_k_bad(
-  int& n,
-  std::vector<std::vector<double> >& distmat,
-  int& linkage
-) {
-   // From distance matrix to upper triangular array
-  double* tri_distmat = new double[(n*(n-1))/2];
-  for (int i = 0, k = 0; i < n; i++) {
-    for (int j = i+1; j < n; j++) {
-      tri_distmat[k] = distmat[i][j];
-      k++;
-    }
-  }
-  // hclust
-  int* merge = new int[2*(n-1)];
-  double* height = new double[n-1];
-  hclust_fast(
-    n,
-    tri_distmat,
-    linkage, // linkage method
-    merge,
-    height
-  );
-  // simplify height to k
-  std::vector<double> k;
-  std::vector<double> sim_height;
-  int* K = new int;
-  *K = 0;
-  k = simplify_height_to_k_start(n, height, sim_height, K);
-  return *K;
-}
+// int get_k_bad(
+//   int& n,
+//   std::vector<std::vector<double> >& distmat,
+//   int& linkage
+// ) {
+//    // From distance matrix to upper triangular array
+//   double* tri_distmat = new double[(n*(n-1))/2];
+//   for (int i = 0, k = 0; i < n; i++) {
+//     for (int j = i+1; j < n; j++) {
+//       tri_distmat[k] = distmat[i][j];
+//       k++;
+//     }
+//   }
+//   // hclust
+//   int* merge = new int[2*(n-1)];
+//   double* height = new double[n-1];
+//   hclust_fast(
+//     n,
+//     tri_distmat,
+//     linkage, // linkage method
+//     merge,
+//     height
+//   );
+//   // simplify height to k
+//   std::vector<double> k;
+//   std::vector<double> sim_height;
+//   int* K = new int;
+//   *K = 0;
+//   k = simplify_height_to_k_start(n, height, sim_height, K);
+//   return *K;
+// }
 
-PYBIND11_MODULE(process_hclust, m) {
+// PYBIND11_MODULE(process_hclust, m) {
 
-  m.doc() = "pybind11 process hclust";
+//   m.doc() = "pybind11 process hclust";
 
-  m.def(
-    "process_hclust_fast",
-    &process_hclust_fast,
-    py::return_value_policy::reference_internal
-  );
+//   m.def(
+//     "process_hclust_fast",
+//     &process_hclust_fast,
+//     py::return_value_policy::reference_internal
+//   );
 
-  m.def(
-    "get_k_bad",
-    &get_k_bad,
-    py::return_value_policy::reference_internal
-  );
-}
+//   // m.def(
+//   //   "get_k_bad",
+//   //   &get_k_bad,
+//   //   py::return_value_policy::reference_internal
+//   // );
+// }
