@@ -820,7 +820,7 @@ class PLOT_S:
         x = "Sh",
         y = "Sv",
         color = "#C70039",
-        s = s/1.5,
+        s = s,
         ax = ax
       )
       fig.tight_layout()
