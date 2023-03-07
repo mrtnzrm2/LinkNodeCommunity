@@ -30,7 +30,7 @@ topology = "MIX"
 mapping = "R2"
 index  = "jacw"
 imputation_method = ""
-opt_score = ["_maxmu", "_X", "_D"]
+opt_score = ["_maxmu", "_X"]
 save_datas = T
 # Declare global variables DISTBASE ----
 __model__ = "DEN"

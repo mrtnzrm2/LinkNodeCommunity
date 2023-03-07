@@ -126,29 +126,26 @@ class Hierarchy(Sim):
           )
         )
         BH = self.H_features_cpp(linkage, alpha, beta, cut=self.cut)
-        BH_K = np.array(BH.get_K())
-        BH_H = np.array(BH.get_Height())
-        BH_NEC = np.array(BH.get_NEC())
-        BH_MU = np.array(BH.get_MU())
-        BH_D = np.array(BH.get_D())
-        BH_ntrees = np.array(BH.get_ntrees())
-        BH_X = np.array(BH.get_X())
-        BH_OrP = np.array(BH.get_OrP())
-        BH_XM = np.array(BH.get_XM())
+        BH = np.array(
+          [
+            BH.get_K(), BH.get_Height(), BH.get_NEC(), BH.get_MU(), BH.get_D(),
+            BH.get_ntrees(), BH.get_X(), BH.get_OrP(), BH.get_XM()
+          ]
+        )
         self.BH.append(
           pd.DataFrame(
             {
-              "alpha" : [alpha] * len(BH_K),
-              "beta" : [np.round(beta, 4)] * len(BH_K),
-              "K" : BH_K,
-              "height" : BH_H,
-              "NEC" : BH_NEC,
-              "mu" : BH_MU,
-              "D" : BH_D,
-              "ntrees": BH_ntrees,
-              "X" : BH_X,
-              "m" : BH_OrP,
-              "xm" : BH_XM
+              "alpha" : [alpha] * BH.shape[1],
+              "beta" : [np.round(beta, 4)] * BH.shape[1],
+              "K" : BH[0, :],
+              "height" : BH[1, :],
+              "NEC" : BH[2, :],
+              "mu" : BH[3, :],
+              "D" : BH[4, :],
+              "ntrees": BH[5, :],
+              "X" : BH[6, :],
+              "m" : BH[7, :],
+              "xm" : BH[8, :]
             }
           )
         )
