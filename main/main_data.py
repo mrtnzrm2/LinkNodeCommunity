@@ -88,8 +88,8 @@ if __name__ == "__main__":
   # Entropy ----
   HS = Hierarchical_Entropy(H.Z, H.nodes)
   HS.Z2dict("short")
-  s, sv, sh = HS.S(HS.tree)
-  H.entropy = [s, sv, sh]
+  _, sv, sh = HS.S(HS.tree)
+  H.entropy = [sv, sh]
   # Picasso ----
   plot_h = Plot_H(NET, H)
   plot_h.plot_measurements_D(on=F)

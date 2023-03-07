@@ -79,9 +79,9 @@ if __name__ == "__main__":
     H.set_colregion(L)
     # Entropy ----
     HS = Hierarchical_Entropy(H.Z, H.nodes)
-    HS.Z2dict("long")
-    s, sv, sh = HS.S(HS.tree)
-    H.entropy = [s, sv, sh]
+    HS.Z2dict("short")
+    _, sv, sh = HS.S(HS.tree)
+    H.entropy = [sv, sh]
     for score in opt_score:
       print(f"Find node partition using {score}")
       # Get best K and R ----

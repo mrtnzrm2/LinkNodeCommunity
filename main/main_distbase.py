@@ -120,7 +120,7 @@ if __name__ == "__main__":
   # Entropy ----
   HS = Hierarchical_Entropy(H.Z, H.nodes)
   HS.Z2dict("short")
-  s, sv, sh = HS.S(HS.tree)
+  _, sv, sh = HS.S(HS.tree)
   # Plot H ----
   plot_h = Plot_H(NET, H)
   plot_h.Mu_plotly(on=F)

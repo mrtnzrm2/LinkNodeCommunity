@@ -133,8 +133,8 @@ if __name__ == "__main__":
       # Entropy ----
       HS = Hierarchical_Entropy(RAND_H.Z, RAND_H.nodes)
       HS.Z2dict("short")
-      s, sv, sh = HS.S(HS.tree)
-      data.set_entropy_zero([s, sv, sh])
+      _, sv, sh = HS.S(HS.tree)
+      data.set_entropy_zero([sv, sh])
       # Plot ----
       plot_h = Plot_H(RAND, RAND_H)
       plot_h.Mu_plotly(on=F)

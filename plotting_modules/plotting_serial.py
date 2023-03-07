@@ -812,9 +812,7 @@ class PLOT_S:
         data=self.entropy,
         x = "Sh",
         y = "Sv",
-        hue = "S",
         s = s,
-        palette=sns.color_palette("viridis"),
         ax = ax
       )
       sns.scatterplot(

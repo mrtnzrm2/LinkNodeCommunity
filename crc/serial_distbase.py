@@ -131,8 +131,8 @@ def worker_distbase(
     # Entropy ----
     HS = Hierarchical_Entropy(RAND_H.Z, RAND_H.nodes)
     HS.Z2dict("short")
-    s, sv, sh = HS.S(HS.tree)
-    data.set_entropy_zero([s, sv, sh])
+    _, sv, sh = HS.S(HS.tree)
+    data.set_entropy_zero([sv, sh])
     for score in opt_score:
       # Get k from RAND_H ----
       k, r = get_best_kr(score, RAND_H)

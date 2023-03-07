@@ -23,7 +23,6 @@ class Hierarchical_Entropy:
       self.ML(tree[key], ml)
 
   def SH(self, tree : dict, Ml : dict, Sh):
-    # print(Sh / 16)
     for key in tree.keys():
       if len(tree[key]) == 0: continue
       i = int(key.split("_")[0][1:])
@@ -34,7 +33,6 @@ class Hierarchical_Entropy:
   def SV(self, Ml : dict, M, Sv):
     for key in Ml.keys():
       Sv -= Ml[key] * np.log(Ml[key] / M)
-      # print(Sv /16) 
 
   def S(self, a):
     M = np.array([0])
