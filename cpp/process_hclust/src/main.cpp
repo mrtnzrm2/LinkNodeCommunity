@@ -6,10 +6,11 @@
 #include <numeric> 
 #include <cmath>
 #include "hclust-cpp/fastcluster.h"
-// #include <pybind11/stl.h>
-// #include <pybind11/pybind11.h>
+#include "entropy_tools.cpp"
 
-// namespace py = pybind11;
+#include <pybind11/stl.h>
+#include <pybind11/pybind11.h>
+namespace py = pybind11;
 
 double mean(std::vector<double> &v) {
   if (v.size() == 0) {
@@ -104,8 +105,8 @@ std::vector<size_t> sort_indexes(const std::vector<T> &v) {
 }
 
 double get_muscore(
-  std::vector<int> lc, double &ntrees, double &k, int &linkage,
-  int& size, int& M, int& n, double& beta
+  std::vector<int> lc, int &ntrees, double &k, int &linkage,
+  int& size, int& M, int& alpha, double& beta
 ) {
   // Order lc ----
   vec_times_k(lc, -1);
@@ -113,9 +114,9 @@ double get_muscore(
   vec_times_k(lc, -1);
   double mu = 0;
   double D;
-  if (size >= n) {
-    for (int i=0; i < n - 1; i++) {
-      for (int j=(i + 1); j < n; j++) {
+  if (size >= alpha) {
+    for (int i=0; i < alpha - 1; i++) {
+      for (int j=(i + 1); j < alpha; j++) {
         D = static_cast<double>(lc[j]) / static_cast<double>(lc[i]) ;
         if (D > beta)
           mu += D * (static_cast<double>(lc[i] + lc[j]) / static_cast<double>(2 * M));
@@ -123,7 +124,7 @@ double get_muscore(
           mu -= D * (static_cast<double>(lc[i] + lc[j]) / static_cast<double>(2 * M));
       }
     }
-    mu /= 0.5 * n * (n - 1);
+    mu /= 0.5 * alpha * (alpha - 1);
   } else {
     for (int i=0; i < size - 1; i++) {
       for (int j=(i + 1); j < size; j++) {
@@ -270,30 +271,6 @@ void get_dc(
     static_cast<double>(pow(N - 1, 2));
 }
 
-int get_nac(
-  std::vector<int> &source,
-  std::vector<int> &target,
-  int* labels, int& lc_id, int& n
-) {
-  int N;
-  std::vector<int> nodes_src;
-  std::vector<int> nodes_tgt;
-  for (int i = 0; i < n; i++) {
-    if (labels[i] == lc_id) {
-      if (source[i] > target[i]) nodes_src.push_back(source[i]);
-      if (source[i] < target[i]) nodes_tgt.push_back(target[i]);
-    }
-  }
-  // uniques ----
-  unique(nodes_src);
-  unique(nodes_tgt);
-  // intersect
-  std::vector<int> inter;
-  intersection(nodes_src, nodes_tgt, inter);
-  N = inter.size();
-  return N;
-}
-
 double get_percolation_susceptability(
   std::vector<int> lc_sizes,
   std::vector<int> lc_number_of_nodes,
@@ -367,114 +344,268 @@ double Xm(std::vector<T> & v) {
   return xm2 / xm;
 }
 
-class process_hclust {
+class ph {
   private:
-    // 0: K
+
     std::vector<int> K;
-    // 1: Height
     std::vector<double> Height;
-    // 3: NEC
     std::vector<int> NEC;
-    // 4: mu
     std::vector<double> MU;
-    // 5: D
     std::vector<double> D;
-    // 6: ntrees
     std::vector<int> ntrees;
-    // 7: Percolation susceptability (X)
     std::vector<double> X;
-    // 8: Order parameters m(t)
-    std::vector<int> m;
-    // 9: Susceptibility xm(t)
+    std::vector<double> OrP;
     std::vector<double> XM;
 
+    int number_of_elements;
+    std::vector<std::vector<double> > distane_matrix;
+    std::vector<int> source_vertices;
+    std::vector<int> target_vertices;
+    int total_nodes;
+    int Linkage;
+    bool CUT;
+    int ALPHA;
+    double BETA;
+
+  public:
+    ph(
+      const int n,
+      std::vector<std::vector<double> > distmat,
+      std::vector<int> source,
+      std::vector<int> target,
+      const int nodes,
+      const int linkage,
+      const bool cut,
+      const int alpha,
+      const double beta
+    );
+    ~ph(){};
+
+    void vite();
+
+    void arbre();
+
+    template <typename T>
+    void expand_vector(std::vector<T>& v, int& N);
+    template <typename T>
+    void reduce_vector_one(std::vector<T>& v);
+
+    std::vector<int> get_K();
+    std::vector<double> get_Height();
+    std::vector<int> get_NEC();
+    std::vector<double> get_MU();
+    std::vector<double> get_D();
+    std::vector<int> get_ntrees();
+    std::vector<double> get_X();
+    std::vector<double> get_OrP();
+    std::vector<double> get_XM();
 };
 
-std::vector<std::vector<double> > process_hclust_fast(
-  int& n,
-  std::vector<std::vector<double> >& distmat,
-  std::vector<int>& source,
-  std::vector<int>& target,
-  int& nodes,
-  int& linkage,
-  bool& cut,
-  int& nss,
-  double& beta
-)
-{
+ph::ph(
+  const int n,
+  std::vector<std::vector<double> > distmat,
+  std::vector<int> source,
+  std::vector<int> target,
+  const int nodes,
+  const int linkage,
+  const bool cut,
+  const int alpha,
+  const double beta
+) {
+  number_of_elements = n;
+  distane_matrix = distmat;
+  source_vertices = source;
+  target_vertices = target;
+  total_nodes = nodes;
+  Linkage = linkage;
+  CUT = cut;
+  ALPHA = alpha;
+  BETA = beta;
+}
+
+template <typename T>
+void ph::expand_vector(std::vector<T>& v, int& N) {
+  v = std::vector<T>(N, 0);
+}
+
+template <typename T>
+void ph::reduce_vector_one(std::vector<T> &v) {
+  std::vector<T> proxy(v.size() - 1, 0);
+  for (int i=1; i < v.size(); i++)
+    proxy[i-1] = v[i];
+  v = proxy;
+}
+
+std::vector<int> ph::get_K() {
+  return K;
+}
+std::vector<double> ph::get_Height() {
+  return Height;
+}
+std::vector<int> ph::get_NEC() {
+  return NEC;
+}
+std::vector<double> ph::get_MU() {
+  return MU;
+}
+std::vector<double> ph::get_D() {
+  return D;
+}
+std::vector<int> ph::get_ntrees() {
+  return ntrees;
+}
+std::vector<double> ph::get_X() {
+  return X;
+}
+std::vector<double> ph::get_OrP() {
+  return OrP;
+}
+std::vector<double> ph::get_XM() {
+  return XM;
+}
+
+void ph::arbre() {
+  std::string root = "L00";
+  std::string t_long = "long";
+  std::vector<double> Sh;
+  std::vector<double> Sv;
+  expand_vector(K, number_of_elements);
+  expand_vector(Height, number_of_elements);
+  expand_vector(D, number_of_elements);
+  expand_vector(MU, number_of_elements);
+  expand_vector(Sh, number_of_elements);
+  expand_vector(Sv, number_of_elements);
+  expand_vector(NEC, number_of_elements);
+  expand_vector(ntrees, number_of_elements);
+  expand_vector(X, number_of_elements);
+  expand_vector(XM, number_of_elements);
+  expand_vector(OrP, number_of_elements);
+  std::vector<std::vector<int> > link_communities(number_of_elements, std::vector<int>(number_of_elements, 0));
+  // Get hierarchy!! ----
+  double* tri_distmat = new double[(number_of_elements * (number_of_elements - 1)) / 2];
+  int* merge = new int[2 * (number_of_elements - 1)];
+  double* height = new double[number_of_elements-1];
+  int* labels = new int[number_of_elements];
+  for (int i = 0, k = 0; i < number_of_elements; i++) {
+    for (int j = i +1 ; j < number_of_elements; j++) {
+      tri_distmat[k] = distane_matrix[i][j];
+      k++;
+    }
+  }
+  hclust_fast(
+    number_of_elements,
+    tri_distmat,
+    Linkage,
+    merge,
+    height
+  );
+  // Get link community matrix ----
+  for (int i=1; i <= number_of_elements - 1; i++) {
+    cutree_k(number_of_elements, merge, i, labels);
+    for (int j=0; j < number_of_elements; j++) link_communities[i-1][j] = labels[j];
+    K[number_of_elements - i] = i; 
+    Height[i] = height[i-1];
+    link_communities[number_of_elements - 1][i-1] = i-1;
+  }
+
+  std::map<int, level_properties> chain;
+  std::cout << "Starting Z2dict\n";
+  std::map<std::string, vertex_properties> tree_long = Z2dict(link_communities, source_vertices, target_vertices, t_long);
+  std::cout << "Level information\n";
+  level_information(tree_long, root, chain);
+  std::cout << "Vertex entropy\n";
+  vertex_entropy(tree_long, chain, root, number_of_elements, Sh, D, X, NEC, ntrees);
+  std::cout << "Level entropy\n";
+  level_entropy(tree_long, chain, root, number_of_elements, Sv, XM, OrP);
+
+  for (int i=0; i < number_of_elements; i++) {
+    MU[i] = Sv[i] + Sh[i] + Sv[0];
+  }
+
+  reduce_vector_one(D);
+  reduce_vector_one(MU);
+  reduce_vector_one(X);
+  reduce_vector_one(XM);
+  reduce_vector_one(OrP);
+  reduce_vector_one(NEC);
+  reduce_vector_one(ntrees);
+  reduce_vector_one(K);
+  reduce_vector_one(Height);
+
+  // Delete pointers
+  delete[] labels;
+  delete[] merge;
+  delete[] height;
+  delete[] tri_distmat;
+}
+
+void ph::vite() {
   // Various variables ----
-  int nac, number_lcs, nec;
+  int nt, number_lcs, nec;
   double dc;
   // Condense distance matrix ----
-  double* tri_distmat = new double[(n*(n-1))/2];
+  double* tri_distmat = new double[(number_of_elements * (number_of_elements - 1)) / 2];
   // hclust arrays ----
-  int* merge = new int[2*(n-1)];
-  double* height = new double[n-1];
+  int* merge = new int[2 * (number_of_elements - 1)];
+  double* height = new double[number_of_elements-1];
   // Reduced K and heigths ----
   std::vector<double> sim_k, sim_height;
   // Dc vector ----
   std::vector<double> dcv;
   // Effective number of merging steps ----
-  int* K = new int;
-  *K = 0;
+  int* kk = new int;
+  *kk = 0;
   // labels pointer ----
-  int* labels = new int[n];
+  int* labels = new int[number_of_elements];
   /////////////////////
   // Get condense matrix ----
-  for (int i = 0, k = 0; i < n; i++) {
-    for (int j = i+1; j < n; j++) {
-      tri_distmat[k] = distmat[i][j];
+  for (int i = 0, k = 0; i < number_of_elements; i++) {
+    for (int j = i +1 ; j < number_of_elements; j++) {
+      tri_distmat[k] = distane_matrix[i][j];
       k++;
     }
   }
   // Get hierarchy!! ----
   hclust_fast(
-    n,
+    number_of_elements,
     tri_distmat,
-    linkage, // linkage method
+    Linkage, // linkage method
     merge,
     height
   );
-  if (cut) {
+  if (CUT) {
     // Delete duplicated heights preserving the
     // first K and height ----
-    sim_k = simplify_height_to_k_start(n, height, sim_height, K);
+    sim_k = simplify_height_to_k_start(number_of_elements, height, sim_height, kk);
   } else {
     // Keep complete the all the steps ----
-    sim_k = complete_height_to_k(n, height, sim_height, K);
+    sim_k = complete_height_to_k(number_of_elements, height, sim_height, kk);
   }
-  // Matrix for hierarchical features ----
-  // 0: K
-  // 1: Height
-  // 2: NAC
-  // 3: NEC
-  // 4: mu
-  // 5: D
-  // 6: ntrees
-  // 7: Percolation susceptability (X)
-  // 8: Order parameters m(t)
-  // 9: Susceptibility xm(t)
-  std::vector<std::vector<double> > features_main(
-    *K, std::vector<double>(10, 0)
-  );
+  expand_vector(K, *kk);
+  expand_vector(Height, *kk);
+  expand_vector(D, *kk);
+  expand_vector(MU, *kk);
+  expand_vector(NEC, *kk);
+  expand_vector(ntrees, *kk);
+  expand_vector(X, *kk);
+  expand_vector(XM, *kk);
+  expand_vector(OrP, *kk);
   // THE GAME STARTS
-  for (int i=0; i < *K; i++) {
+  for (int i=0; i < *kk; i++) {
     // Assign height ----
     // K
-    features_main[i][0] = sim_k[i];
+    K[i] = sim_k[i];
     // Height
-    features_main[i][1] = sim_height[i];
-    // NAC
-    features_main[i][2] = nodes;
+    Height[i] = sim_height[i];
     // Cut tree at given sim_k and get
     // memberships ----
     cutree_k(
-      n,
+      number_of_elements,
       merge,
       sim_k[i],
       labels
     );
-    std::vector<int> unique_labels(labels, labels + n);
+    std::vector<int> unique_labels(labels, labels + number_of_elements);
     unique(unique_labels);
     number_lcs = unique_labels.size();
     // Get LCs sizes in order
@@ -483,106 +614,79 @@ std::vector<std::vector<double> > process_hclust_fast(
     get_sizes(
       labels,
       lc_size, node_size,
-      unique_labels, source, target, n
+      unique_labels, source_vertices, target_vertices, number_of_elements
     );
-    features_main[i][8] = order_parameter(lc_size, n);
-    features_main[i][9] = Xm(lc_size);
     nec = 0;
+    nt = 0;
     // Loop over link communities ----
     for (int j=0; j < number_lcs; j++) {
       // Check if the community is a tree ----
       if (lc_size[j] > 1 && node_size[j] > 2) {
-        nac = get_nac(
-          source, target,
-          labels, unique_labels[j],
-          n
-        );
         get_dc(
-          source, target, labels,
-          unique_labels[j], n, dc
+          source_vertices, target_vertices, labels,
+          unique_labels[j], number_of_elements, dc
         );
-
-        dcv.push_back(dc * lc_size[j] / n);
-        // NAC
-        if (nac >= 1) features_main[i][2] -= (nac - 1);
+        dcv.push_back(dc * lc_size[j] / number_of_elements);
         // ntrees
-        if (dc <= 0) features_main[i][6]++;
+        if (dc <= 0) nt++;
         nec++;
       } else {
         dcv.push_back(0);
       }
     }
+    // Number of trees
+    ntrees[i] = nt;
     // Mu-score
-    features_main[i][4] = get_muscore(
-      lc_size, features_main[i][6], sim_k[i], linkage,
-      number_lcs, n, nss, // ss average range
-      beta
+    MU[i] = get_muscore(
+      lc_size, nt, sim_k[i], Linkage,
+      number_lcs, number_of_elements, ALPHA, BETA
     );
     // NEC
-    features_main[i][3] = nec;
+    NEC[i] = nec;
     // D
-    features_main[i][5] = sum(dcv);
+    D[i] = sum(dcv);
+    // Order parameter
+    OrP[i] = order_parameter(lc_size, number_of_elements);
+    // XM
+    XM[i] = Xm(lc_size);
     // X
-    features_main[i][7] = get_percolation_susceptability(
+    X[i] = get_percolation_susceptability(
       lc_size, node_size, number_lcs
     );
     dcv.clear();
   }
   // Delete phase
   delete[] labels;
-  delete K;
+  delete kk;
   delete[] merge;
   delete[] height;
   delete[] tri_distmat;
-  // Return
-  return features_main;
 }
 
-// int get_k_bad(
-//   int& n,
-//   std::vector<std::vector<double> >& distmat,
-//   int& linkage
-// ) {
-//    // From distance matrix to upper triangular array
-//   double* tri_distmat = new double[(n*(n-1))/2];
-//   for (int i = 0, k = 0; i < n; i++) {
-//     for (int j = i+1; j < n; j++) {
-//       tri_distmat[k] = distmat[i][j];
-//       k++;
-//     }
-//   }
-//   // hclust
-//   int* merge = new int[2*(n-1)];
-//   double* height = new double[n-1];
-//   hclust_fast(
-//     n,
-//     tri_distmat,
-//     linkage, // linkage method
-//     merge,
-//     height
-//   );
-//   // simplify height to k
-//   std::vector<double> k;
-//   std::vector<double> sim_height;
-//   int* K = new int;
-//   *K = 0;
-//   k = simplify_height_to_k_start(n, height, sim_height, K);
-//   return *K;
-// }
-
-// PYBIND11_MODULE(process_hclust, m) {
-
-//   m.doc() = "pybind11 process hclust";
-
-//   m.def(
-//     "process_hclust_fast",
-//     &process_hclust_fast,
-//     py::return_value_policy::reference_internal
-//   );
-
-//   // m.def(
-//   //   "get_k_bad",
-//   //   &get_k_bad,
-//   //   py::return_value_policy::reference_internal
-//   // );
-// }
+PYBIND11_MODULE(process_hclust, m) {
+    py::class_<ph>(m, "ph")
+        .def(
+          py::init<
+            const int,
+            std::vector<std::vector<double> >,
+            std::vector<int>,
+            std::vector<int>,
+            const int,
+            const int,
+            const bool,
+            const int,
+            const double
+          >()
+        )
+        .def("vite", &ph::vite)
+        .def("arbre", &ph::arbre)
+        .def("get_K", &ph::get_K)
+				.def("get_Height", &ph::get_Height)
+				.def("get_NEC", &ph::get_NEC)
+        .def("get_MU", &ph::get_MU)
+				.def("get_D", &ph::get_D)
+			  .def("get_ntrees", &ph::get_ntrees)
+        .def("get_X", &ph::get_X)
+        .def("get_OrP", &ph::get_OrP)
+			  .def("get_XM", &ph::get_XM);
+}

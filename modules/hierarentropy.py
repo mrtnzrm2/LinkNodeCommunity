@@ -23,9 +23,10 @@ class Hierarchical_Entropy:
       self.ML(tree[key], ml)
 
   def SH(self, tree : dict, Ml : dict, Sh):
+    # print(Sh / 16)
     for key in tree.keys():
       if len(tree[key]) == 0: continue
-      i = int(key[1])
+      i = int(key.split("_")[0][1:])
       Mul = len(tree[key])
       Sh -= Mul * np.log(Mul / Ml[f"L{i+1}"])
       self.SH(tree[key], Ml, Sh)
@@ -33,6 +34,7 @@ class Hierarchical_Entropy:
   def SV(self, Ml : dict, M, Sv):
     for key in Ml.keys():
       Sv -= Ml[key] * np.log(Ml[key] / M)
+      # print(Sv /16) 
 
   def S(self, a):
     M = np.array([0])
@@ -83,5 +85,5 @@ class Hierarchical_Entropy:
     if Z2 == "short":
       self.Z2dict_short(self.A, self.tree, "L00_0", nodes, L, tL)
     elif Z2 == "long":
-      self.Z2dict_short(self.A, self.tree, "L00_0", nodes, L, tL)
+      self.Z2dict_long(self.A, self.tree, "L00_0", nodes, L, tL)
     else: raise ValueError("Only Z2 short or long")

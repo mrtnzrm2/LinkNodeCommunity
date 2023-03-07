@@ -6,7 +6,9 @@ sys.path.append(os.path.dirname(SCRIPT_DIR))
 # Boolean aliases ----
 T = True
 F = False
-# Import libraries ----
+# Standard libs ----
+import numpy as np
+# Personal libs ----
 from modules.hierarmerge import Hierarchy
 from modules.colregion import colregion
 from modules.hierarentropy import Hierarchical_Entropy
@@ -88,8 +90,7 @@ if __name__ == "__main__":
   data = HRH(NET_H, L)
   RAND_H = 0
   # RANDOM networks ----
-  from numpy import arange
-  serie = arange(MAXI)
+  serie = np.arange(MAXI)
   print("Create random networks ----")
   if save_data:  
     for i in serie:

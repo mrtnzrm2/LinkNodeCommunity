@@ -5,7 +5,7 @@ import pandas as pd
 from various.network_tools import *
 from modules.colregion import colregion
 from modules.simanalysis import Sim
-import process_hclust as ph
+from process_hclust import ph
 from la_arbre_a_merde import noeud_arbre
 
 class Hierarchy(Sim):
@@ -76,24 +76,6 @@ class Hierarchy(Sim):
       self.linkage
     )
 
-  def H_features_cpp(self, linkage, alpha, beta, cut=False):
-    # Get network dataframe ----
-    dA =  self.dA.copy()
-    # Run process_hclust_fast.cpp ----
-    features = ph.process_hclust_fast(
-      self.leaves,
-      self.dist_mat,
-      dA["source"].to_numpy(),
-      dA["target"].to_numpy(),
-      self.nodes,
-      linkage,
-      cut,
-      alpha,
-      beta
-    )
-    features = np.array(features)
-    return features
-
   def area(self, x, y):
     x_1 = x[1:]
     x_0 = x[:(len(x)-1)]
@@ -104,6 +86,24 @@ class Hierarchy(Sim):
     a = np.nansum(v * h)
     a = np.abs(a)
     return a
+  
+  def H_features_cpp(self, linkage, alpha, beta, cut=False):
+    # Get network dataframe ----
+    dA =  self.dA.copy()
+    # Run process_hclust_fast.cpp ----
+    features = ph(
+      self.leaves,
+      self.dist_mat,
+      dA["source"].to_numpy(),
+      dA["target"].to_numpy(),
+      self.nodes,
+      linkage,
+      cut,
+      alpha,
+      beta
+    )
+    features.vite()
+    return features
 
   def BH_features_cpp(self):
     print("Computing features over mu-score space")
@@ -125,25 +125,30 @@ class Hierarchy(Sim):
             alpha, beta
           )
         )
-        BH = self.H_features_cpp(
-          linkage, alpha, beta, cut=self.cut
-        )[:, :10]
-        #  mu = BH[:, 4] / self.area(BH[:, 0], BH[:, 4])
+        BH = self.H_features_cpp(linkage, alpha, beta, cut=self.cut)
+        BH_K = np.array(BH.get_K())
+        BH_H = np.array(BH.get_Height())
+        BH_NEC = np.array(BH.get_NEC())
+        BH_MU = np.array(BH.get_MU())
+        BH_D = np.array(BH.get_D())
+        BH_ntrees = np.array(BH.get_ntrees())
+        BH_X = np.array(BH.get_X())
+        BH_OrP = np.array(BH.get_OrP())
+        BH_XM = np.array(BH.get_XM())
         self.BH.append(
           pd.DataFrame(
             {
-              "alpha" : [alpha] * BH.shape[0],
-              "beta" : [np.round(beta, 4)] * BH.shape[0],
-              "K" : BH[:, 0],
-              "height" : BH[:, 1],
-              "NAC" : BH[:, 2],
-              "NEC" : BH[:, 3],
-              "mu" : BH[:, 4],
-              "D" : BH[:, 5],
-              "ntrees": BH[:, 6],
-              "X" : BH[:, 7],
-              "m" : BH[:, 8],
-              "xm" : BH[:, 9]
+              "alpha" : [alpha] * len(BH_K),
+              "beta" : [np.round(beta, 4)] * len(BH_K),
+              "K" : BH_K,
+              "height" : BH_H,
+              "NEC" : BH_NEC,
+              "mu" : BH_MU,
+              "D" : BH_D,
+              "ntrees": BH_ntrees,
+              "X" : BH_X,
+              "m" : BH_OrP,
+              "xm" : BH_XM
             }
           )
         )
