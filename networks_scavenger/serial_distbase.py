@@ -22,7 +22,7 @@ list_of_lists = itertools.product(
 )
 list_of_lists = np.array(list(list_of_lists))
 # Declare global variables NET ----
-MAXI = 503
+MAXI = 504
 linkage = "single"
 nlog10 = T
 lookup = F
@@ -99,7 +99,7 @@ if __name__ == "__main__":
     plot_s.plot_measurements_mu_noodle(on=T)
     plot_s.plot_measurements_ntrees_noodle(on=T)
     plot_s.plot_measurements_ordp_noodle(on=T)
-    plot_s.plot_entropy(on=T)
+    plot_s.plot_entropy(on=T, s=10)
     plot_s.histogram_clustering_similarity(
       on=T, c=T, hue_norm=[s.replace("_", "") for s in opt_score]
     )

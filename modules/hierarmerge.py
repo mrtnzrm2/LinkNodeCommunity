@@ -148,7 +148,40 @@ class Hierarchy(Sim):
               "xm" : BH[8, :]
             }
           )
-        )
+        )    
+
+  def link_entropy_cpp(self, cut=False):
+    if self.linkage == "single":
+      linkage = 0
+    elif self.linkage == "average":
+      linkage = 2
+    else:
+      linkage = -1
+      raise ValueError("Link community model has not been tested with the input linkage.")
+    # Get network dataframe ----
+    dA =  self.dA.copy()
+    # Run process_hclust_fast.cpp ----
+    entropy = ph(
+      self.leaves,
+      self.dist_mat,
+      dA["source"].to_numpy(),
+      dA["target"].to_numpy(),
+      self.nodes,
+      linkage,
+      cut,
+      3,
+      0.1
+    )
+    entropy.arbre("short_DC")
+    self.link_entropy = np.array([entropy.get_entropy_h(), entropy.get_entropy_v()])
+    self.link_entropy_H = np.array([entropy.get_entropy_h_H(), entropy.get_entropy_v_H()])
+    sh = np.nansum(self.link_entropy[0, :])
+    sv = np.nansum(self.link_entropy[1, :])
+    print(f"\nTotal link entropy: {sh} sh\t{sv} sv")
+    sh = np.nansum(self.link_entropy_H[0, :])
+    sv = np.nansum(self.link_entropy_H[1, :])
+    print(f"\nTotal link entropy H: {sh} sh\t{sv} sv")
+
 
   def la_abre_a_merde_cpp(self, features):
     # Get network dataframe ----

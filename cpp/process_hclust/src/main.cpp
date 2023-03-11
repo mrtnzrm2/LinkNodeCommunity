@@ -282,15 +282,17 @@ double get_percolation_susceptability(
   sort(
     new_lc_sizes.begin(), new_lc_sizes.end(), std::greater<int>()
   );
+  // for (int i = 0; i < number_of_lcs; i++) {
+    // N += lc_sizes[i];
+  // }
+  // N = pow(N, 2);
   for (int i = 0; i < number_of_lcs; i++) {
+    if (lc_sizes[i] <= 1 || lc_number_of_nodes[i] <= 2) continue;
+    if (lc_sizes[i] != new_lc_sizes[0])
+      x += pow(lc_sizes[i], 2);
     N += lc_sizes[i];
   }
-  N = pow(N, 2);
-  for (int i = 0; i < number_of_lcs; i++) {
-    if (lc_sizes[i] > 1 && lc_number_of_nodes[i] > 2 && lc_sizes[i] != new_lc_sizes[0])
-      x += pow(lc_sizes[i], 2) / N;
-  }
-  return x;
+  return x / N;
 }
 
 template<typename T>
@@ -357,6 +359,11 @@ class ph {
     std::vector<double> OrP;
     std::vector<double> XM;
 
+    std::vector<double> Sh;
+    std::vector<double> Sv;
+    std::vector<double> ShH;
+    std::vector<double> SvH;
+
     int number_of_elements;
     std::vector<std::vector<double> > distane_matrix;
     std::vector<int> source_vertices;
@@ -383,12 +390,10 @@ class ph {
 
     void vite();
 
-    void arbre();
+    void arbre(std::string &t_size);
 
     template <typename T>
     void expand_vector(std::vector<T>& v, int& N);
-    template <typename T>
-    void reduce_vector_one(std::vector<T>& v);
 
     std::vector<int> get_K();
     std::vector<double> get_Height();
@@ -399,6 +404,10 @@ class ph {
     std::vector<double> get_X();
     std::vector<double> get_OrP();
     std::vector<double> get_XM();
+    std::vector<double> get_entropy_h();
+    std::vector<double> get_entropy_v();
+    std::vector<double> get_entropy_h_H();
+    std::vector<double> get_entropy_v_H();
 };
 
 ph::ph(
@@ -428,14 +437,6 @@ void ph::expand_vector(std::vector<T>& v, int& N) {
   v = std::vector<T>(N, 0);
 }
 
-template <typename T>
-void ph::reduce_vector_one(std::vector<T> &v) {
-  std::vector<T> proxy(v.size() - 1, 0);
-  for (int i=1; i < v.size(); i++)
-    proxy[i-1] = v[i];
-  v = proxy;
-}
-
 std::vector<int> ph::get_K() {
   return K;
 }
@@ -463,23 +464,29 @@ std::vector<double> ph::get_OrP() {
 std::vector<double> ph::get_XM() {
   return XM;
 }
+std::vector<double> ph::get_entropy_h(){
+  return Sh;
+}
 
-void ph::arbre() {
+std::vector<double> ph::get_entropy_v(){
+  return Sv;
+}
+
+std::vector<double> ph::get_entropy_h_H(){
+  return ShH;
+}
+
+std::vector<double> ph::get_entropy_v_H(){
+  return SvH;
+}
+
+void ph::arbre(std::string &t_size) {
   std::string root = "L00";
-  std::string t_long = "long";
-  std::vector<double> Sh;
-  std::vector<double> Sv;
-  expand_vector(K, number_of_elements);
-  expand_vector(Height, number_of_elements);
-  expand_vector(D, number_of_elements);
-  expand_vector(MU, number_of_elements);
+  std::vector<double> H(number_of_elements, 0);
   expand_vector(Sh, number_of_elements);
   expand_vector(Sv, number_of_elements);
-  expand_vector(NEC, number_of_elements);
-  expand_vector(ntrees, number_of_elements);
-  expand_vector(X, number_of_elements);
-  expand_vector(XM, number_of_elements);
-  expand_vector(OrP, number_of_elements);
+  expand_vector(ShH, number_of_elements);
+  expand_vector(SvH, number_of_elements);
   std::vector<std::vector<int> > link_communities(number_of_elements, std::vector<int>(number_of_elements, 0));
   // Get hierarchy!! ----
   double* tri_distmat = new double[(number_of_elements * (number_of_elements - 1)) / 2];
@@ -503,34 +510,22 @@ void ph::arbre() {
   for (int i=1; i <= number_of_elements - 1; i++) {
     cutree_k(number_of_elements, merge, i, labels);
     for (int j=0; j < number_of_elements; j++) link_communities[i-1][j] = labels[j];
-    K[number_of_elements - i] = i; 
-    Height[i] = height[i-1];
     link_communities[number_of_elements - 1][i-1] = i-1;
+    H[i] = height[i-1];
   }
+  
 
-  std::map<int, level_properties> chain;
+  std::map<int, int> chain;
   std::cout << "Starting Z2dict\n";
-  std::map<std::string, vertex_properties> tree_long = Z2dict(link_communities, source_vertices, target_vertices, t_long);
+  std::map<std::string, vertex_properties> tree = Z2dict(link_communities, source_vertices, target_vertices, t_size);
   std::cout << "Level information\n";
-  level_information(tree_long, root, chain);
+  level_information(tree, root, chain);
   std::cout << "Vertex entropy\n";
-  vertex_entropy(tree_long, chain, root, number_of_elements, Sh, D, X, NEC, ntrees);
+  vertex_entropy(tree, chain, root, number_of_elements, Sh);
+  vertex_entropy_H(tree, chain, root, number_of_elements, H, ShH);
   std::cout << "Level entropy\n";
-  level_entropy(tree_long, chain, root, number_of_elements, Sv, XM, OrP);
-
-  for (int i=0; i < number_of_elements; i++) {
-    MU[i] = Sv[i] + Sh[i] + Sv[0];
-  }
-
-  reduce_vector_one(D);
-  reduce_vector_one(MU);
-  reduce_vector_one(X);
-  reduce_vector_one(XM);
-  reduce_vector_one(OrP);
-  reduce_vector_one(NEC);
-  reduce_vector_one(ntrees);
-  reduce_vector_one(K);
-  reduce_vector_one(Height);
+  level_entropy(tree, chain, root, number_of_elements, Sv);
+  level_entrop_H(tree, chain, root, number_of_elements, H, SvH);
 
   // Delete pointers
   delete[] labels;
@@ -688,5 +683,9 @@ PYBIND11_MODULE(process_hclust, m) {
 			  .def("get_ntrees", &ph::get_ntrees)
         .def("get_X", &ph::get_X)
         .def("get_OrP", &ph::get_OrP)
-			  .def("get_XM", &ph::get_XM);
+			  .def("get_XM", &ph::get_XM)
+        .def("get_entropy_h", &ph::get_entropy_h)
+        .def("get_entropy_v", &ph::get_entropy_v)
+        .def("get_entropy_h_H", &ph::get_entropy_h_H)
+        .def("get_entropy_v_H", &ph::get_entropy_v_H);
 }

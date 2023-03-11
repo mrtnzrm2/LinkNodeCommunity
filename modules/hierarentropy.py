@@ -6,6 +6,7 @@ class Hierarchical_Entropy:
     self.A = np.zeros((nodes, nodes))
     self.nodes = np.arange(nodes, dtype=int)
     self.A[nodes - 1, :] = self.nodes
+    self.A = np.zeros((nodes, nodes))
     for i in np.arange(nodes - 1, 0, -1):
       self.A[i - 1, :] = cut_tree(Z, i).ravel()
 
@@ -46,7 +47,7 @@ class Hierarchical_Entropy:
     Sh /= self.nodes.shape[0]
     Sv /= self.nodes.shape[0]
     print(f"\n\tHierarchical entropy : {Sh[0] + Sv[0]}, Sv : {Sv[0]}, and Sh : {Sh[0]}\n")
-    return Sh[0] + Sv[0], Sh[0], Sv[0]
+    return Sh[0] + Sv[0], Sv[0], Sh[0]
 
   def Z2dict_long(self, M, tree : dict, key_prev, nodes_prev : set, L, tL):
     if L < M.shape[0]:

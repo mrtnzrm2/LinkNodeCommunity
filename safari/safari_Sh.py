@@ -1,4 +1,10 @@
+# Insert path ---
+import os
+import sys
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.dirname(SCRIPT_DIR))
 import numpy as np
+from modules.hierarentropy import Hierarchical_Entropy
 
 a = {
     "L0_0" : {
@@ -146,6 +152,10 @@ def Z2dict(A, f):
   return a_tree
 
 if __name__ == "__main__":
-  tree = Z2dict(A, Z2dict_long)
+  tree = Z2dict(A2, Z2dict_short)
   print(tree)
-  print(S(tree, A.shape[0]))
+  print(S(tree, 16))
+  # H =  Hierarchical_Entropy(0, 16)
+  # H.A = A2
+  # H.Z2dict("short")
+  # _, _, _ = H.S(H.tree)

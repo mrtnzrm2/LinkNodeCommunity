@@ -24,6 +24,7 @@ class Plot_H:
     self.mode = H.mode
     self.leaves = H.leaves
     self.index = H.index
+    self.link_entropy = H.link_entropy
     self.R = H.R
     ##
     if sln:
@@ -46,12 +47,7 @@ class Plot_H:
       dF = DataFrame()
       # Concatenate over n and beta ----
       for i in np.arange(len(self.BH)):
-        dF = concat(
-          [
-            dF,
-            self.BH[i]
-          ]
-        )
+        dF = concat([dF, self.BH[i]])
       fig = px.line(
         dF,
         x = "K",
@@ -122,6 +118,49 @@ class Plot_H:
       )
       plt.close()
     else: print("No Mu iterations")
+
+  def Entropy_plotly(self, on=True):
+    if on:
+      import plotly.express as px
+      print("Visualize Entropy with plotly!!!")
+      # Create data ----
+      k = np.arange(self.leaves)
+      data = pd.DataFrame(
+        {
+        "K" : np.hstack([k, k]),
+        "S" : self.link_entropy.ravel(),
+        "c" : ["Sh"] * self.leaves + ["Sv"] * self.leaves
+        }
+      )
+      # Create figure ----
+      fig = px.line(
+        data,
+        x = "K",
+        y = "S",
+        color = "c",
+        markers = True,
+        log_x = True
+      )
+      fig.update_traces(
+        patch={
+          "line" : {
+            "dash" : "dot"
+          }
+        }
+      )
+      # Arrange path ----
+      plot_path = os.path.join(self.path, "Features")
+      # Crate path ----
+      Path(
+        plot_path
+      ).mkdir(exist_ok=True, parents=True)
+      fig.write_html(
+        os.path.join(
+          plot_path, "Entropy_{}.html".format(self.linkage)
+        )
+      )
+    else:
+      print("No Entropy with plotly")
 
   def D_plotly(self, on=True, **kwargs):
     if on:

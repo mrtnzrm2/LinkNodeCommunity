@@ -607,8 +607,11 @@ def read_class(pickle_path, class_name="duck", **kwargs):
   path = join(
     pickle_path, "{}.pk".format(class_name)
   )
-  with open(path, "rb") as f:
-    C =  pk.load(f)
+  C = 0
+  if exists(path):
+    with open(path, "rb") as f:
+      C =  pk.load(f)
+  else: print(f"\nFile {path} does not exist\n")
   return C
 
 def column_normalize(A):

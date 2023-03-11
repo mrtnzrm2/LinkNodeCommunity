@@ -28,7 +28,7 @@ imputation_method = ""
 topology = "MIX"
 mapping = "R2"
 index  = "jacw"
-bias = 0.3
+bias = 0.01
 opt_score = ["_maxmu", "_X"]
 save_data = T
 version = 220830
@@ -69,6 +69,8 @@ if __name__ == "__main__":
     )
     ## Compute features ----
     H.BH_features_cpp()
+    ## Compute link entropy ----
+    H.link_entropy_cpp(cut=cut)
     ## Compute lq arbre de merde ----
     H.la_abre_a_merde_cpp(H.BH[0])
     # Set labels to network ----
@@ -90,8 +92,9 @@ if __name__ == "__main__":
   HS.Z2dict("short")
   _, sv, sh = HS.S(HS.tree)
   H.entropy = [sv, sh]
-  # Picasso ----
+  # # Picasso ----
   plot_h = Plot_H(NET, H)
+  plot_h.Entropy_plotly(on=T)
   plot_h.plot_measurements_D(on=F)
   plot_h.plot_measurements_mu(on=F)
   plot_h.plot_measurements_X(on=F)

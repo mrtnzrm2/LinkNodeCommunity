@@ -10,20 +10,21 @@ F = False
 import numpy as np
 import itertools
 # Personal libs ----
+from networks_serial.scalehrh import SCALEHRH
 from plotting_modules.plotting_serial_sf import PLOT_S_SF
 from various.network_tools import read_class
 # Declare iter variables ----
 topologies = ["TARGET", "SOURCE", "MIX"]
-indices = ["jacw", "jacp", "cos"]
-KAV = [7, 25]
-MUT = [0.2, 0.4]
-MUW = [0.2, 0.4]
+indices = ["jacw", "jacp", "cos", "bsim"]
+KAV = [15]
+MUT = [0.1, 0.3, 0.5]
+MUW = [0.1, 0.5]
 list_of_lists = itertools.product(
   *[topologies, indices, KAV, MUT, MUW]
 )
 list_of_lists = np.array(list(list_of_lists))
 # Constant parameters ---
-MAXI = 500
+MAXI = 503
 __nodes__ = 128
 linkage = "single"
 nlog10 = F
@@ -41,12 +42,15 @@ if __name__ == "__main__":
     par = {
       "-N" : "{}".format(str(__nodes__)),
       "-k" : f"{kav}.0",
-      "-maxk" : "100",
+      "-maxk" : "30",
       "-mut" : f"{mut}",
       "-muw" : f"{muw}",
       "-beta" : "2.5",
-      "-t1" : "2.5",
-      "-t2" : "2.5"
+      "-t1" : "2",
+      "-t2" : "1",
+      "-nmin" : "2",
+      "-nmax" : "10"
+
     }
     # Print summary ----
     print("Number of iterations:")
@@ -67,30 +71,33 @@ if __name__ == "__main__":
     if lookup: lup = "_lup"
     if cut: _cut = "_cut"
     data = read_class(
-      "../pickle/RAN/scalefree/-N_{}/-k_{}/-maxk_{}/-mut_{}/-muw_{}/-beta_{}/-t1_{}/-t2_{}/{}{}{}{}/{}/{}".format(
+      "../pickle/RAN/scalefree/-N_{}/-k_{}/-maxk_{}/-mut_{}/-muw_{}/-beta_{}/-t1_{}/-t2_{}/-nmin_{}/-nmax_{}/{}/{}{}{}{}/{}/{}".format(
         str(__nodes__),
         par["-k"], par["-maxk"],
         par["-mut"], par["-muw"],
         par["-beta"], par["-t1"], par["-t2"],
+        par["-nmin"], par["-nmax"], MAXI,
         linkage.upper(), l10, lup, _cut,
         __mode__,
         f"{topology}_{index}_{mapping}"
       ),
       "series_{}".format(MAXI)
     )
-    # Plotting ----
-    print("Statistical analysis")
-    plot_s = PLOT_S_SF(data)
-    plot_s.plot_measurements_D(on=T)
-    plot_s.plot_measurements_D_noodle(on=T)
-    plot_s.plot_measurements_X(on=T)
-    plot_s.plot_measurements_X_noodle(on=T)
-    plot_s.plot_measurements_mu(on=T)
-    plot_s.plot_measurements_mu_noodle(on=T)
-    plot_s.plot_measurements_ntrees(on=T)
-    plot_s.plot_measurements_ntrees_noodle(on=T)
-    plot_s.plot_measurements_ordp(on=T)
-    plot_s.plot_measurements_ordp_noodle(on=T)
-    plot_s.histogram_clustering_similarity(
-      on=T, c=T, hue_norm=[s.replace("_", "") for s in opt_score]
-    )
+    if isinstance(data, SCALEHRH):
+      # Plotting ----
+      print("Statistical analysis")
+      plot_s = PLOT_S_SF(data)
+      plot_s.plot_measurements_D(on=T)
+      plot_s.plot_measurements_D_noodle(on=T)
+      # plot_s.plot_measurements_X(on=T)
+      # plot_s.plot_measurements_X_noodle(on=T)
+      # plot_s.plot_measurements_mu(on=T)
+      # plot_s.plot_measurements_mu_noodle(on=T)
+      # plot_s.plot_measurements_ntrees(on=T)
+      # plot_s.plot_measurements_ntrees_noodle(on=T)
+      # plot_s.plot_measurements_ordp(on=T)
+      # plot_s.plot_measurements_ordp_noodle(on=T)
+      if par["-mut"] == "0.1" and par["-muw"] == "0.5" and par["-k"] == "15.0": continue
+      plot_s.histogram_clustering_similarity_old(
+        on=T, c=T, hue_norm=[s.replace("_", "") for s in opt_score]
+      )

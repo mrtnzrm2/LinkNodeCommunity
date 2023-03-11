@@ -434,6 +434,41 @@ class PLOT_S_SF:
       # Save plot ----
       plt.savefig(
         join(
+          plot_path, "control_functions.png"
+        ),
+        dpi=300
+      )
+      plt.close()
+    else:
+      print("No serial clustering similarity Histogram")
+
+  def histogram_clustering_similarity_old(self, c=True, on=True, **kwargs):
+    if on:
+      print("Plot serial clustering similarity histogram!!!")
+      data = self.data.copy()
+      # Zero NMI ----
+      data["NMI"].loc[np.isnan(data.NMI)] = 0
+      data.c = [s.replace("_", "") for s in data.c]
+      fig, ax = plt.subplots(1, 1)
+      if c:
+        sns.histplot(
+          data=data,
+          x="NMI",
+          stat="count",
+          hue = "c",
+          ax=ax
+        )
+      # Arrange path ----
+      plot_path = join(
+        self.plot_path, "Features"
+      )
+      # Crate path ----
+      Path(
+        plot_path
+      ).mkdir(exist_ok=True, parents=True)
+      # Save plot ----
+      plt.savefig(
+        join(
           plot_path, "adj_hist_{}.png".format(
             self.linkage
           )
@@ -443,6 +478,7 @@ class PLOT_S_SF:
       plt.close()
     else:
       print("No serial clustering similarity Histogram")
+  
   
   def plot_stats(self, alternative="greater", on=True, **kwargs):
     if on:

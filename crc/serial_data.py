@@ -58,7 +58,7 @@ if __name__ == "__main__":
       index=index, mapping=mapping,
       cut=cut, b = bias
     )
-    NET.create_pickle_directory()
+    # NET.create_pickle_directory()
     # Transform data for analysis ----
     R, lookup, _ = maps[mapping](
       NET.A, nlog10, lookup, prob, b=bias

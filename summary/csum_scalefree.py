@@ -12,6 +12,7 @@ import itertools
 import seaborn as sns
 import matplotlib.pyplot as plt
 ## Personal libs ----
+from networks_serial.scalehrh import SCALEHRH
 from various.network_tools import *
 
 def draw_heatmap(*args, **kwargs):
@@ -22,15 +23,15 @@ def draw_heatmap(*args, **kwargs):
 # Declare iter variables ----
 topologies = ["TARGET", "SOURCE", "MIX"]
 indices = ["jacw", "jacp", "cos", "bsim"]
-KAV = [7, 25]
-MUT = [0.2, 0.4]
-MUW = [0.2, 0.4]
+KAV = [7, 15]
+MUT = [0.1, 0.3, 0.5]
+MUW = [0.1, 0.5]
 list_of_lists = itertools.product(
   *[topologies, indices, KAV, MUT, MUW]
 )
 list_of_lists = np.array(list(list_of_lists))
 # Constant parameters ---
-MAXI = 500
+MAXI = 503
 __nodes__ = 128
 linkage = "single"
 nlog10 = F
@@ -55,26 +56,28 @@ if __name__ == "__main__":
     par = {
       "-N" : "{}".format(str(__nodes__)),
       "-k" : f"{kav}.0",
-      "-maxk" : "50",
+      "-maxk" : "30",
       "-mut" : f"{mut}",
       "-muw" : f"{muw}",
       "-beta" : "2.5",
       "-t1" : "2",
       "-t2" : "1",
-      "-nmin" : "5",
-      "-nmax" : "20"
+      "-nmin" : "2",
+      "-nmax" : "10"
     }
     data = read_class(
-      "../pickle/RAN/scalefree/-N_{}/-k_{}/-maxk_{}/-mut_{}/-muw_{}/-beta_{}/-t1_{}/-t2_{}/{}{}{}{}/{}/{}".format(
+      "../pickle/RAN/scalefree/-N_{}/-k_{}/-maxk_{}/-mut_{}/-muw_{}/-beta_{}/-t1_{}/-t2_{}/-nmin_{}/-nmax{}/{}{}{}{}/{}/{}".format(
         str(__nodes__),
         par["-k"], par["-maxk"],
         par["-mut"], par["-muw"],
         par["-beta"], par["-t1"], par["-t2"],
+        par["-nmin"], par["-nmax"],
         linkage.upper(), l10, lup, _cut,
         __mode__, f"{topology}_{index}_{mapping}"
       ),
       "series_{}".format(MAXI)
     )
+    if not isinstance(data, SCALEHRH): continue
     THE_DF = pd.concat(
       [
         THE_DF, 
@@ -93,9 +96,9 @@ if __name__ == "__main__":
       ], ignore_index=T
     )
   # Comparing feature, index, & score for given kav, mut, and muw
-  KAV = [7, 25]
-  MUT = [0.2, 0.4]
-  MUW = [0.2, 0.4]
+  KAV = [7, 15]
+  MUT = [0.1, 0.3, 0.5]
+  MUW = [0.1, 0.5]
   list_of_lists = itertools.product(
     *[KAV, MUT, MUW]
   )
@@ -115,11 +118,12 @@ if __name__ == "__main__":
       "-nmin" : "5",
       "-nmax" : "20"
     }
-    IM_ROOT =  "../plots/RAN/scalefree/-N_{}/-k_{}/-maxk_{}/-mut_{}/-muw_{}/-beta_{}/-t1_{}/-t2_{}/{}{}{}{}/{}".format(
+    IM_ROOT =  "../plots/RAN/scalefree/-N_{}/-k_{}/-maxk_{}/-mut_{}/-muw_{}/-beta_{}/-t1_{}/-t2_{}/-nmin_{}/-nmax_{}/{}{}{}{}/{}".format(
         str(__nodes__),
         par["-k"], par["-maxk"],
         par["-mut"], par["-muw"],
         par["-beta"], par["-t1"], par["-t2"],
+        par["-nmin"], par["-nmax"],
         linkage.upper(), l10, lup, _cut,
         __mode__
       )

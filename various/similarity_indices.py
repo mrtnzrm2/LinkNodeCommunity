@@ -22,7 +22,7 @@ def jacw_ferenc(u, v, n : int, lup, *args):
 def jacw(u, v, n : int, lup, *args):
   if n > 0:
     A = np.vstack([u, v])
-    return (np.sum(np.abs(np.nanmin(A, axis=0))) - np.sum(np.abs(np.nanmax(A, axis=0)))) / n
+    return (np.nansum(np.abs(np.nanmin(A, axis=0))) - np.nansum(np.abs(np.nanmax(A, axis=0)))) / n
   else: return np.nan
 
 def jacw2(u, v, n : int, lup, *args):

@@ -102,6 +102,8 @@ def worker_swaps(
       nature = nature,
       distance = distance,
       model = __model__,
+      mapping=mapping,
+      index=index,
       nlog10 = nlog10, lookup = lookup,
       cut=cut, b=bias
     )
@@ -152,6 +154,7 @@ def worker_swaps(
     data.set_plot_path(RAND_H, bias=bias)
     data.set_pickle_path(RAND_H, bias=bias)
     print("Save data")
+    print(data.pickle_path)
     save_class(
       data, data.pickle_path,
       "series_{}".format(number_of_iterations)

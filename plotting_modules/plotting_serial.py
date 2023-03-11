@@ -823,6 +823,8 @@ class PLOT_S:
         s = s,
         ax = ax
       )
+      ax.set_xlabel("SV")
+      ax.set_ylabel("SH")
       fig.tight_layout()
       # Arrange path ----
       plot_path = join(
