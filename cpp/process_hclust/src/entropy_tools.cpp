@@ -7,7 +7,13 @@
 
 struct vertex_properties {
   int level;
-  std::vector<std::string> post_key;
+  double height;
+  std::set<std::string> post_key;
+};
+
+struct level_properties {
+  int size;
+  double height;
 };
 
 template <typename T>
@@ -44,6 +50,12 @@ bool search_key(std::map<std::string, vertex_properties> &a, std::string &key) {
   return false;
 }
 
+bool search_key(std::map<std::string, vertex_properties> &a, const std::string &key) {
+  for (std::map<std::string, vertex_properties>::iterator it = a.begin(); it != a.end(); ++it) {
+    if (it->first.compare(key) == 0) return true;
+  }
+  return false;
+}
 
 bool search_key(std::map<int, int> &a, int &key) {
   for (std::map<int, int>::iterator it = a.begin(); it != a.end(); ++it) {
@@ -52,7 +64,21 @@ bool search_key(std::map<int, int> &a, int &key) {
   return false;
 }
 
+bool search_key(std::map<int, level_properties> &a, int &key) {
+  for (std::map<int, level_properties>::iterator it = a.begin(); it != a.end(); ++it) {
+    if (it->first == key) return true;
+  }
+  return false;
+}
+
 bool search_key(std::vector<std::string> &a, std::string &key) {
+  for (std::vector<std::string>::iterator it = a.begin(); it != a.end(); ++it) {
+    if ((*it).compare(key) == 0) return true;
+  }
+  return false;
+}
+
+bool search_key(std::vector<std::string> &a, const std::string &key) {
   for (std::vector<std::string>::iterator it = a.begin(); it != a.end(); ++it) {
     if ((*it).compare(key) == 0) return true;
   }
@@ -66,6 +92,27 @@ bool search_key(std::vector<std::string> &a, const char * key) {
   return false;
 }
 
+bool search_key(std::set<std::string> &a, std::string &key) {
+  for (std::set<std::string>::iterator it = a.begin(); it != a.end(); ++it) {
+    if ((*it).compare(key) == 0) return true;
+  }
+  return false;
+}
+
+bool search_key(std::set<std::string> &a, const std::string &key) {
+  for (std::set<std::string>::iterator it = a.begin(); it != a.end(); ++it) {
+    if ((*it).compare(key) == 0) return true;
+  }
+  return false;
+}
+
+bool search_key(std::set<std::string> &a, const char * key) {
+  for (std::set<std::string>::iterator it = a.begin(); it != a.end(); ++it) {
+    if ((*it).compare(key) == 0) return true;
+  }
+  return false;
+}
+
 int number_nodes(std::set<int> &v, std::vector<int> &src, std::vector<int> &tar) {
   std::set<int> L;
   for (std::set<int>::iterator it = v.begin(); it != v.end(); ++it) {
@@ -73,78 +120,6 @@ int number_nodes(std::set<int> &v, std::vector<int> &src, std::vector<int> &tar)
     L.insert(tar[*it]);
   }
   return L.size();
-}
-
-void Z2dict_short(
-  std::vector<std::vector<int> > &A, std::vector<int> &src, std::vector<int> &tar, std::map<std::string, vertex_properties> &tree,
-  std::string key_pred, std::set<int> nodes_pred, int L, int tL
-) {
-  if (L < A.size()) {
-    int next_L = L + 1, next_tL = tL + 1;
-    std::vector<int> coms = A[L];
-    unique_2(coms);
-    std::string key;
-    std::set<int> nodes_com;
-    std::set<int> compare;
-    for (int i=0; i < coms.size(); i++) {
-      key = "L" + std::to_string(tL + 1) + std::to_string(i);
-      nodes_com = where(A[L], coms[i]);
-      compare = intersection(nodes_com, nodes_pred);
-      if (compare.size() == 0) continue;
-      if (nodes_com.size() == nodes_pred.size()) {
-        Z2dict_short(A, src, tar, tree, key_pred, nodes_com, next_L, tL);
-      }
-      else if (nodes_com.size() < nodes_pred.size()) {
-        if (!search_key(tree, key_pred)) {
-          vertex_properties item;
-          item.level = tL;
-          item.post_key.push_back(key_pred + "_" + key);
-          tree.insert(std::pair<std::string, vertex_properties>(key_pred, item));
-        }
-        else {
-          tree[key_pred].post_key.push_back(key_pred + "_" + key);
-        }
-        Z2dict_short(A, src, tar, tree, key_pred + "_" + key, nodes_com, next_L, next_tL);
-      }
-    }
-  } else {
-    tree[key_pred].level = tL;
-    tree[key_pred].post_key.push_back("END");
-  }
-}
-
-void Z2dict_long(
-  std::vector<std::vector<int> > &A, std::vector<int> &src, std::vector<int> &tar, std::map<std::string, vertex_properties> &tree,
-  std::string key_pred, std::set<int> nodes_pred, int L, int tL
-) {
-  if (L < A.size()) {
-    int next_L = L + 1, next_tL = tL + 1;
-    std::vector<int> coms = A[L];
-    unique_2(coms);
-    std::string key;
-    std::set<int> nodes_com;
-    std::set<int> compare;
-    for (int i=0; i < coms.size(); i++) {
-      key = "L" + std::to_string(tL + 1) + std::to_string(i);
-      nodes_com = where(A[L], coms[i]);
-      compare = intersection(nodes_com, nodes_pred);
-      if (compare.size() > 0) {
-        if (!search_key(tree, key_pred)) {
-          vertex_properties item;
-          item.level = tL;
-          item.post_key.push_back(key_pred + "_" + key);
-          tree.insert(std::pair<std::string, vertex_properties>(key_pred, item));
-        }
-        else {
-          tree[key_pred].post_key.push_back(key_pred + "_" + key);
-        }
-        Z2dict_long(A, src, tar, tree, key_pred + "_" + key, nodes_com, next_L, next_tL);
-      }
-    }
-  } else {
-    tree[key_pred].level = tL;
-    tree[key_pred].post_key.push_back("END");
-  }
 }
 
 std::map<int, double > link_communitiy_Dc(
@@ -196,17 +171,16 @@ std::map<int, node_merde > unique_tree_Dc(std::vector<std::vector<int> > &A, std
 
 void Z2dict_short_Dc(
   std::vector<std::vector<int> > &A, std::vector<int> &src, std::vector<int> &tar, std::map<std::string, vertex_properties> &tree,
-  std::string key_pred, std::set<int> nodes_pred, int L, int tL
+  const std::string key_pred, std::set<int> nodes_pred, int L, int tL
 ) {
   if (L < A.size()) {
     int next_L = L + 1, next_tL = tL + 1, size = A[L].size();
     std::map<int, double> Dcs = link_communitiy_Dc(A[L], size, src, tar);
     std::map<int, node_merde > coms = unique_tree_Dc(A, Dcs, L);
-    std::string key;
     std::set<int> nodes_com;
     std::set<int> compare;
     for (std::map<int, node_merde >::iterator cc = coms.begin(); cc != coms.end(); ++cc) {
-      key = key_pred + "_" + "L" + std::to_string(tL + 1) + std::to_string(cc->first);
+      const std::string key = key_pred + "L" + std::to_string(tL + 1) + std::to_string(cc->first);
       nodes_com = cc->second.pos;
       if (cc->second.dc > 0) {
         compare = intersection(nodes_com, nodes_pred);
@@ -218,29 +192,28 @@ void Z2dict_short_Dc(
           if (!search_key(tree, key_pred)) {
             vertex_properties item;
             item.level = tL;
-            item.post_key.push_back(key);
+            item.post_key.insert(key);
             tree.insert(std::pair<std::string, vertex_properties>(key_pred, item));
           }
           else {
-            tree[key_pred].post_key.push_back(key);
+            tree[key_pred].post_key.insert(key);
           }
           Z2dict_short_Dc(A, src, tar, tree, key, nodes_com, next_L, next_tL);
         }
       } else {
         if (!search_key(tree, key_pred)) {
-          // std::cout << "\t" << key_pred << "\t" << nodes_pred.size() << "\t" << key << "\tel macho\n";
           vertex_properties item;
           item.level = tL;
-          item.post_key.push_back(key);
+          item.post_key.insert(key);
           tree.insert(std::pair<std::string, vertex_properties>(key_pred, item));
         }
         if (!search_key(tree[key_pred].post_key ,  key)) {
-          tree[key_pred].post_key.push_back(key);
+          tree[key_pred].post_key.insert(key);
         }
         if (!search_key(tree, key)) {
           vertex_properties item;
           item.level = tL + 1;
-          item.post_key.push_back("END");
+          item.post_key.insert("END");
           tree.insert(std::pair<std::string, vertex_properties>(key, item));
         }
       }
@@ -248,81 +221,180 @@ void Z2dict_short_Dc(
   } 
 }
 
-std::map<std::string, vertex_properties> Z2dict(std::vector<std::vector<int> > &A, std::vector<int> &src, std::vector<int> &tar, std::string &type) {
+void Z2dict_short(
+  std::vector<std::vector<int> > &A, std::map<std::string, vertex_properties> &tree,
+  const std::string key_pred, std::set<int> nodes_pred, std::vector<double> &H, int L, int tL, const int &nodes
+) {
+  if (L < A.size() && nodes_pred.size() > 1) {
+    int next_L = L + 1, next_tL = tL + 1;
+    std::vector<int> coms = A[L];
+    unique_2(coms);
+    std::set<int> nodes_com;
+    std::set<int> compare;
+    for (int i=0; i < coms.size(); i++) {
+      const std::string key = "L" + std::to_string(next_tL) + std::to_string(coms[i]);
+      nodes_com = where(A[L], coms[i]);
+      compare = intersection(nodes_com, nodes_pred);
+      if (compare.size() == 0) continue;
+      if (nodes_com.size() == nodes_pred.size()) {
+        Z2dict_short(A, tree, key_pred, nodes_com, H, next_L, tL, nodes);
+      }
+      else if (nodes_com.size() < nodes_pred.size()) {
+        if (!search_key(tree, key_pred)) {
+          tree[key_pred].level = tL;
+          tree[key_pred].height = H[nodes - tL - 1];
+          tree[key_pred].post_key.insert(key_pred + key);
+        }
+        else {
+          tree[key_pred].post_key.insert(key_pred + key);
+        }
+        Z2dict_short(A, tree, key_pred + key, nodes_com, H, next_L, next_tL, nodes);
+      }
+    }
+  } else {
+    if (!search_key(tree, key_pred)) {
+      tree[key_pred].level = tL;
+      tree[key_pred].height = H[nodes - tL - 1];
+      tree[key_pred].post_key.insert("END");
+    }
+  }
+}
+
+void Z2dict_long(
+  std::vector<std::vector<int> > &A, std::map<std::string, vertex_properties> &tree,
+  const std::string key_pred, std::set<int> nodes_pred, std::vector<double> &H, int L, int tL, const int &nodes
+) {
+  if (L < A.size() && nodes_pred.size() > 1) {
+    int next_L = L + 1, next_tL = tL + 1;
+    std::vector<int> coms = A[L];
+    unique_2(coms);
+    std::set<int> nodes_com;
+    std::set<int> compare;
+    for (int i=0; i < coms.size(); i++) {
+      const std::string key = "L" + std::to_string(next_tL) + std::to_string(coms[i]);
+      nodes_com = where(A[L], coms[i]);
+      compare = intersection(nodes_com, nodes_pred);
+      if (compare.size() > 0) {
+        if (!search_key(tree, key_pred)) {
+          tree[key_pred].level = tL;
+          tree[key_pred].height = H[nodes - tL - 1];
+          tree[key_pred].post_key.insert(key_pred + key);
+        }
+        else {
+          tree[key_pred].post_key.insert(key_pred + key);
+        }
+        Z2dict_long(A, tree, key_pred + key, nodes_com, H, next_L, next_tL, nodes);
+      }
+    }
+  } else {
+    if (!search_key(tree, key_pred)) {
+      tree[key_pred].level = tL;
+      tree[key_pred].height = H[nodes - tL - 1];
+      tree[key_pred].post_key.insert("END");
+    }
+  }
+}
+
+void Z2dict(std::vector<std::vector<int> > &A,  std::map<std::string, vertex_properties> &tree,  std::vector<int> &src, std::vector<int> &tar,  std::vector<double> &H, std::string &type) {
+  const int N = A.size();
   std::set<int> nodes;
   for (int i=0; i < A.size(); i++) {
     nodes.insert(A[A.size() - 1][i]);
   }
-  std::map<std::string, vertex_properties> tree;
   int L = 1, tL = 0;
-  std::string root = "L00";
-  if (type.compare("short") == 0) Z2dict_short(A, src, tar, tree, root, nodes, L, tL);
-  else if (type.compare("long") == 0) Z2dict_long(A, src, tar, tree, root, nodes, L, tL);
+  const std::string root = "L00";
+  if (type.compare("short") == 0) Z2dict_short(A, tree, root, nodes, H, L, tL, N);
+  else if (type.compare("long") == 0) Z2dict_long(A, tree, root, nodes, H, L, tL, N);
   else if (type.compare("short_DC") == 0) Z2dict_short_Dc(A, src, tar, tree, root, nodes, L, tL);
   else {
     throw std::runtime_error("\nOnly types: short or long\n");
   }
-  return tree;
 }
 
-void sum_vertices(std::map<std::string, vertex_properties> &tree, std::string &root, int &t) {
-  for (std::vector<std::string>::iterator s = tree[root].post_key.begin(); s != tree[root].post_key.end(); ++s) {
+void sum_vertices(std::map<std::string, vertex_properties> &tree, const std::string &root, int &t) {
+  for (std::set<std::string>::iterator s = tree[root].post_key.begin(); s != tree[root].post_key.end(); ++s) {
     if ((*s).compare("END") == 0) continue;
     t++;
     sum_vertices(tree, *s, t);
   }
 }
 
-void level_information(std::map<std::string, vertex_properties> &tree, std::string &root, std::map<int, int> &ml) {
-  for (std::map<std::string, vertex_properties>::iterator t = tree.begin(); t != tree.end(); ++t) {
-    if (!search_key(ml, t->second.level)) {
-      ml.insert(std::pair<int, int>(t->second.level, 1));
+bool find_end(std::map<std::string, vertex_properties> &v, const std::string &root,  const char* key) {
+  for (std::set<std::string>::iterator roo = v[root].post_key.begin(); roo != v[root].post_key.end(); ++roo) {
+    if (search_key(v[*roo].post_key, key)) return true;
+  }
+  return false;
+}
+
+void level_information(std::map<std::string, vertex_properties> &tree, const std::string &root, std::map<int, level_properties> &ml) {
+  if (!search_key(tree[root].post_key, "END")) {
+    auto it = next(tree[root].post_key.begin(), 0);
+    if (!search_key(ml, tree[root].level)) {
+      ml[tree[root].level].size = 1;
+      ml[tree[root].level].height = tree[root].height - tree[*it].height;
     } else {
-      ml[t->second.level]++;
+      ml[tree[root].level].size++;
+      ml[tree[root].level].height += tree[root].height - tree[*it].height;
+    }
+    for (std::set<std::string>::iterator v = tree[root].post_key.begin(); v != tree[root].post_key.end(); ++v) {
+      level_information(tree, *v, ml);
+    }
+  } else {
+    if (!search_key(ml, tree[root].level)) {
+      ml[tree[root].level].size = 1;
+      ml[tree[root].level].height = tree[root].height;
+    }
+    else {
+      ml[tree[root].level].size++;
+      ml[tree[root].level].height = tree[root].height;
     }
   }
 }
 
-void vertex_entropy(std::map<std::string, vertex_properties> &tree, std::map<int, int> ml, std::string &root, int &nodes, std::vector<double> &Sh) {
-  double Mul;
-  int nextL = tree[root].level + 1, tL = tree[root].level;
+void vertex_entropy(std::map<std::string, vertex_properties> &tree, std::map<int, level_properties> &ml, const std::string &root, const int &nodes, std::vector<double> &Sh) {
   if (!search_key(tree[root].post_key, "END")) {
-    // Horizontal Entropy
-    Mul = tree[root].post_key.size();
-    Sh[nodes - tL - 1] -= Mul * log(Mul / static_cast<double>(ml[nextL])) / nodes;
-    for (std::vector<std::string>::iterator roo = tree[root].post_key.begin(); roo != tree[root].post_key.end(); ++roo) {
+    int nextL = tree[root].level + 1, tL = tree[root].level;
+    double Mul = tree[root].post_key.size();
+    // std::cout << root << " " << tL << " " << Mul << " " << ml[nextL] << " | ";
+    Sh[nodes - tL - 1] -= Mul * log(Mul / static_cast<double>(ml[nextL].size)) / nodes;
+    for (std::set<std::string>::iterator roo = tree[root].post_key.begin(); roo != tree[root].post_key.end(); ++roo) {
       vertex_entropy(tree, ml, *roo, nodes, Sh);
     }
   }
 }
 
-void level_entropy(std::map<std::string, vertex_properties> &tree, std::map<int, int> &ml, std::string &root, int &nodes, std::vector<double> &sv) {
+void level_entropy(std::map<std::string, vertex_properties> &tree, std::map<int, level_properties> &ml, const std::string &root, const int &nodes, std::vector<double> &sv) {
   int M = 1;
   double xm, x;
   sum_vertices(tree, root, M);
-  for (std::map<int, int>::iterator ll = ml.begin(); ll != ml.end(); ++ll) {
+  for (std::map<int, level_properties>::iterator ll = ml.begin(); ll != ml.end(); ++ll) {
     // Vertical entropy
-    sv[nodes - ll->first - 1] -= static_cast<double>(ll->second) * log(static_cast<double>(ll->second) / M) / nodes;
+    sv[nodes - ll->first - 1] -= static_cast<double>(ll->second.size) * log(static_cast<double>(ll->second.size) / M) / nodes;
   }
 }
 
-void vertex_entropy_H(std::map<std::string, vertex_properties> &tree, std::map<int, int> ml, std::string &root, int &nodes, std::vector<double> &H, std::vector<double> &Sh) {
-  double Mul, dc;
+void vertex_entropy_H(std::map<std::string, vertex_properties> &tree, std::map<int, level_properties> ml, const std::string &root, const int &nodes, std::vector<double> &Sh) {
+  bool pocoyo = false;
+  double Mul;
   int nextL = tree[root].level + 1, tL = tree[root].level;
+  Mul = tree[root].post_key.size();
+  pocoyo = find_end(tree, root, "END");
+  if (pocoyo)
+    Sh[nodes - tL - 1] -= tree[root].height * log(Mul / static_cast<double>(ml[nextL].size)) / nodes;
   if (!search_key(tree[root].post_key, "END")) {
-    Mul = tree[root].post_key.size();
-    Sh[nodes - tL - 1] -= Mul * H[nodes - tL - 1] * log(Mul / static_cast<double>(ml[nextL]) / nodes);
-    for (std::vector<std::string>::iterator roo = tree[root].post_key.begin(); roo != tree[root].post_key.end(); ++roo) {
-      vertex_entropy_H(tree, ml, *roo, nodes, H, Sh);
+    for (std::set<std::string>::iterator roo = tree[root].post_key.begin(); roo != tree[root].post_key.end(); ++roo) {
+      Sh[nodes - tL - 1] -= (tree[root].height - tree[*roo].height) * log(Mul / static_cast<double>(ml[nextL].size)) / nodes;
+      vertex_entropy_H(tree, ml, *roo, nodes, Sh);
     }
   }
 }
 
-void level_entrop_H(std::map<std::string, vertex_properties> &tree, std::map<int, int> &ml, std::string &root, int &nodes, std::vector<double> &H, std::vector<double> &sv) {
+void level_entrop_H(std::map<std::string, vertex_properties> &tree, std::map<int, level_properties> &ml, const std::string &root, const int &nodes, std::vector<double> &sv) {
   int M = 1;
   sum_vertices(tree, root, M);
-  for (std::map<int, int>::iterator ll = ml.begin(); ll != ml.end(); ++ll) {
+  std::cout << "Number of vertices in the tree: " << M << "\n";
+  for (std::map<int, level_properties>::iterator ll = ml.begin(); ll != ml.end(); ++ll) {
     // Vertical entropy
-    sv[nodes - ll->first - 1] -= static_cast<double>(ll->second) * H[nodes - ll->first - 1] * log(static_cast<double>(ll->second) / M) / nodes;
+    sv[nodes - ll->first - 1] -= ll->second.height * log(static_cast<double>(ll->second.size) / M) / nodes;
   }
 }

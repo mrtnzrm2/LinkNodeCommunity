@@ -25,6 +25,7 @@ class Plot_H:
     self.leaves = H.leaves
     self.index = H.index
     self.link_entropy = H.link_entropy
+    self.link_entropy_H = H.link_entropy_H
     self.R = H.R
     ##
     if sln:
@@ -124,7 +125,7 @@ class Plot_H:
       import plotly.express as px
       print("Visualize Entropy with plotly!!!")
       # Create data ----
-      k = np.arange(self.leaves)
+      k = np.arange(self.leaves, 0, -1)
       data = pd.DataFrame(
         {
         "K" : np.hstack([k, k]),
@@ -132,6 +133,8 @@ class Plot_H:
         "c" : ["Sh"] * self.leaves + ["Sv"] * self.leaves
         }
       )
+      # print(data.loc[data.c == "Sh"])
+      # print(data.loc[data.c == "Sv"])
       # Create figure ----
       fig = px.line(
         data,
@@ -157,6 +160,51 @@ class Plot_H:
       fig.write_html(
         os.path.join(
           plot_path, "Entropy_{}.html".format(self.linkage)
+        )
+      )
+    else:
+      print("No Entropy with plotly")
+
+  def Entropy_H_plotly(self, on=True):
+    if on:
+      import plotly.express as px
+      print("Visualize Entropy with plotly!!!")
+      # Create data ----
+      k = np.arange(self.leaves, 0, -1)
+      data = pd.DataFrame(
+        {
+        "K" : np.hstack([k, k]),
+        "S" : self.link_entropy_H.ravel(),
+        "c" : ["Sh"] * self.leaves + ["Sv"] * self.leaves
+        }
+      )
+      # print(data.loc[data.c == "Sh"])
+      # print(data.loc[data.c == "Sv"])
+      # Create figure ----
+      fig = px.line(
+        data,
+        x = "K",
+        y = "S",
+        color = "c",
+        markers = True,
+        log_x = True
+      )
+      fig.update_traces(
+        patch={
+          "line" : {
+            "dash" : "dot"
+          }
+        }
+      )
+      # Arrange path ----
+      plot_path = os.path.join(self.path, "Features")
+      # Crate path ----
+      Path(
+        plot_path
+      ).mkdir(exist_ok=True, parents=True)
+      fig.write_html(
+        os.path.join(
+          plot_path, "Entropy_H_{}.html".format(self.linkage)
         )
       )
     else:

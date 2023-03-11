@@ -63,8 +63,7 @@ def S(a, nodes):
   Ml = {}
   sum_vertices(a, M)
   ML(a, Ml)
-  print(Ml)
-  Sh =np.zeros(1)
+  Sh = np.zeros(1)
   Sv = np.zeros(1)
   SH(a, Ml, Sh)
   SV(Ml, M, Sv)
@@ -120,7 +119,7 @@ def Z2dict_long(M, tree : dict, key_prev, nodes_prev : set, L, tL):
   if L < M.shape[0]:
     coms = M[L, :]
     for i, com in enumerate(np.unique(coms)):
-      key = f"L{tL}_{i}"
+      key = f"L{tL}_{com}"
       nodes_com = set(list(np.where(coms == com)[0]))
       compare = nodes_com.intersection(nodes_prev)
       if len(compare) > 0:
@@ -129,10 +128,10 @@ def Z2dict_long(M, tree : dict, key_prev, nodes_prev : set, L, tL):
   else: tree[key_prev] = {}
 
 def Z2dict_short(M, tree : dict, key_prev, nodes_prev : set, L, tL):
-  if L < M.shape[0]:
+  if L < M.shape[0] and len(nodes_prev) > 1:
     coms = M[L, :]
     for i, com in enumerate(np.unique(coms)):
-      key = f"L{tL}_{i}"
+      key = f"L{tL}_{com}"
       nodes_com = set(list(np.where(coms == com)[0]))
       compare = nodes_com.intersection(nodes_prev)
       if len(compare) == 0: continue
@@ -153,7 +152,7 @@ def Z2dict(A, f):
 
 if __name__ == "__main__":
   tree = Z2dict(A2, Z2dict_short)
-  print(tree)
+  # print(tree)
   print(S(tree, 16))
   # H =  Hierarchical_Entropy(0, 16)
   # H.A = A2

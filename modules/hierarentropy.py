@@ -6,7 +6,6 @@ class Hierarchical_Entropy:
     self.A = np.zeros((nodes, nodes))
     self.nodes = np.arange(nodes, dtype=int)
     self.A[nodes - 1, :] = self.nodes
-    self.A = np.zeros((nodes, nodes))
     for i in np.arange(nodes - 1, 0, -1):
       self.A[i - 1, :] = cut_tree(Z, i).ravel()
 
@@ -62,7 +61,7 @@ class Hierarchical_Entropy:
     else: tree[key_prev] = {}
 
   def Z2dict_short(self, M, tree : dict, key_prev, nodes_prev : set, L, tL):
-    if L < M.shape[0]:
+    if L < M.shape[0] and len(nodes_prev) > 1:
       coms = M[L, :]
       for i, com in enumerate(np.unique(coms)):
         key = f"L{tL}_{i}"
@@ -82,7 +81,7 @@ class Hierarchical_Entropy:
     L = 1
     tL = 1
     if Z2 == "short":
-      self.Z2dict_short(self.A, self.tree, "L00_0", nodes, L, tL)
+      self.Z2dict_short(self.A, self.tree, "L0_0", nodes, L, tL)
     elif Z2 == "long":
-      self.Z2dict_long(self.A, self.tree, "L00_0", nodes, L, tL)
+      self.Z2dict_long(self.A, self.tree, "L0_0", nodes, L, tL)
     else: raise ValueError("Only Z2 short or long")

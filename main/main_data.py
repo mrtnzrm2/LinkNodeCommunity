@@ -28,7 +28,7 @@ imputation_method = ""
 topology = "MIX"
 mapping = "R2"
 index  = "jacw"
-bias = 0.01
+bias = 1e-5
 opt_score = ["_maxmu", "_X"]
 save_data = T
 version = 220830
@@ -95,9 +95,10 @@ if __name__ == "__main__":
   # # Picasso ----
   plot_h = Plot_H(NET, H)
   plot_h.Entropy_plotly(on=T)
-  plot_h.plot_measurements_D(on=F)
-  plot_h.plot_measurements_mu(on=F)
-  plot_h.plot_measurements_X(on=F)
+  plot_h.Entropy_H_plotly(on=T)
+  plot_h.plot_measurements_D(on=T)
+  plot_h.plot_measurements_mu(on=T)
+  plot_h.plot_measurements_X(on=T)
   plot_n = Plot_N(NET, H)
   plot_n.A_vs_dis(NET.A, s=5, on=F, reg=T)
   plot_n.projection_probability(
@@ -120,14 +121,16 @@ if __name__ == "__main__":
     cover = omega_index_format(rlabels,  NET.data_nocs, NET.struct_labels[:NET.nodes])
     H.set_cover(cover, score)
     # Plot H ----
-    plot_h.core_dendrogram([r], on=F) #
+    plot_h.core_dendrogram([r], on=T) #
     plot_h.lcmap_pure([k], labels = rlabels, on=F) #
-    plot_h.heatmap_pure(r, on=F, labels = rlabels) #
+    plot_h.heatmap_pure(r, on=T, labels = rlabels) #
     plot_h.heatmap_dendro(r, on=F) #
-    plot_h.lcmap_dendro([k], on=F) #
+    plot_h.lcmap_dendro([k], on=T) #
     plot_h.flatmap_dendro(
-      NET, [k], [r], on=F, EC=T #
+      NET, [k], [r], on=T, EC=T #
     )
+  # Plot H ----
+  plot_h.lcmap_dendro([41], on=T) #
   save_class(
     H, NET.pickle_path,
     "hanalysis_{}".format(H.subfolder)

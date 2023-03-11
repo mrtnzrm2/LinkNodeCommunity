@@ -172,7 +172,7 @@ class Hierarchy(Sim):
       3,
       0.1
     )
-    entropy.arbre("short_DC")
+    entropy.arbre("short")
     self.link_entropy = np.array([entropy.get_entropy_h(), entropy.get_entropy_v()])
     self.link_entropy_H = np.array([entropy.get_entropy_h_H(), entropy.get_entropy_v_H()])
     sh = np.nansum(self.link_entropy[0, :])
