@@ -70,7 +70,7 @@ if __name__ == "__main__":
     ## Compute features ----
     H.BH_features_cpp()
     ## Compute link entropy ----
-    H.link_entropy_cpp(cut=cut)
+    H.link_entropy_cpp("short", cut=cut)
     ## Compute lq arbre de merde ----
     H.la_abre_a_merde_cpp(H.BH[0])
     # Set labels to network ----
@@ -91,14 +91,16 @@ if __name__ == "__main__":
   HS = Hierarchical_Entropy(H.Z, H.nodes)
   HS.Z2dict("short")
   _, sv, sh = HS.S(HS.tree)
-  H.entropy = [sv, sh]
+  H.entropy = [
+    sv, sh, np.sum(H.link_entropy_H[1, :]), np.sum(H.link_entropy_H[0, :])
+  ]
   # # Picasso ----
   plot_h = Plot_H(NET, H)
-  plot_h.Entropy_plotly(on=T)
-  plot_h.Entropy_H_plotly(on=T)
-  plot_h.plot_measurements_D(on=T)
-  plot_h.plot_measurements_mu(on=T)
-  plot_h.plot_measurements_X(on=T)
+  plot_h.plot_measurements_Entropy(on=T)
+  plot_h.plot_measurements_Entropy_H(on=T)
+  plot_h.plot_measurements_D(on=F)
+  plot_h.plot_measurements_mu(on=F)
+  plot_h.plot_measurements_X(on=F)
   plot_n = Plot_N(NET, H)
   plot_n.A_vs_dis(NET.A, s=5, on=F, reg=T)
   plot_n.projection_probability(
@@ -123,14 +125,12 @@ if __name__ == "__main__":
     # Plot H ----
     plot_h.core_dendrogram([r], on=T) #
     plot_h.lcmap_pure([k], labels = rlabels, on=F) #
-    plot_h.heatmap_pure(r, on=T, labels = rlabels) #
+    plot_h.heatmap_pure(r, on=F, labels = rlabels) #
     plot_h.heatmap_dendro(r, on=F) #
-    plot_h.lcmap_dendro([k], on=T) #
+    plot_h.lcmap_dendro([k], on=F) #
     plot_h.flatmap_dendro(
-      NET, [k], [r], on=T, EC=T #
+      NET, [k], [r], on=F, EC=T #
     )
-  # Plot H ----
-  plot_h.lcmap_dendro([41], on=T) #
   save_class(
     H, NET.pickle_path,
     "hanalysis_{}".format(H.subfolder)

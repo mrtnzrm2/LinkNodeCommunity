@@ -43,6 +43,16 @@ std::set<int> where(std::vector<int> &v, int &com) {
   return where_com;
 }
 
+std::set<int> where(std::vector<int> &v, std::set<int> &pred,const int &com) {
+  std::set<int> where_com;
+  for (std::set<int>::iterator it = pred.begin(); it != pred.end(); ++it) {
+    if (v[*it] == com) {
+      where_com.insert(*it);
+    }
+  }
+  return where_com;
+}
+
 bool search_key(std::map<std::string, vertex_properties> &a, std::string &key) {
   for (std::map<std::string, vertex_properties>::iterator it = a.begin(); it != a.end(); ++it) {
     if (it->first.compare(key) == 0) return true;
@@ -221,19 +231,26 @@ void Z2dict_short_Dc(
   } 
 }
 
+std::set<int> unique_with_pred(std::vector<int> &a, std::set<int> & pred) {
+  std::set<int> s;
+  for (std::set<int>::iterator v = pred.begin(); v != pred.end(); ++v) {
+    s.insert(a[*v]);
+  }
+  return s;
+}
+
 void Z2dict_short(
   std::vector<std::vector<int> > &A, std::map<std::string, vertex_properties> &tree,
   const std::string key_pred, std::set<int> nodes_pred, std::vector<double> &H, int L, int tL, const int &nodes
 ) {
   if (L < A.size() && nodes_pred.size() > 1) {
     int next_L = L + 1, next_tL = tL + 1;
-    std::vector<int> coms = A[L];
-    unique_2(coms);
+    std::set<int> coms = unique_with_pred(A[L], nodes_pred);
     std::set<int> nodes_com;
     std::set<int> compare;
-    for (int i=0; i < coms.size(); i++) {
-      const std::string key = "L" + std::to_string(next_tL) + std::to_string(coms[i]);
-      nodes_com = where(A[L], coms[i]);
+    for (std::set<int>::iterator com = coms.begin(); com != coms.end(); ++com) {
+      const std::string key = "L" + std::to_string(next_tL) + std::to_string(*com);
+      nodes_com = where(A[L], nodes_pred, *com);
       compare = intersection(nodes_com, nodes_pred);
       if (compare.size() == 0) continue;
       if (nodes_com.size() == nodes_pred.size()) {
@@ -242,7 +259,7 @@ void Z2dict_short(
       else if (nodes_com.size() < nodes_pred.size()) {
         if (!search_key(tree, key_pred)) {
           tree[key_pred].level = tL;
-          tree[key_pred].height = H[nodes - tL - 1];
+          tree[key_pred].height = H[nodes - L];
           tree[key_pred].post_key.insert(key_pred + key);
         }
         else {
@@ -254,7 +271,47 @@ void Z2dict_short(
   } else {
     if (!search_key(tree, key_pred)) {
       tree[key_pred].level = tL;
-      tree[key_pred].height = H[nodes - tL - 1];
+      tree[key_pred].height = H[nodes - L];
+      tree[key_pred].post_key.insert("END");
+    }
+  }
+}
+
+void Z2dict_short_2(
+  std::vector<std::vector<int> > &A, std::map<std::string, vertex_properties> &tree,
+  const std::string key_pred, std::set<int> nodes_pred, std::vector<double> &H, int L, int tL, const int &nodes
+) {
+  if (L < A.size() && nodes_pred.size() > 1) {
+    int next_L = L + 1, next_tL = tL + 1;
+    std::set<int> coms = unique_with_pred(A[L], nodes_pred);
+    std::set<int> nodes_com;
+    std::set<int> compare;
+    for (std::set<int>::iterator com = coms.begin(); com != coms.end(); ++com) {
+      const std::string key = "L" + std::to_string(L) + std::to_string(*com);
+      nodes_com = where(A[L], nodes_pred, *com);
+      compare = intersection(nodes_com, nodes_pred);
+      if (compare.size() == 0) continue;
+      if (nodes_com.size() == nodes_pred.size()) {
+        Z2dict_short_2(A, tree, key_pred, nodes_com, H, next_L, tL, nodes);
+      }
+      else if (nodes_com.size() < nodes_pred.size()) {
+        if (!search_key(tree, key_pred)) {
+          tree[key_pred].level = L - 1;
+          tree[key_pred].height = H[nodes - L];
+          tree[key_pred].post_key.insert(key_pred + key);
+        }
+        else {
+          tree[key_pred].post_key.insert(key_pred + key);
+        }
+        Z2dict_short_2(A, tree, key_pred + key, nodes_com, H, next_L, next_tL, nodes);
+      }
+    }
+  } else {
+    if (!search_key(tree, key_pred)) {
+      tree[key_pred].level = L - 1;
+      tree[key_pred].height = H[nodes - L];
+      tree[key_pred].post_key.insert("END");
+    } else {
       tree[key_pred].post_key.insert("END");
     }
   }
@@ -266,18 +323,17 @@ void Z2dict_long(
 ) {
   if (L < A.size() && nodes_pred.size() > 1) {
     int next_L = L + 1, next_tL = tL + 1;
-    std::vector<int> coms = A[L];
-    unique_2(coms);
+    std::set<int> coms = unique_with_pred(A[L], nodes_pred);
     std::set<int> nodes_com;
     std::set<int> compare;
-    for (int i=0; i < coms.size(); i++) {
-      const std::string key = "L" + std::to_string(next_tL) + std::to_string(coms[i]);
-      nodes_com = where(A[L], coms[i]);
+    for (std::set<int>::iterator com = coms.begin(); com != coms.end(); ++com) {
+      const std::string key = "L" + std::to_string(next_tL) + std::to_string(*com);
+      nodes_com = where(A[L], nodes_pred, *com);
       compare = intersection(nodes_com, nodes_pred);
       if (compare.size() > 0) {
         if (!search_key(tree, key_pred)) {
           tree[key_pred].level = tL;
-          tree[key_pred].height = H[nodes - tL - 1];
+          tree[key_pred].height = H[nodes - L];
           tree[key_pred].post_key.insert(key_pred + key);
         }
         else {
@@ -289,7 +345,7 @@ void Z2dict_long(
   } else {
     if (!search_key(tree, key_pred)) {
       tree[key_pred].level = tL;
-      tree[key_pred].height = H[nodes - tL - 1];
+      tree[key_pred].height = H[nodes - L];
       tree[key_pred].post_key.insert("END");
     }
   }
@@ -304,6 +360,7 @@ void Z2dict(std::vector<std::vector<int> > &A,  std::map<std::string, vertex_pro
   int L = 1, tL = 0;
   const std::string root = "L00";
   if (type.compare("short") == 0) Z2dict_short(A, tree, root, nodes, H, L, tL, N);
+  else if (type.compare("short_2") == 0) Z2dict_short_2(A, tree, root, nodes, H, L, tL, N);
   else if (type.compare("long") == 0) Z2dict_long(A, tree, root, nodes, H, L, tL, N);
   else if (type.compare("short_DC") == 0) Z2dict_short_Dc(A, src, tar, tree, root, nodes, L, tL);
   else {
@@ -346,7 +403,7 @@ void level_information(std::map<std::string, vertex_properties> &tree, const std
     }
     else {
       ml[tree[root].level].size++;
-      ml[tree[root].level].height = tree[root].height;
+      ml[tree[root].level].height += tree[root].height;
     }
   }
 }

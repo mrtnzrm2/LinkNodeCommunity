@@ -45,15 +45,15 @@ class Hierarchical_Entropy:
     self.SV(Ml, M, Sv)
     Sh /= self.nodes.shape[0]
     Sv /= self.nodes.shape[0]
-    print(f"\n\tHierarchical entropy : {Sh[0] + Sv[0]}, Sv : {Sv[0]}, and Sh : {Sh[0]}\n")
+    print(f"\n\tNode entropy : {(Sh[0] + Sv[0]):.4f}, Sh : {Sh[0]:.4f}, and Sv : {Sv[0]:.4f}\n")
     return Sh[0] + Sv[0], Sv[0], Sh[0]
 
   def Z2dict_long(self, M, tree : dict, key_prev, nodes_prev : set, L, tL):
-    if L < M.shape[0]:
-      coms = M[L, :]
+    if L < M.shape[0] and len(nodes_prev) > 1:
+      coms = [M[L, i] for i in nodes_prev]
       for i, com in enumerate(np.unique(coms)):
         key = f"L{tL}_{i}"
-        nodes_com = set(list(np.where(coms == com)[0]))
+        nodes_com = set(list(np.where(M[L, :] == com)[0]))
         compare = nodes_com.intersection(nodes_prev)
         if len(compare) > 0:
           if key_prev not in tree.keys(): tree[key_prev] = {}
@@ -62,17 +62,17 @@ class Hierarchical_Entropy:
 
   def Z2dict_short(self, M, tree : dict, key_prev, nodes_prev : set, L, tL):
     if L < M.shape[0] and len(nodes_prev) > 1:
-      coms = M[L, :]
+      coms = [M[L, i] for i in nodes_prev]
       for i, com in enumerate(np.unique(coms)):
-        key = f"L{tL}_{i}"
-        nodes_com = set(list(np.where(coms == com)[0]))
+        key = f"L{tL}_{com}"
+        nodes_com = set(list(np.where(M[L, :] == com)[0]))
         compare = nodes_com.intersection(nodes_prev)
-        if len(compare) > 0:
-          if len(nodes_com) == len(nodes_prev):
-            self.Z2dict_short(M, tree, key_prev, nodes_com, L + 1, tL)
-          elif len(nodes_com) < len(nodes_prev):
-            if key_prev not in tree.keys(): tree[key_prev] = {}
-            self.Z2dict_short(M, tree[key_prev], key, nodes_com, L + 1, tL + 1)
+        if len(compare) == 0: continue
+        if len(nodes_com) == len(nodes_prev):
+          self.Z2dict_short(M, tree, key_prev, nodes_com, L + 1, tL)
+        elif len(nodes_com) < len(nodes_prev):
+          if key_prev not in tree.keys(): tree[key_prev] = {}
+          self.Z2dict_short(M, tree[key_prev], key, nodes_com, L + 1, tL + 1)
     else: tree[key_prev] = {}
 
   def Z2dict(self, Z2):
@@ -81,7 +81,7 @@ class Hierarchical_Entropy:
     L = 1
     tL = 1
     if Z2 == "short":
-      self.Z2dict_short(self.A, self.tree, "L0_0", nodes, L, tL)
+      self.Z2dict_short(self.A, self.tree, "L00_0", nodes, L, tL)
     elif Z2 == "long":
-      self.Z2dict_long(self.A, self.tree, "L0_0", nodes, L, tL)
+      self.Z2dict_long(self.A, self.tree, "L00_0", nodes, L, tL)
     else: raise ValueError("Only Z2 short or long")

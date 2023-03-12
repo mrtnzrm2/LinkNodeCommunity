@@ -70,7 +70,8 @@ class HRH:
         self.entropy,
         pd.DataFrame(
           {
-            "Sv" : [s[0]], "Sh" : [s[1]], "data" : ["1"]
+            "Sv" : [s[0], s[2]], "Sh" : [s[1]. s[3]], "data" : ["1", "1"],
+            "c" : ["NC", "LCH"]
           }
         )
       ], ignore_index=True
@@ -82,7 +83,8 @@ class HRH:
         self.entropy,
         pd.DataFrame(
           {
-            "Sv" : [s[0]], "Sh" : [s[1]], "data" : ["0"]
+            "Sv" : [s[0], s[2]], "Sh" : [s[1]. s[3]], "data" : ["0", "0"],
+            "c" : ["NC", "LCH"]
           }
         )
       ], ignore_index=True

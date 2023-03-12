@@ -103,6 +103,8 @@ if __name__ == "__main__":
     )
     ## Compute quality functions ----
     H.BH_features_cpp()
+    ## Compute link entropy ----
+    H.link_entropy_cpp("short", cut=cut)
     ## Compute lq arbre de merde ----
     H.la_abre_a_merde_cpp(H.BH[0])
     # Add labels ----

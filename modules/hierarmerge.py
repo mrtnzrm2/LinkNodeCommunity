@@ -150,7 +150,7 @@ class Hierarchy(Sim):
           )
         )    
 
-  def link_entropy_cpp(self, cut=False):
+  def link_entropy_cpp(self, dist : str, cut=False):
     if self.linkage == "single":
       linkage = 0
     elif self.linkage == "average":
@@ -172,15 +172,15 @@ class Hierarchy(Sim):
       3,
       0.1
     )
-    entropy.arbre("short")
+    entropy.arbre(dist)
     self.link_entropy = np.array([entropy.get_entropy_h(), entropy.get_entropy_v()])
     self.link_entropy_H = np.array([entropy.get_entropy_h_H(), entropy.get_entropy_v_H()])
     sh = np.nansum(self.link_entropy[0, :])
     sv = np.nansum(self.link_entropy[1, :])
-    print(f"\nTotal link entropy: {sh} sh\t{sv} sv")
+    print(f"\n\tlink entropy : {(sv + sh):.4f}, Sh : {sh:.4f}, and Sv : {sv:.4f}\n")
     sh = np.nansum(self.link_entropy_H[0, :])
     sv = np.nansum(self.link_entropy_H[1, :])
-    print(f"\nTotal link entropy H: {sh} sh\t{sv} sv")
+    print(f"\n\tlink entropy H: {(sv + sh):.4f}, Sh : {sh:.4f}, and Sv : {sv:.4f}\n")
 
 
   def la_abre_a_merde_cpp(self, features):

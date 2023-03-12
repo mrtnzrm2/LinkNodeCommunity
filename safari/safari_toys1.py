@@ -122,7 +122,7 @@ if __name__ == "__main__":
     ## Compute features ----
     H.BH_features_cpp()
     ## Compute link entropy ----
-    H.link_entropy_cpp(cut=cut)
+    H.link_entropy_cpp("short", cut=cut)
     ## Compute lq arbre de merde ----
     H.la_abre_a_merde_cpp(H.BH[0])
     # Entropy ----
@@ -139,8 +139,8 @@ if __name__ == "__main__":
     L.get_regions()
     H.set_colregion(L)
     plot_h = Plot_H(net, H)
-    plot_h.Entropy_plotly(on=T)
-    plot_h.Entropy_H_plotly(on=T)
+    plot_h.plot_measurements_Entropy(on=T)
+    plot_h.plot_measurements_Entropy_H(on=T)
     # for score in opt_score:
     #   k, r = get_best_kr_equivalence(score, H)
     #   rlabels = get_labels_from_Z(H.Z, r)

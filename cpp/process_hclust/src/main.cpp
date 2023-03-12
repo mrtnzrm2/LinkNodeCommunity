@@ -141,20 +141,6 @@ double get_muscore(
   return mu;
 }
 
-double approx_nodes_by_edges(int& M) {
-  double x;
-  double m = static_cast<double>(M);
-  double x1 = (1 + sqrt(1 + 4 * m)) / 2;
-  x1 = floor(x1);
-  double x2 = (1 - sqrt(1 + 4 * m)) / 2;
-  x2 = floor(x2);
-  if (x2 <= 0)
-    x = x1;
-  else
-    x = x2;
-  return x;
-}
-
 void get_sizes(
   int* labels,
   std::vector<int>& lcs,
@@ -165,18 +151,17 @@ void get_sizes(
   int& n
 ) {
 
-  std::vector<std::vector <int> > node_buffer(unique_labels.size());
+  std::vector<std::set<int> > node_buffer(unique_labels.size());
   for (int i = 0; i < n; i++) {
     for (int j = 0; j < unique_labels.size(); j++) {
       if (labels[i] == unique_labels[j]) {
         lcs[j]++;
-        node_buffer[j].push_back(source[i]);
-        node_buffer[j].push_back(target[i]);
+        node_buffer[j].insert(source[i]);
+        node_buffer[j].insert(target[i]);
       }
     }
   }
   for (int j = 0; j < unique_labels.size(); j++) {
-    unique(node_buffer[j]);
     nds[j] = node_buffer[j].size();
   }
 }
@@ -256,16 +241,14 @@ void get_dc(
   double &dc
 ) {
   double m = 0, N;
-  std::vector<int> nodes;
+  std::set<int> nodes;
   for (int i = 0; i < n; i++) {
     if (labels[i] == lc_id) {
       m++;
-      nodes.push_back(source[i]);
-      nodes.push_back(target[i]);
+      nodes.insert(source[i]);
+      nodes.insert(target[i]);
     }
   }
-  // uniques ----
-  unique(nodes);
   N = nodes.size();
   dc = static_cast<double>(m - N + 1) /
     static_cast<double>(pow(N - 1, 2));
@@ -536,7 +519,7 @@ void ph::arbre(std::string &t_size) {
   // }
 
   // for (std::map<std::string, vertex_properties>::iterator it = tree.begin(); it != tree.end(); ++it) {
-  //   std::cout << it->first << "\t\t\t" << it->second.level << std::endl;
+  //   std::cout << it->first << "\t\t\t" << it->second.level << "\t" << it->second.height << std::endl;
 
   //   for (std::set<std::string>::iterator ii = it->second.post_key.begin(); ii != it->second.post_key.end(); ii++) {
   //     std::cout << *ii << "\t\t";
@@ -644,9 +627,7 @@ void ph::vite() {
     std::vector<int> lc_size(number_lcs, 0);
     std::vector<int> node_size(number_lcs, 0);
     get_sizes(
-      labels,
-      lc_size, node_size,
-      unique_labels, source_vertices, target_vertices, number_of_elements
+      labels, lc_size, node_size, unique_labels, source_vertices, target_vertices, number_of_elements
     );
     nec = 0;
     nt = 0;

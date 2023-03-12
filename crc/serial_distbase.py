@@ -121,6 +121,8 @@ def worker_distbase(
     )
     ## Compute features ----
     RAND_H.BH_features_cpp()
+    ## Compute link entropy ----
+    RAND_H.link_entropy_cpp("short", cut=cut)
     ## Compute lq arbre de merde ----
     RAND_H.la_abre_a_merde_cpp(RAND_H.BH[0])
     RAND_H.set_colregion(L)
@@ -132,7 +134,9 @@ def worker_distbase(
     HS = Hierarchical_Entropy(RAND_H.Z, RAND_H.nodes)
     HS.Z2dict("short")
     _, sv, sh = HS.S(HS.tree)
-    data.set_entropy_zero([sv, sh])
+    data.set_entropy_zero(
+      [sv, sh, np.sum(RAND_H.link_entropy_H[1, :]), np.sum(RAND_H.link_entropy_H[0, :])]
+    )
     for score in opt_score:
       # Get k from RAND_H ----
       k, r = get_best_kr(score, RAND_H)

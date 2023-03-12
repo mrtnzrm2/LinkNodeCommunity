@@ -123,6 +123,8 @@ if __name__ == "__main__":
       )
       ## Compute features ----
       RAND_H.BH_features_cpp()
+      ## Compute link entropy ----
+      RAND_H.link_entropy_cpp("short", cut=cut)
       ## Compute lq arbre de merde ----
       RAND_H.la_abre_a_merde_cpp(RAND_H.BH[0])
       RAND_H.set_colregion(L)
@@ -134,7 +136,9 @@ if __name__ == "__main__":
       HS = Hierarchical_Entropy(RAND_H.Z, RAND_H.nodes)
       HS.Z2dict("short")
       _, sv, sh = HS.S(HS.tree)
-      data.set_entropy_zero([sv, sh])
+      data.set_entropy_zero(
+        [sv, sh, np.sum(RAND_H.link_entropy_H[1, :]), np.sum(RAND_H.link_entropy_H[0, :])]
+      )
       # Plot ----
       plot_h = Plot_H(RAND, RAND_H)
       plot_h.Mu_plotly(on=F)
