@@ -173,6 +173,12 @@ class Hierarchy(Sim):
       3,
       0.1
     )
+    # link_matrix = np.zeros((self.leaves, self.leaves))
+    # for i in np.arange(self.leaves - 1, 0, -1):
+    #   link_matrix[i - 1, :] = cut_tree(self.H, i).ravel()
+    # link_matrix[self.leaves - 1, :] = np.arange(self.leaves)
+    # height = np.zeros(self.leaves)
+    # height[1:] = self.H[:, 2]
     entropy.arbre(dist)
     max_level = entropy.get_max_level()
     self.link_entropy = np.array(

@@ -373,7 +373,7 @@ class ph {
     ~ph(){};
 
     void vite();
-
+    // td::vector<std::vector<int> > &link_communities, std::vector<double> & H, 
     void arbre(std::string &t_size);
 
     template <typename T>
@@ -468,7 +468,7 @@ std::vector<double> ph::get_entropy_v_H(){
 int ph::get_max_level(){
   return max_level;
 }
-
+// std::vector<std::vector<int> > &link_communities, std::vector<double> & H,
 void ph::arbre(std::string &t_size) {
   const std::string root = "L00";
   std::vector<double> H(number_of_elements, 0);
@@ -513,7 +513,7 @@ void ph::arbre(std::string &t_size) {
   // }
   // std::cout << "\n";
   
-  std::map<int, level_properties> chain;
+  std::map<int, level_properties> chain, chain_h;
   std::cout << "Starting Z2dict\n";
   std::map<std::string, vertex_properties> tree;
   Z2dict(link_communities, tree, H, t_size);
@@ -535,8 +535,15 @@ void ph::arbre(std::string &t_size) {
 
   std::cout << "Level information\n";
   level_information(tree, root, chain);
-
   // for (std::map<int, level_properties>::iterator v = chain.begin(); v != chain.end(); ++v){
+  //   std::cout << v->first << "\t" << v->second.size << "\t" << v->second.height << "\n";
+  // }
+  for (std::map<int, level_properties>::iterator it = chain.begin(); it != chain.end(); ++it) {
+    if (it->first > max_level)
+     max_level = it->first;
+  }
+  level_information_H(tree, root, chain_h, max_level);
+  // for (std::map<int, level_properties>::iterator v = chain_h.begin(); v != chain_h.end(); ++v){
   //   std::cout << v->first << "\t" << v->second.size << "\t" << v->second.height << "\n";
   // }
   // std::cout << number_of_elements << "\n";
@@ -547,15 +554,11 @@ void ph::arbre(std::string &t_size) {
 
   vertex_entropy(tree, chain, root, number_of_elements, Sh);
   std::cout << "Vertex entropy H\n";
-  for (std::map<int, level_properties>::iterator it = chain.begin(); it != chain.end(); ++it) {
-    if (it->first > max_level)
-     max_level = it->first;
-  }
-  vertex_entropy_H(tree, chain, root, number_of_elements, max_level, ShH);
+  vertex_entropy_H(tree, chain_h, root, number_of_elements, max_level, ShH);
   std::cout << "Level entropy\n";
   level_entropy(tree, chain, root, number_of_elements, Sv);
   std::cout << "Level entropy H\n";
-  level_entrop_H(tree, chain, root, number_of_elements, SvH);
+  level_entrop_H(tree, chain_h, root, number_of_elements, SvH);
 
   // Delete pointers
   delete[] labels;

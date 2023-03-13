@@ -153,7 +153,7 @@ class Hierarchical_Entropy:
     maxlevl = np.array([0])
     self.max_level(a, maxlevl)
     maxlevl = maxlevl[0]
-    Sh =np.zeros(self.total_nodes)
+    Sh = np.zeros(self.total_nodes)
     Sv = np.zeros(self.total_nodes)
     self.sum_vertices(a, M)
     self.ML_height(a, Ml, maxlevl)
