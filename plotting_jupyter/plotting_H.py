@@ -23,8 +23,7 @@ class Plot_H:
     self.mode = H.mode
     self.leaves = H.leaves
     self.index = H.index
-    self.link_entropy = H.link_entropy
-    self.link_entropy_H = H.link_entropy_H
+    self.entropy = H.entropy
     self.R = H.R
     # Net ----
     self.path = H.plot_path
@@ -65,50 +64,48 @@ class Plot_H:
   def plot_measurements_Entropy(self):
     print("Visualize Entropy iterations!!!")
     # Create data ----
-    k = np.arange(self.leaves, 0, -1)
+    dim = self.entropy[0].shape[1]
     data = pd.DataFrame(
       {
-      "K" : np.hstack([k, k]),
-      "S" : self.link_entropy.ravel(),
-      "c" : ["Sh"] * self.leaves + ["Sv"] * self.leaves
+        "S" : np.hstack([self.entropy[0].ravel(), self.entropy[1].ravel()]),
+        "dir" : ["H"] * dim + ["V"] * dim + ["H"] * dim + ["V"] * dim,
+        "c" : ["node_hierarchy"] * 2 * dim + ["node_hierarchy_H"] * 2 * dim,
+        "level" : list(np.arange(dim, 0, -1)) * 4
       }
     )
+    dim = self.entropy[2].shape[1]
+    data = pd.concat(
+      [
+        data,
+        pd.DataFrame(
+          {
+            "S" : np.hstack([self.entropy[2].ravel(), self.entropy[3].ravel()]),
+            "dir" : ["H"] * dim + ["V"] * dim + ["H"] * dim + ["V"] * dim,
+            "c" : ["link_hierarchy"] * 2 * dim + ["link_hierarchy_H"] * 2 * dim,
+            "level" : list(np.arange(dim, 0, -1)) * 4
+          }
+        )
+      ], ignore_index=True
+    )
+    mx = data.iloc[
+      data.groupby(["c", "dir"])["S"].transform("idxmax").drop_duplicates().to_numpy()
+    ].sort_values("c", ascending=False)
+    print(mx)
     # Create figure ----
-    fig, ax = plt.subplots(1, 1)
-    sns.lineplot(
+    g = sns.FacetGrid(
       data=data,
-      x="K",
-      y="S",
-      hue="c",
-      ax=ax
+      col = "c",
+      hue = "dir",
+      col_wrap=2,
+      sharex=False,
+      sharey=False
     )
-    ax.set_xlabel("levels")
-    ax.set_xscale("log")
-    fig.tight_layout()
-
-  def plot_measurements_Entropy_H(self):
-    print("Visualize Entropy H iterations!!!")
-    # Create data ----
-    k = np.arange(self.leaves, 0, -1)
-    data = pd.DataFrame(
-      {
-      "K" : np.hstack([k, k]),
-      "S" : self.link_entropy_H.ravel(),
-      "c" : ["Sh"] * self.leaves + ["Sv"] * self.leaves
-      }
-    )
-    # Create figure ----
-    fig, ax = plt.subplots(1, 1)
-    sns.lineplot(
-      data=data,
-      x="K",
-      y="S",
-      hue="c",
-      ax=ax
-    )
-    ax.set_xlabel("levels")
-    ax.set_xscale("log")
-    fig.tight_layout()
+    g.map_dataframe(
+      sns.lineplot,
+      x="level",
+      y="S"
+    ).set(xscale="log")
+    g.add_legend()
 
   def plot_measurements_D(self, **kwargs):
     print("Plot D iterations")

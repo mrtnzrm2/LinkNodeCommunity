@@ -24,8 +24,7 @@ class Plot_H:
     self.mode = H.mode
     self.leaves = H.leaves
     self.index = H.index
-    self.link_entropy = H.link_entropy
-    self.link_entropy_H = H.link_entropy_H
+    self.entropy = H.entropy
     self.R = H.R
     ##
     if sln:
@@ -125,12 +124,13 @@ class Plot_H:
       import plotly.express as px
       print("Visualize Entropy with plotly!!!")
       # Create data ----
-      k = np.arange(self.leaves, 0, -1)
+      dim = self.link_entropy.shape[1]
+      k = np.arange(dim, 0, -1)
       data = pd.DataFrame(
         {
         "K" : np.hstack([k, k]),
         "S" : self.link_entropy.ravel(),
-        "c" : ["Sh"] * self.leaves + ["Sv"] * self.leaves
+        "c" : ["Sh"] * dim + ["Sv"] * dim
         }
       )
       # Create figure ----
@@ -168,12 +168,13 @@ class Plot_H:
       import plotly.express as px
       print("Visualize Entropy with plotly!!!")
       # Create data ----
-      k = np.arange(self.leaves, 0, -1)
+      dim = self.link_entropy_H.shape[1]
+      k = np.arange(dim, 0, -1)
       data = pd.DataFrame(
         {
         "K" : np.hstack([k, k]),
         "S" : self.link_entropy_H.ravel(),
-        "c" : ["Sh"] * self.leaves + ["Sv"] * self.leaves
+        "c" : ["Sh"] * dim + ["Sv"] * dim
         }
       )
       # Create figure ----
@@ -210,26 +211,48 @@ class Plot_H:
     if on:
       print("Visualize Entropy iterations!!!")
       # Create data ----
-      k = np.arange(self.leaves, 0, -1)
+      dim = self.entropy[0].shape[1]
       data = pd.DataFrame(
         {
-        "K" : np.hstack([k, k]),
-        "S" : self.link_entropy.ravel(),
-        "c" : ["Sh"] * self.leaves + ["Sv"] * self.leaves
+          "S" : np.hstack([self.entropy[0].ravel(), self.entropy[1].ravel()]),
+          "dir" : ["H"] * dim + ["V"] * dim + ["H"] * dim + ["V"] * dim,
+          "c" : ["node_hierarchy"] * 2 * dim + ["node_hierarchy_H"] * 2 * dim,
+          "level" : list(np.arange(dim, 0, -1)) * 4
         }
       )
-      # Create figure ----
-      fig, ax = plt.subplots(1, 1)
-      sns.lineplot(
-        data=data,
-        x="K",
-        y="S",
-        hue="c",
-        ax=ax
+      dim = self.entropy[2].shape[1]
+      data = pd.concat(
+        [
+          data,
+          pd.DataFrame(
+            {
+              "S" : np.hstack([self.entropy[2].ravel(), self.entropy[3].ravel()]),
+              "dir" : ["H"] * dim + ["V"] * dim + ["H"] * dim + ["V"] * dim,
+              "c" : ["link_hierarchy"] * 2 * dim + ["link_hierarchy_H"] * 2 * dim,
+              "level" : list(np.arange(dim, 0, -1)) * 4
+            }
+          )
+        ], ignore_index=True
       )
-      ax.set_xlabel("levels")
-      ax.set_xscale("log")
-      fig.tight_layout()
+      mx = data.iloc[
+        data.groupby(["c", "dir"])["S"].transform("idxmax").drop_duplicates().to_numpy()
+      ].sort_values("c", ascending=False)
+      print(mx)
+      # Create figure ----
+      g = sns.FacetGrid(
+        data=data,
+        col = "c",
+        hue = "dir",
+        col_wrap=2,
+        sharex=False,
+        sharey=False
+      )
+      g.map_dataframe(
+        sns.lineplot,
+        x="level",
+        y="S"
+      ).set(xscale="log")
+      g.add_legend()
       # Arrange path ----
       plot_path = os.path.join(self.path, "Features")
       # Crate path ----
@@ -245,46 +268,6 @@ class Plot_H:
       plt.close()
     else:
       print("No Entropy iterations")
-
-  def plot_measurements_Entropy_H(self, on=True):
-    if on:
-      print("Visualize Entropy H iterations!!!")
-      # Create data ----
-      k = np.arange(self.leaves, 0, -1)
-      data = pd.DataFrame(
-        {
-        "K" : np.hstack([k, k]),
-        "S" : self.link_entropy_H.ravel(),
-        "c" : ["Sh"] * self.leaves + ["Sv"] * self.leaves
-        }
-      )
-      # Create figure ----
-      fig, ax = plt.subplots(1, 1)
-      sns.lineplot(
-        data=data,
-        x="K",
-        y="S",
-        hue="c",
-        ax=ax
-      )
-      ax.set_xlabel("levels")
-      ax.set_xscale("log")
-      fig.tight_layout()
-      # Arrange path ----
-      plot_path = os.path.join(self.path, "Features")
-      # Crate path ----
-      Path(
-        plot_path
-      ).mkdir(exist_ok=True, parents=True)
-      plt.savefig(
-        join(
-          plot_path, "Entropy_H_levels.png"
-        ),
-        dpi=300
-      )
-      plt.close()
-    else:
-      print("No Entropy H iterations")
 
   def D_plotly(self, on=True, **kwargs):
     if on:

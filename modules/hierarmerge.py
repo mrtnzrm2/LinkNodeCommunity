@@ -151,6 +151,7 @@ class Hierarchy(Sim):
         )    
 
   def link_entropy_cpp(self, dist : str, cut=False):
+    from scipy.cluster.hierarchy import cut_tree
     if self.linkage == "single":
       linkage = 0
     elif self.linkage == "average":
@@ -173,8 +174,13 @@ class Hierarchy(Sim):
       0.1
     )
     entropy.arbre(dist)
-    self.link_entropy = np.array([entropy.get_entropy_h(), entropy.get_entropy_v()])
-    self.link_entropy_H = np.array([entropy.get_entropy_h_H(), entropy.get_entropy_v_H()])
+    max_level = entropy.get_max_level()
+    self.link_entropy = np.array(
+      [entropy.get_entropy_h()[max_level:], entropy.get_entropy_v()[max_level:]]
+    )
+    self.link_entropy_H = np.array(
+      [entropy.get_entropy_h_H()[max_level:], entropy.get_entropy_v_H()[max_level:]]
+    )
     sh = np.nansum(self.link_entropy[0, :])
     sv = np.nansum(self.link_entropy[1, :])
     print(f"\n\tlink entropy : {(sv + sh):.4f}, Sh : {sh:.4f}, and Sv : {sv:.4f}\n")

@@ -803,10 +803,11 @@ class PLOT_S:
       )
       plt.close()
     else: print("No order parameter noodle iterations")
-  
+
   def plot_entropy(self, s=3, on=True):
     if on:
-      print("Plot Entropy!!!")
+      # Modified after gathering new data
+      print("Plot Entropy Sh, Sv!!!")
       fig, ax = plt.subplots(1, 1)
       sns.scatterplot(
         data=self.entropy,
@@ -840,7 +841,47 @@ class PLOT_S:
         dpi=300
       )
       plt.close()
-    else: print("No stats")
+    else: print("No Entropy Sh, Sv")
+  
+  def plot_entropy_histplot(self, on=True):
+    if on:
+      print("Plot entropy histograms")
+      # Get data ----
+      fig, ax = plt.subplots(1, 2, figsize=(9, 4))
+      h1 = sns.histplot(
+        data=self.entropy.loc[self.entropy.data == "0"],
+        x="Sh",
+        stat="count",
+        color=sns.color_palette("deep", n_colors=2)[1],
+        ax=ax[0]
+      )
+      h1.axvline(self.entropy.Sh.loc[self.entropy.data == "1"].to_numpy())
+      h2 = sns.histplot(
+        data=self.entropy.loc[self.entropy.data == "0"],
+        x="Sv",
+        stat="count",
+        color=sns.color_palette("deep", n_colors=2)[1],
+        ax=ax[1]
+      )
+      h2.axvline(self.entropy.Sv.loc[self.entropy.data == "1"].to_numpy())
+      ax[0].set_xlabel("Sv")
+      ax[1].set_xlabel("Sh")
+      fig.tight_layout()
+      # Arrange path ----
+      plot_path = join(
+        self.plot_path, "Features"
+      )
+      # Crate path ----
+      Path(
+        plot_path
+      ).mkdir(exist_ok=True, parents=True)
+      # Save plot ----
+      plt.savefig(
+        join(plot_path, "entropy_hist.png"),
+        dpi=300
+      )
+      plt.close()
+    else: print("No entropy histograms")
 
 
 

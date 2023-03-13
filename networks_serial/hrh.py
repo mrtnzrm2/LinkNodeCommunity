@@ -41,7 +41,8 @@ class HRH:
     self.kr = pd.DataFrame()
     self.set_kr_one(H)
     # Entropy ----
-    self.entropy = pd.DataFrame()
+    self.node_entropy = pd.DataFrame()
+    self.link_entropy = pd.DataFrame()
     self.set_entropy_one(H.entropy)
     # Set save_class as method ----
     self.save_class = save_class
@@ -65,26 +66,56 @@ class HRH:
       self.set_cover_one(NET_H.cover[score], score)
 
   def set_entropy_one(self, s):
-    self.entropy = pd.concat(
+    dim = s[0].shape[1]
+    self.node_entropy = pd.concat(
       [
-        self.entropy,
+        self.node_entropy,
         pd.DataFrame(
           {
-            "Sv" : [s[0], s[2]], "Sh" : [s[1]. s[3]], "data" : ["1", "1"],
-            "c" : ["NC", "LCH"]
+            "S" : np.hstack([s[0].ravel(), s[1].ravel()]), "data" : ["1"] * 4 * dim,
+            "c" : ["node_hierarchy"] * 2 * dim  + ["node_hierarch_H"] * 2 * dim,
+            "dir" : ["H"] * dim + ["V"] * dim + ["H"] * dim + ["V"] * dim
+          } 
+        )
+      ], ignore_index=True
+    )
+    dim = s[2].shape[1]
+    self.link_entropy = pd.concat(
+      [
+        self.link_entropy,
+        pd.DataFrame(
+          {
+            "S" : np.hstack([s[2].ravel(), s[3].ravel()]), "data" : ["1"] * 4 * dim,
+            "c" : ["link_hierarchy"] * 2 * dim  + ["link_hierarch_H"] * 2 * dim,
+            "dir" : ["H"] * dim + ["V"] * dim + ["H"] * dim + ["V"] * dim
           }
         )
       ], ignore_index=True
     )
 
   def set_entropy_zero(self, s):
-    self.entropy = pd.concat(
+    dim = s[0].shape[1]
+    self.node_entropy = pd.concat(
       [
-        self.entropy,
+        self.node_entropy,
         pd.DataFrame(
           {
-            "Sv" : [s[0], s[2]], "Sh" : [s[1]. s[3]], "data" : ["0", "0"],
-            "c" : ["NC", "LCH"]
+            "S" : np.hstack([s[0].ravel(), s[1].ravel()]), "data" : ["0"] * 4 * dim,
+            "c" : ["node_hierarchy"] * 2 * dim  + ["node_hierarch_H"] * 2 * dim,
+            "dir" : ["H"] * dim + ["V"] * dim + ["H"] * dim + ["V"] * dim
+          } 
+        )
+      ], ignore_index=True
+    )
+    dim = s[2].shape[1]
+    self.link_entropy = pd.concat(
+      [
+        self.link_entropy,
+        pd.DataFrame(
+          {
+            "S" : np.hstack([s[2].ravel(), s[3].ravel()]), "data" : ["0"] * 4 * dim,
+            "c" : ["link_hierarchy"] * 2 * dim  + ["link_hierarch_H"] * 2 * dim,
+            "dir" : ["H"] * dim + ["V"] * dim + ["H"] * dim + ["V"] * dim
           }
         )
       ], ignore_index=True

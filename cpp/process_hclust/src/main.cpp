@@ -346,6 +346,7 @@ class ph {
     std::vector<double> Sv;
     std::vector<double> ShH;
     std::vector<double> SvH;
+    int max_level=0;
 
     int number_of_elements;
     std::vector<std::vector<double> > distane_matrix;
@@ -391,6 +392,7 @@ class ph {
     std::vector<double> get_entropy_v();
     std::vector<double> get_entropy_h_H();
     std::vector<double> get_entropy_v_H();
+    int get_max_level();
 };
 
 ph::ph(
@@ -463,6 +465,10 @@ std::vector<double> ph::get_entropy_v_H(){
   return SvH;
 }
 
+int ph::get_max_level(){
+  return max_level;
+}
+
 void ph::arbre(std::string &t_size) {
   const std::string root = "L00";
   std::vector<double> H(number_of_elements, 0);
@@ -500,7 +506,8 @@ void ph::arbre(std::string &t_size) {
   for (int i=0; i < number_of_elements - 1; i++)
     H[i+1] = height[i];
 
-  std::cout << H[number_of_elements - 2] << " " << H[number_of_elements - 1] << "\n";
+  // std::cout << H[number_of_elements - 2] << " " << H[number_of_elements - 1] << "\n";
+
   // for (auto j : H) {
   //   std::cout << j << " ";
   // }
@@ -509,7 +516,7 @@ void ph::arbre(std::string &t_size) {
   std::map<int, level_properties> chain;
   std::cout << "Starting Z2dict\n";
   std::map<std::string, vertex_properties> tree;
-  Z2dict(link_communities, tree, source_vertices, target_vertices, H, t_size);
+  Z2dict(link_communities, tree, H, t_size);
 
   // for (int i = 0; i < link_communities.size(); i++) {
   //   for (int j = 0; j < link_communities[i].size(); j++) {
@@ -520,11 +527,10 @@ void ph::arbre(std::string &t_size) {
 
   // for (std::map<std::string, vertex_properties>::iterator it = tree.begin(); it != tree.end(); ++it) {
   //   std::cout << it->first << "\t\t\t" << it->second.level << "\t" << it->second.height << std::endl;
-
-  //   for (std::set<std::string>::iterator ii = it->second.post_key.begin(); ii != it->second.post_key.end(); ii++) {
-  //     std::cout << *ii << "\t\t";
-  //   }
-  //   std::cout << "\n\n";
+  //   // for (std::set<std::string>::iterator ii = it->second.post_key.begin(); ii != it->second.post_key.end(); ii++) {
+  //   //   std::cout << *ii << "\t\t";
+  //   // }
+  //   // std::cout << "\n\n";
   // }
 
   std::cout << "Level information\n";
@@ -541,7 +547,11 @@ void ph::arbre(std::string &t_size) {
 
   vertex_entropy(tree, chain, root, number_of_elements, Sh);
   std::cout << "Vertex entropy H\n";
-  vertex_entropy_H(tree, chain, root, number_of_elements, ShH);
+  for (std::map<int, level_properties>::iterator it = chain.begin(); it != chain.end(); ++it) {
+    if (it->first > max_level)
+     max_level = it->first;
+  }
+  vertex_entropy_H(tree, chain, root, number_of_elements, max_level, ShH);
   std::cout << "Level entropy\n";
   level_entropy(tree, chain, root, number_of_elements, Sv);
   std::cout << "Level entropy H\n";
@@ -705,5 +715,6 @@ PYBIND11_MODULE(process_hclust, m) {
         .def("get_entropy_h", &ph::get_entropy_h)
         .def("get_entropy_v", &ph::get_entropy_v)
         .def("get_entropy_h_H", &ph::get_entropy_h_H)
-        .def("get_entropy_v_H", &ph::get_entropy_v_H);
+        .def("get_entropy_v_H", &ph::get_entropy_v_H)
+        .def("get_max_level", &ph::get_max_level);
 }

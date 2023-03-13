@@ -90,14 +90,15 @@ if __name__ == "__main__":
   # Entropy ----
   HS = Hierarchical_Entropy(H.Z, H.nodes)
   HS.Z2dict("short")
-  _, sv, sh = HS.S(HS.tree)
+  node_entropy = HS.S(HS.tree)
+  node_entropy_H = HS.S_height(HS.tree)
   H.entropy = [
-    sv, sh, np.sum(H.link_entropy_H[1, :]), np.sum(H.link_entropy_H[0, :])
+    node_entropy, node_entropy_H,
+    H.link_entropy, H.link_entropy_H
   ]
   # # Picasso ----
   plot_h = Plot_H(NET, H)
   plot_h.plot_measurements_Entropy(on=T)
-  plot_h.plot_measurements_Entropy_H(on=T)
   plot_h.plot_measurements_D(on=F)
   plot_h.plot_measurements_mu(on=F)
   plot_h.plot_measurements_X(on=F)

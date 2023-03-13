@@ -142,9 +142,10 @@ if __name__ == "__main__":
       # Entropy ----
       HS = Hierarchical_Entropy(RAND_H.Z, RAND_H.nodes)
       HS.Z2dict("short")
-      _, sv, sh = HS.S(HS.tree)
+      node_entropy = HS.S(HS.tree)
+      node_entropy_H = HS.S_height(HS.tree)
       data.set_entropy_zero(
-        [sv, sh, np.sum(RAND_H.link_entropy_H[1, :]), np.sum(RAND_H.link_entropy_H[0, :])]
+        [node_entropy, node_entropy_H, RAND_H.link_entropy, RAND_H.link_entropy_H]
       )
       for score in opt_score:
         # Get k from RAND_H ----

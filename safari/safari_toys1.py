@@ -126,21 +126,20 @@ if __name__ == "__main__":
     ## Compute lq arbre de merde ----
     H.la_abre_a_merde_cpp(H.BH[0])
     # Entropy ----
-    HS = Hierarchical_Entropy(H.Z, H.nodes)
-    HS.Z2dict("short")
-    _, sv, sh = HS.S(HS.tree)
-    H.entropy = [sv, sh]
-    # Entropy ----
     HS = Hierarchical_Entropy(H.H, H.leaves)
     HS.Z2dict("short")
-    _, sv, sh = HS.S(HS.tree)
+    node_entropy = HS.S(HS.tree)
+    node_entropy_H = HS.S_height(HS.tree)
+    H.entropy = [
+      node_entropy, node_entropy_H,
+      H.link_entropy, H.link_entropy_H
+    ]
     # Set labels to network ----
     L = colregion(net, labels=net.labels)
     L.get_regions()
     H.set_colregion(L)
     plot_h = Plot_H(net, H)
     plot_h.plot_measurements_Entropy(on=T)
-    plot_h.plot_measurements_Entropy_H(on=T)
     # for score in opt_score:
     #   k, r = get_best_kr_equivalence(score, H)
     #   rlabels = get_labels_from_Z(H.Z, r)
