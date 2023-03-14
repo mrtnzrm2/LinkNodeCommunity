@@ -14,7 +14,6 @@ class Hierarchical_Entropy:
     if len(labels) == nodes:
       self.labels = labels
     self.root = "L0_0"
-    print(self.A)
 
   def get_height_Z(self, Z):
     self.height[1:] = Z[:, 2]
