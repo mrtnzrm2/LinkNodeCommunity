@@ -131,6 +131,9 @@ class Hierarchical_Entropy:
     self.SV(Ml, M, Sv)
     Sh /= self.nodes.shape[0]
     Sv /= self.nodes.shape[0]
+    self.newick = ";"
+    self.dict2newick(a, Ml)
+    self.newick = self.newick.replace(");", ";")
     print(f"\n\tNode entropy : {np.sum(Sh + Sv):.4f}, Sh : {np.sum(Sh):.4f}, and Sv : {np.sum(Sv):.4f}\n")
     return np.vstack([Sh[maxlevl:], Sv[maxlevl:]])
   
@@ -147,21 +150,23 @@ class Hierarchical_Entropy:
       print(key, a[key]["size"], a[key]["height"])
 
   def S_height(self, a):
-    # self.print_tree(a, "")
     M = np.array([0])
     Ml = {}
     maxlevl = np.array([0])
+    self.sum_vertices(a, M)
     self.max_level(a, maxlevl)
     maxlevl = maxlevl[0]
+    self.ML_height(a, Ml, maxlevl)
     Sh = np.zeros(self.total_nodes)
     Sv = np.zeros(self.total_nodes)
-    self.sum_vertices(a, M)
-    self.ML_height(a, Ml, maxlevl)
-    # self.print_tree_ml(Ml)
     self.SH_height(a, "L0_0", Ml, maxlevl, Sh)
     self.SV_height(Ml, M, Sv)
     Sh /= self.nodes.shape[0]
     Sv /= self.nodes.shape[0]
+    self.newick = ";"
+    self.dict2newick_H(a, Ml)
+    self.newick = self.newick.replace(");", ";")
+    print(self.newick)
     print(f"\n\tNode entropy H: {np.sum(Sh + Sv):.4f}, Sh : {np.sum(Sh):.4f}, and Sv : {np.sum(Sv):.4f}\n")
     return np.vstack([Sh[maxlevl:], Sv[maxlevl:]])
 
@@ -215,3 +220,42 @@ class Hierarchical_Entropy:
     elif Z2 == "long":
       self.Z2dict_long(self.A, self.tree, "L0_0", nodes, L, tL)
     else: raise ValueError("Only Z2 short or long")
+
+  def dict2newick_H(self, zdict : dict, ml : dict):
+    i = 0
+    for key in zdict.keys():
+      if "height" == key: continue
+      ski = key.split("_")[0]
+      if not self.is_leaf(zdict[key]):
+        if i == 0:
+          self.newick = ":{:.2f})".format(ml[ski]["height"]) + self.newick
+          self.dict2newick_H(zdict[key], ml)
+          i += 1
+        else:
+          self.newick = "(:{:.2f},".format(ml[ski]["height"]) + self.newick
+          self.dict2newick_H(zdict[key], ml)
+      else:
+        if i == 0:
+          self.newick = "{}:{:.2f})".format(key, ml[ski]["height"]) + self.newick
+          i += 1
+        else:
+          self.newick = "({}:{:.2f},".format(key, ml[ski]["height"]) + self.newick
+
+  def dict2newick(self, zdict : dict, ml : dict):
+    i = 0
+    for key in zdict.keys():
+      if "height" == key: continue
+      if not self.is_leaf(zdict[key]):
+        if i == 0:
+          self.newick = ")"+ self.newick
+          self.dict2newick(zdict[key], ml)
+          i += 1
+        else:
+          self.newick = "(," + self.newick
+          self.dict2newick(zdict[key], ml)
+      else:
+        if i == 0:
+          self.newick = "{})".format(key) + self.newick
+          i += 1
+        else:
+          self.newick = "({},".format(key) + self.newick
