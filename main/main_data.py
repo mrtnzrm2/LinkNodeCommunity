@@ -25,7 +25,7 @@ mode = "ALPHA"
 distance = "MAP3D"
 nature = "original"
 imputation_method = ""
-topology = "SOURCE"
+topology = "TARGET"
 mapping = "R2"
 index  = "jacw"
 bias = 1e-5
@@ -88,8 +88,10 @@ if __name__ == "__main__":
       "hanalysis_{}".format(NET.subfolder)
     )
   # Entropy ----
-  HS = Hierarchical_Entropy(H.Z, H.nodes)
+  HS = Hierarchical_Entropy(H.Z, H.nodes, H.colregion.labels[:H.nodes])
   HS.Z2dict("short")
+  HS.zdict2newick(HS.tree, weighted=F, on=T)
+  HS.zdict2newick(HS.tree, weighted=T, on=T)
   node_entropy = HS.S(HS.tree)
   node_entropy_H = HS.S_height(HS.tree)
   H.entropy = [

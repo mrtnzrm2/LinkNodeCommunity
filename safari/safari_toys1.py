@@ -14,7 +14,7 @@ from modules.colregion import colregion
 from modules.hierarentropy import Hierarchical_Entropy
 from plotting_modules.plotting_H import Plot_H
 from scipy.cluster.hierarchy import cut_tree
-from various.network_tools import get_best_kr_equivalence, get_labels_from_Z, adj2df
+from various.network_tools import get_best_kr, get_labels_from_Z, adj2df
 
 # Create toy networks ----
 ww = 1
@@ -91,7 +91,7 @@ if __name__ == "__main__":
   feature = "MIX"
   index = "jacp"
   mapping="trivial"
-  opt_score = ["_maxmu", "_X", "_D"]
+  opt_score = ["_D"]
   # opt_score = ["_maxmu"]
   nodes = len(original_labels)
   properties = {
@@ -126,8 +126,10 @@ if __name__ == "__main__":
     ## Compute lq arbre de merde ----
     H.la_abre_a_merde_cpp(H.BH[0])
     # Entropy ----
-    HS = Hierarchical_Entropy(H.H, H.leaves)
+    HS = Hierarchical_Entropy(H.Z, H.nodes, labels=net.labels)
     HS.Z2dict("short")
+    HS.zdict2newick(HS.tree, weighted=F)
+    HS.zdict2newick(HS.tree, weighted=T)
     node_entropy = HS.S(HS.tree)
     node_entropy_H = HS.S_height(HS.tree)
     H.entropy = [
@@ -140,26 +142,26 @@ if __name__ == "__main__":
     H.set_colregion(L)
     plot_h = Plot_H(net, H)
     plot_h.plot_measurements_Entropy(on=T)
-    # for score in opt_score:
-    #   k, r = get_best_kr_equivalence(score, H)
-    #   rlabels = get_labels_from_Z(H.Z, r)
-    #   net.overlap, noc_covers = H.get_ocn_discovery(k, rlabels)
-    #   H.set_overlap_labels(net.overlap, score)
-    #   plot_h.lcmap_dendro(
-    #     [k], cmap_name="deep",
-    #     font_size=30,
-    #     score="_"+score+"_"+toy_names[i], on=F
-    #   )
-    #   plot_h.plot_networx(
-    #     r, rlabels, score="_"+score+"_"+toy_names[i],
-    #     on=F, labels=labels_dict, cmap_name="deep"
-    #   )
-    #   plot_h.plot_networx_link_communities(
-    #     [k], score="_"+score+"_"+toy_names[i],
-    #     cmap_name="deep",
-    #     on=F, labels=labels_dict
-    #   )
-    #   plot_h.core_dendrogram(
-    #     [r], score="_"+score+"_"+toy_names[i],
-    #     on=F, cmap_name="deep"
-    #   )
+    for score in opt_score:
+      k, r = get_best_kr(score, H)
+      rlabels = get_labels_from_Z(H.Z, r)
+      net.overlap, noc_covers = H.get_ocn_discovery(k, rlabels)
+      H.set_overlap_labels(net.overlap, score)
+      plot_h.lcmap_dendro(
+        [k], cmap_name="deep",
+        font_size=30,
+        score="_"+score+"_"+toy_names[i], on=F
+      )
+      plot_h.plot_networx(
+        r, rlabels, score="_"+score+"_"+toy_names[i],
+        on=F, labels=labels_dict, cmap_name="deep"
+      )
+      plot_h.plot_networx_link_communities(
+        [k], score="_"+score+"_"+toy_names[i],
+        cmap_name="deep",
+        on=F, labels=labels_dict
+      )
+      plot_h.core_dendrogram(
+        [r], score="_"+score+"_"+toy_names[i],
+        on= T, cmap_name="deep"
+      )

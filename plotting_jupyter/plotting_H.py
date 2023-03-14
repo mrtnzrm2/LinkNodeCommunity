@@ -65,6 +65,7 @@ class Plot_H:
     print("Visualize Entropy iterations!!!")
     # Create data ----
     dim = self.entropy[0].shape[1]
+    print(f"Levels node hierarchy: {dim}")
     data = pd.DataFrame(
       {
         "S" : np.hstack([self.entropy[0].ravel(), self.entropy[1].ravel()]),
@@ -74,6 +75,7 @@ class Plot_H:
       }
     )
     dim = self.entropy[2].shape[1]
+    print(f"Levels link hierarchy: {dim}")
     data = pd.concat(
       [
         data,
