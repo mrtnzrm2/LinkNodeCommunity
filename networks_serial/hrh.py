@@ -74,7 +74,8 @@ class HRH:
           {
             "S" : np.hstack([s[0].ravel(), s[1].ravel()]), "data" : ["1"] * 4 * dim,
             "c" : ["node_hierarchy"] * 2 * dim  + ["node_hierarch_H"] * 2 * dim,
-            "dir" : ["H"] * dim + ["V"] * dim + ["H"] * dim + ["V"] * dim
+            "dir" : ["H"] * dim + ["V"] * dim + ["H"] * dim + ["V"] * dim,
+            "level" : np.tile(np.arange(dim, 0, -1), 4), "iter" : [np.nan] * 4 * dim
           } 
         )
       ], ignore_index=True
@@ -87,7 +88,8 @@ class HRH:
           {
             "S" : np.hstack([s[2].ravel(), s[3].ravel()]), "data" : ["1"] * 4 * dim,
             "c" : ["link_hierarchy"] * 2 * dim  + ["link_hierarch_H"] * 2 * dim,
-            "dir" : ["H"] * dim + ["V"] * dim + ["H"] * dim + ["V"] * dim
+            "dir" : ["H"] * dim + ["V"] * dim + ["H"] * dim + ["V"] * dim,
+            "level" : np.tile(np.arange(dim, 0, -1), 4), "iter" : [np.nan] * 4 * dim
           }
         )
       ], ignore_index=True
@@ -102,7 +104,8 @@ class HRH:
           {
             "S" : np.hstack([s[0].ravel(), s[1].ravel()]), "data" : ["0"] * 4 * dim,
             "c" : ["node_hierarchy"] * 2 * dim  + ["node_hierarch_H"] * 2 * dim,
-            "dir" : ["H"] * dim + ["V"] * dim + ["H"] * dim + ["V"] * dim
+            "dir" : ["H"] * dim + ["V"] * dim + ["H"] * dim + ["V"] * dim,
+            "level" : np.tile(np.arange(dim, 0, -1), 4), "iter" : [(self.iter+1)] * dim
           } 
         )
       ], ignore_index=True
@@ -115,7 +118,8 @@ class HRH:
           {
             "S" : np.hstack([s[2].ravel(), s[3].ravel()]), "data" : ["0"] * 4 * dim,
             "c" : ["link_hierarchy"] * 2 * dim  + ["link_hierarch_H"] * 2 * dim,
-            "dir" : ["H"] * dim + ["V"] * dim + ["H"] * dim + ["V"] * dim
+            "dir" : ["H"] * dim + ["V"] * dim + ["H"] * dim + ["V"] * dim,
+            "level" : np.tile(np.arange(dim, 0, -1), 4), "iter" : [(self.iter+1)] * dim
           }
         )
       ], ignore_index=True

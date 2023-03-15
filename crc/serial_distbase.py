@@ -131,11 +131,16 @@ def worker_distbase(
     data.set_data_measurements_zero(RAND_H, i)
     data.set_stats(RAND_H)
     # Entropy ----
-    HS = Hierarchical_Entropy(RAND_H.Z, RAND_H.nodes)
+    HS = Hierarchical_Entropy(
+      RAND_H.Z, RAND_H.nodes, RAND_H.colregion.labels[:RAND_H.nodes]
+    )
     HS.Z2dict("short")
-    _, sv, sh = HS.S(HS.tree)
+    HS.zdict2newick(HS.tree, weighted=F, on=F)
+    HS.zdict2newick(HS.tree, weighted=T, on=F)
+    node_entropy = HS.S(HS.tree)
+    node_entropy_H = HS.S_height(HS.tree)
     data.set_entropy_zero(
-      [sv, sh, np.sum(RAND_H.link_entropy_H[1, :]), np.sum(RAND_H.link_entropy_H[0, :])]
+      [node_entropy, node_entropy_H, RAND_H.link_entropy, RAND_H.link_entropy_H],  
     )
     for score in opt_score:
       # Get k from RAND_H ----

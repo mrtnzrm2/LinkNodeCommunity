@@ -253,7 +253,7 @@ class Plot_H:
         sns.lineplot,
         x="level",
         y="S"
-      ).set(xscale="log")
+      )#.set(xscale="log")
       g.add_legend()
       # Arrange path ----
       plot_path = os.path.join(self.path, "Features")

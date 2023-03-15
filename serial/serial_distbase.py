@@ -20,7 +20,7 @@ from networks.distbase import DISTBASE
 from various.data_transformations import maps
 from various.network_tools import *
 # Declare global variables NET ----
-MAXI = 3
+MAXI = 10
 linkage = "single"
 nlog10 = T
 lookup = F
@@ -45,7 +45,7 @@ __nodes__ = 57
 __version__ = 220830
 __model__ = "DEN"
 __bin__ = 12
-bias = 0.5
+bias = 0.01
 # Print summary ----
 print("For NET parameters:")
 print(
@@ -140,8 +140,12 @@ if __name__ == "__main__":
       # Convergence ----
       data.set_stats(RAND_H)
       # Entropy ----
-      HS = Hierarchical_Entropy(RAND_H.Z, RAND_H.nodes)
+      HS = Hierarchical_Entropy(
+        RAND_H.Z, RAND_H.nodes, RAND_H.colregion.labels[:RAND_H.nodes]
+      )
       HS.Z2dict("short")
+      HS.zdict2newick(HS.tree, weighted=F, on=F)
+      HS.zdict2newick(HS.tree, weighted=T, on=F)
       node_entropy = HS.S(HS.tree)
       node_entropy_H = HS.S_height(HS.tree)
       data.set_entropy_zero(
@@ -184,22 +188,23 @@ if __name__ == "__main__":
   # Plotting ----
   print("Statistical analysis")
   plot_s = PLOT_S(data)
-  plot_s.plot_stats(alternative=alternative, on=T)
-  plot_s.plot_measurements_D(on=T)
-  plot_s.plot_measurements_X(on=T)
-  plot_s.plot_measurements_mu(on=T)
-  plot_s.plot_measurements_ntrees(on=T)
-  plot_s.plot_measurements_ordp(on=T)
-  plot_s.plot_measurements_D_noodle(on=T)
-  plot_s.plot_measurements_X_noodle(on=T)
-  plot_s.plot_measurements_mu_noodle(on=T)
-  plot_s.plot_measurements_ntrees_noodle(on=T)
-  plot_s.plot_measurements_ordp_noodle(on=T)
-  plot_s.plot_entropy(on=T, s=10)
-  plot_s.histogram_clustering_similarity(
-    on=T, c=T, hue_norm=[s.replace("_", "") for s in opt_score]
-  )
-  plot_o = PLOT_OS(data)
-  for score in opt_score:
-    plot_s.histogram_krs(score=score, on=T)
-    plot_o.histogram_overlap(score, on=T)
+  # plot_s.plot_measurements_Entropy(on=T)
+  plot_s.plot_measurements_Entropy_noodle(on=T)
+  # plot_s.plot_stats(alternative=alternative, on=T)
+  # plot_s.plot_measurements_D(on=T)
+  # plot_s.plot_measurements_X(on=T)
+  # plot_s.plot_measurements_mu(on=T)
+  # plot_s.plot_measurements_ntrees(on=T)
+  # plot_s.plot_measurements_ordp(on=T)
+  # plot_s.plot_measurements_D_noodle(on=T)
+  # plot_s.plot_measurements_X_noodle(on=T)
+  # plot_s.plot_measurements_mu_noodle(on=T)
+  # plot_s.plot_measurements_ntrees_noodle(on=T)
+  # plot_s.plot_measurements_ordp_noodle(on=T)
+  # plot_s.histogram_clustering_similarity(
+  #   on=T, c=T, hue_norm=[s.replace("_", "") for s in opt_score]
+  # )
+  # plot_o = PLOT_OS(data)
+  # for score in opt_score:
+  #   plot_s.histogram_krs(score=score, on=T)
+  #   plot_o.histogram_overlap(score, on=T)

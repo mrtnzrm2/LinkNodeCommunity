@@ -106,7 +106,7 @@ class Plot_H:
       sns.lineplot,
       x="level",
       y="S"
-    ).set(xscale="log")
+    )#.set(xscale="log")
     g.add_legend()
 
   def plot_measurements_D(self, **kwargs):

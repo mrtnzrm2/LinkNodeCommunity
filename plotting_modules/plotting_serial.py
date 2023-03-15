@@ -3,6 +3,7 @@ sns.set_theme()
 import numpy as np
 from os.path import join
 from scipy import   stats
+import pandas as pd
 import matplotlib.pyplot as plt
 from pathlib import Path
 from networks_serial.hrh import HRH
@@ -14,7 +15,8 @@ class PLOT_S:
     self.stats = hrh.stats
     self.NH = hrh.data_homoegeity
     self.measures = hrh.data_measures
-    self.entropy = hrh.entropy
+    self.node_entropy = hrh.node_entropy
+    self.link_entropy = hrh.link_entropy
     self.kr = hrh.kr
     self.plot_path = hrh.plot_path
     self.linkage = hrh.linkage
@@ -803,6 +805,108 @@ class PLOT_S:
       )
       plt.close()
     else: print("No order parameter noodle iterations")
+
+  def plot_measurements_Entropy(self, on=True):
+    if on:
+      print("Visualize Entropy iterations!!!")
+      # Create data ----
+      data = pd.concat([self.node_entropy, self.link_entropy])
+      mx = data.iloc[
+        data.groupby(["c", "dir", "data"])["S"].transform("idxmax").drop_duplicates(keep="first").to_numpy()
+      ].sort_values("c", ascending=False)
+      print(mx)
+      # Create figure ----
+      g = sns.FacetGrid(
+        data=data,
+        col = "c",
+        hue = "dir",
+        aspect=1.2,
+        col_wrap=2,
+        sharex=False,
+        sharey=False
+      )
+      g.map_dataframe(
+        sns.lineplot,
+        x="level",
+        y="S",
+        style="data",
+        alpha=0.4
+      )#.set(xscale="log")
+      g.add_legend()
+      # Arrange path ----
+      plot_path = join(self.plot_path, "Features")
+      # Crate path ----
+      Path(
+        plot_path
+      ).mkdir(exist_ok=True, parents=True)
+      plt.savefig(
+        join(
+          plot_path, "Entropy_levels.png"
+        ),
+        dpi=300
+      )
+      plt.close()
+    else:
+      print("No Entropy iterations")
+
+  def plot_measurements_Entropy_noodle(self, on=True):
+    if on:
+      print("Visualize Entropy iterations!!!")
+      # Create data ----
+      data = pd.concat([self.node_entropy, self.link_entropy])
+      mx = data.iloc[
+        data.groupby(["c", "dir", "data"])["S"].transform("idxmax").drop_duplicates(keep="first").to_numpy()
+      ].sort_values("c", ascending=False)
+      print(mx)
+      _cmap = sns.color_palette("viridis", as_cmap=True)
+      color_palette = {col : _cmap(np.abs(col) / data.iter.max()) for col in np.unique(data.loc[data.data == "0"].iter)}
+      data.iter.loc[(data.data == "1" )] = 0.1
+      color_palette.update({0.1 : "#C70039"})
+      # Create figure ----
+      g = sns.FacetGrid(
+        data=data,
+        col = "c",
+        row = "dir",
+        hue = "iter",
+        aspect=1.2,
+        palette=color_palette,
+        sharex=False,
+        sharey=False
+      )
+      g.map_dataframe(
+        sns.lineplot,
+        x="level",
+        y="S",
+        lw=1,
+        estimator=None,
+        style="data",
+        alpha=0.4
+      )#.set(xscale="log")
+      # g.add_legend()
+      # g.map_dataframe(
+      #   sns.lineplot,
+      #   x="level",
+      #   y="S",
+      #   lw=1,
+      #   color="#C70039",
+      #   alpha=0.4
+      # )
+      plt.legend([],[], frameon=False)
+      # Arrange path ----
+      plot_path = join(self.plot_path, "Features")
+      # Crate path ----
+      Path(
+        plot_path
+      ).mkdir(exist_ok=True, parents=True)
+      plt.savefig(
+        join(
+          plot_path, "Entropy_levels_noodle.png"
+        ),
+        dpi=300
+      )
+      plt.close()
+    else:
+      print("No Entropy iterations")
 
   def plot_entropy(self, s=3, on=True):
     if on:

@@ -18,7 +18,7 @@ from various.network_tools import *
 # Iterable varaibles ----
 cut = [F]
 topologies = ["MIX", "TARGET", "SOURCE"]
-bias = [1e-5, 0.1, 0.3, 0.5]
+bias = [1e-5, 1e-2, 0.1, 0.3, 0.5]
 list_of_lists = itertools.product(
   *[cut, topologies, bias]
 )
@@ -58,7 +58,7 @@ if __name__ == "__main__":
       index=index, mapping=mapping,
       cut=cut, b = bias
     )
-    # NET.create_pickle_directory()
+    NET.create_pickle_directory()
     # Transform data for analysis ----
     R, lookup, _ = maps[mapping](
       NET.A, nlog10, lookup, prob, b=bias
@@ -72,16 +72,24 @@ if __name__ == "__main__":
     )
     ## Compute features ----
     H.BH_features_cpp()
+    ## Compute link entropy ----
+    H.link_entropy_cpp("short", cut=cut)
     ## Compute lq arbre de merde ----
     H.la_abre_a_merde_cpp(H.BH[0])
     # Set labels to network ----
     L = colregion(NET)
     H.set_colregion(L)
     # Entropy ----
-    HS = Hierarchical_Entropy(H.Z, H.nodes)
+    HS = Hierarchical_Entropy(H.Z, H.nodes, H.colregion.labels[:H.nodes])
     HS.Z2dict("short")
-    _, sv, sh = HS.S(HS.tree)
-    H.entropy = [sv, sh]
+    HS.zdict2newick(HS.tree, weighted=F, on=T)
+    HS.zdict2newick(HS.tree, weighted=T, on=T)
+    node_entropy = HS.S(HS.tree)
+    node_entropy_H = HS.S_height(HS.tree)
+    H.entropy = [
+      node_entropy, node_entropy_H,
+      H.link_entropy, H.link_entropy_H
+    ]
     for score in opt_score:
       print(f"Find node partition using {score}")
       # Get best K and R ----

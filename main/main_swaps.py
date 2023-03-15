@@ -91,9 +91,14 @@ if __name__ == "__main__":
       "hanalysis_{}".format(NET.subfolder)
     )
   # Entropy ----
-  HS = Hierarchical_Entropy(H.Z, H.nodes)
+  HS = Hierarchical_Entropy(
+    H.Z, H.nodes, H.colregion.labels[:H.nodes]
+  )
   HS.Z2dict("short")
-  _, sv, sh = HS.S(HS.tree)
+  HS.zdict2newick(HS.tree, weighted=F, on=F)
+  HS.zdict2newick(HS.tree, weighted=T, on=F)
+  node_entropy = HS.S(HS.tree)
+  node_entropy_H = HS.S_height(HS.tree)
   # Plot H ----
   plot_h = Plot_H(NET, H)
   plot_h.Mu_plotly(on=F)
