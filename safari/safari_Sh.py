@@ -158,10 +158,10 @@ def Z2dict(A, f):
   return a_tree
 
 if __name__ == "__main__":
-  tree = Z2dict(A2, Z2dict_short)
+  tree = Z2dict(A, Z2dict_short)
   # print(tree)
   print_tree(tree)
-  print(S(tree, 16))
+  print(S(tree, 1))
   # H =  Hierarchical_Entropy(0, 16)
   # H.A = A2
   # H.Z2dict("short")

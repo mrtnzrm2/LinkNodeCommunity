@@ -858,9 +858,12 @@ class PLOT_S:
         data.groupby(["c", "dir", "data"])["S"].transform("idxmax").drop_duplicates(keep="first").to_numpy()
       ].sort_values("c", ascending=False)
       print(mx)
+      # _cmap = sns.cubehelix_palette(start=.5, rot=-.75, as_cmap=True)
       _cmap = sns.color_palette("viridis", as_cmap=True)
-      color_palette = {col : _cmap(np.abs(col) / data.iter.max()) for col in np.unique(data.loc[data.data == "0"].iter)}
+      color_palette = {col : _cmap(col / data.iter.max()) for col in np.unique(data.loc[data.data == "0"].iter)}
       data.iter.loc[(data.data == "1" )] = 0.1
+      data["width"] = "thick"
+      data.width.loc[data.data == "0"] = "thin"
       color_palette.update({0.1 : "#C70039"})
       # Create figure ----
       g = sns.FacetGrid(
@@ -877,20 +880,12 @@ class PLOT_S:
         sns.lineplot,
         x="level",
         y="S",
-        lw=1,
+        size="width",
+        sizes={"thick" : 2, "thin" : 0.5},
         estimator=None,
-        style="data",
         alpha=0.4
       )#.set(xscale="log")
       # g.add_legend()
-      # g.map_dataframe(
-      #   sns.lineplot,
-      #   x="level",
-      #   y="S",
-      #   lw=1,
-      #   color="#C70039",
-      #   alpha=0.4
-      # )
       plt.legend([],[], frameon=False)
       # Arrange path ----
       plot_path = join(self.plot_path, "Features")

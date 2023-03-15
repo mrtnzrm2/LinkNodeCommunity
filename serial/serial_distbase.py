@@ -20,7 +20,7 @@ from networks.distbase import DISTBASE
 from various.data_transformations import maps
 from various.network_tools import *
 # Declare global variables NET ----
-MAXI = 10
+MAXI = 100
 linkage = "single"
 nlog10 = T
 lookup = F
