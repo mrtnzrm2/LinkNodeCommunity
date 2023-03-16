@@ -373,7 +373,7 @@ class ph {
     ~ph(){};
 
     void vite();
-    // td::vector<std::vector<int> > &link_communities, std::vector<double> & H, 
+    // std::vector<std::vector<int> > &link_communities, std::vector<double> & H, 
     void arbre(std::string &t_size);
 
     template <typename T>
@@ -503,10 +503,11 @@ void ph::arbre(std::string &t_size) {
   for (int i=0; i < number_of_elements; i++) {
     link_communities[number_of_elements - 1][i] = i;
   }
+  // Get heights ----
   for (int i=0; i < number_of_elements - 1; i++)
     H[i+1] = height[i];
 
-  // std::cout << H[number_of_elements - 2] << " " << H[number_of_elements - 1] << "\n";
+  std::cout << H[number_of_elements - 2] << " " << H[number_of_elements - 1] << "\n";
 
   // for (auto j : H) {
   //   std::cout << j << " ";
@@ -535,14 +536,18 @@ void ph::arbre(std::string &t_size) {
 
   std::cout << "Level information\n";
   level_information(tree, root, chain);
+
   // for (std::map<int, level_properties>::iterator v = chain.begin(); v != chain.end(); ++v){
   //   std::cout << v->first << "\t" << v->second.size << "\t" << v->second.height << "\n";
   // }
+
+  // Get max level ----
   for (std::map<int, level_properties>::iterator it = chain.begin(); it != chain.end(); ++it) {
     if (it->first > max_level)
      max_level = it->first;
   }
   level_information_H(tree, root, chain_h, max_level);
+
   // for (std::map<int, level_properties>::iterator v = chain_h.begin(); v != chain_h.end(); ++v){
   //   std::cout << v->first << "\t" << v->second.size << "\t" << v->second.height << "\n";
   // }

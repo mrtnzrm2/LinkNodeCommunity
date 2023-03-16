@@ -126,10 +126,10 @@ if __name__ == "__main__":
     ## Compute lq arbre de merde ----
     H.la_abre_a_merde_cpp(H.BH[0])
     # Entropy ----
-    HS = Hierarchical_Entropy(H.Z, H.nodes, labels=net.labels)
+    HS = Hierarchical_Entropy(H.H, H.leaves, labels=list(range(H.leaves)))
     HS.Z2dict("short")
-    HS.zdict2newick(HS.tree, weighted=F)
-    HS.zdict2newick(HS.tree, weighted=T)
+    HS.zdict2newick(HS.tree, weighted=F, on=F)
+    HS.zdict2newick(HS.tree, weighted=T, on=F)
     node_entropy = HS.S(HS.tree)
     node_entropy_H = HS.S_height(HS.tree)
     H.entropy = [

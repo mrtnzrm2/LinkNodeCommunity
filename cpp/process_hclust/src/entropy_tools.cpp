@@ -16,6 +16,16 @@ struct level_properties {
   double height;
 };
 
+template<typename T, typename U>
+double stirling_3(T Nl, U N) {
+  return  log((static_cast<double>(Nl) / static_cast<double>(N)) * (pow(2. * M_PI * static_cast<double>(Nl), 1. / (2. * static_cast<double>(Nl))) / pow(2. * M_PI * static_cast<double>(N), 1. / (2. * static_cast<double>(N))))) + ((1./12.) * (pow(static_cast<double>(N), -2.)- pow(static_cast<double>(Nl), -2.)));
+}
+
+template<typename T, typename U>
+double stirling_1(T Nl, U N) {
+  return  log((static_cast<double>(Nl) / static_cast<double>(N)) );
+}
+
 template <typename T>
 void unique_2(std::vector<T> &v) {
   std::sort(v.begin(), v.end());
@@ -347,7 +357,7 @@ void vertex_entropy(std::map<std::string, vertex_properties> &tree, std::map<int
     int nextL = tree[root].level + 1, tL = tree[root].level;
     double Mul = tree[root].post_key.size();
     // std::cout << root << " " << tL << " " << Mul << " " << ml[nextL] << " | ";
-    Sh[nodes - tL - 1] -= Mul * log(Mul / static_cast<double>(ml[nextL].size)) / nodes;
+    Sh[nodes - tL - 1] -= Mul * stirling_3(Mul, static_cast<double>(ml[nextL].size)) / nodes;
     for (std::set<std::string>::iterator roo = tree[root].post_key.begin(); roo != tree[root].post_key.end(); ++roo)
       vertex_entropy(tree, ml, *roo, nodes, Sh);
   }
@@ -355,11 +365,11 @@ void vertex_entropy(std::map<std::string, vertex_properties> &tree, std::map<int
 
 void level_entropy(std::map<std::string, vertex_properties> &tree, std::map<int, level_properties> &ml, const std::string &root, const int &nodes, std::vector<double> &sv) {
   int M = 1;
-  double xm, x;
   sum_vertices(tree, root, M);
+  // std::cout << "Number of vertices in the tree: " << M << "\n";
   for (std::map<int, level_properties>::iterator ll = ml.begin(); ll != ml.end(); ++ll) {
     // Vertical entropy
-    sv[nodes - ll->first - 1] -= static_cast<double>(ll->second.size) * log(static_cast<double>(ll->second.size) / M) / nodes;
+    sv[nodes - ll->first - 1] -= ll->second.size * stirling_3(static_cast<double>(ll->second.size), M) / nodes;
   }
 }
 
@@ -369,13 +379,13 @@ void vertex_entropy_H(std::map<std::string, vertex_properties> &tree, std::map<i
   if (!search_key(tree[root].post_key, "END") && nextL <= max_levels) {
     for (std::set<std::string>::iterator roo = tree[root].post_key.begin(); roo != tree[root].post_key.end(); ++roo) {
       // std::cout << root << " " << *roo << " " << tree[root].height << " " << tree[*roo].height << " " << Mul  << " " << ml[nextL].size << "\n";
-      Sh[nodes - tL - 1] -= (tree[root].height - tree[*roo].height) * log(Mul / static_cast<double>(ml[nextL].size)) / nodes;
+      Sh[nodes - tL - 1] -= (tree[root].height - tree[*roo].height) * stirling_3(Mul, static_cast<double>(ml[nextL].size)) / nodes;
       vertex_entropy_H(tree, ml, *roo, nodes, max_levels, Sh);
     }
   }
   else if (nextL <= max_levels) {
     // std::cout << "**" << root << " " << tree[root].height << " " << Mul  << " " << ml[nextL].size << "\n";
-    Sh[nodes - tL - 1] -= tree[root].height * log(1. / ml[nextL].size) / nodes;
+    Sh[nodes - tL - 1] -= tree[root].height * stirling_3(1.,  ml[nextL].size) / nodes;
   }
 }
 
@@ -385,6 +395,6 @@ void level_entrop_H(std::map<std::string, vertex_properties> &tree, std::map<int
   std::cout << "Number of vertices in the tree: " << M << "\n";
   for (std::map<int, level_properties>::iterator ll = ml.begin(); ll != ml.end(); ++ll) {
     // Vertical entropy
-    sv[nodes - ll->first - 1] -= ll->second.height * log(static_cast<double>(ll->second.size) / M) / nodes;
+    sv[nodes - ll->first - 1] -= ll->second.height * stirling_3(static_cast<double>(ll->second.size), M) / nodes;
   }
 }

@@ -207,4 +207,4 @@ if __name__ == "__main__":
   from collections import Counter
   print(Counter(THE_ARRAY.worker))
   print(THE_ARRAY.iloc[t - 1])
-  NoGodsNoMaster(number_of_iterations, t)
+  # NoGodsNoMaster(number_of_iterations, t)

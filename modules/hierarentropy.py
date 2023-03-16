@@ -1,5 +1,8 @@
 import numpy as np
 
+stirling_3 = lambda Nl, N : np.log((Nl/N) * (np.power(2*np.pi*Nl, 1/(2*Nl))/ np.power(2*np.pi*N, 1/(2*N)))) + (1/12)*(np.power(float(N), -2) - np.power(float(Nl), -2))
+stirling_1 = lambda Nl, N : np.log(Nl/N)
+
 class Hierarchical_Entropy:
   def __init__(self, Z, nodes : int, labels=[""]) -> None:
     from scipy.cluster.hierarchy import cut_tree
@@ -78,13 +81,13 @@ class Hierarchical_Entropy:
       if self.is_leaf(tree[key]): continue
       i = int(key.split("_")[0][1:])
       Mul = len(tree[key]) - 1
-      Sh[self.total_nodes - i -1] -= Mul * np.log(Mul / Ml[f"L{i+1}"])
+      Sh[self.total_nodes - i -1] -= Mul * stirling_3(Mul, Ml[f"L{i+1}"])
       self.SH(tree[key], Ml, Sh)
 
   def SV(self, Ml : dict, M, Sv):
     for key in Ml.keys():
       i = int(key[1:])
-      Sv[self.total_nodes - i - 1] -= Ml[key] * np.log(Ml[key] / M)
+      Sv[self.total_nodes - i - 1] -= Ml[key] *  stirling_3(Ml[key], M)
 
   def is_leaf(self, tree : dict):
     if "label" in tree.keys():
@@ -101,17 +104,17 @@ class Hierarchical_Entropy:
       for key2 in tree[key].keys():
         if key2 == "height" or key2 == "label": continue
         # print(key, key2, tree[key]["height"], tree[key][key2]["height"], Mul, Ml[f"L{i+1}"]["size"])
-        Sh[self.total_nodes - i -1] -= (tree[key]["height"] - tree[key][key2]["height"]) * np.log(Mul / Ml[f"L{i+1}"]["size"])
+        Sh[self.total_nodes - i -1] -= (tree[key]["height"] - tree[key][key2]["height"]) * stirling_3(Mul, Ml[f"L{i+1}"]["size"])
         self.SH_height(tree[key], key2, Ml, maxl, Sh)
     elif i < maxl:
       # print("**", key, tree[key]["height"], Mul, Ml[f"L{i+1}"]["size"])
-      Sh[self.total_nodes - i -1] -= tree[key]["height"] * np.log(1 / Ml[f"L{i+1}"]["size"])
+      Sh[self.total_nodes - i -1] -= tree[key]["height"] * stirling_3(1, Ml[f"L{i+1}"]["size"])
 
   def SV_height(self, Ml : dict, M, Sv):
     for key in Ml.keys():
       if key == "height" or key == "label": continue
       i = int(key[1:])
-      Sv[self.total_nodes - i - 1] -= Ml[key]["height"] * np.log(Ml[key]["size"] / M)
+      Sv[self.total_nodes - i - 1] -= Ml[key]["height"] * stirling_3(Ml[key]["size"], M)
 
   def max_level(self, tree : dict, max_lvl):
     for key in tree.keys():
@@ -145,10 +148,14 @@ class Hierarchical_Entropy:
       print(f"{key_pred}{key}", "\t\t", a[key]["height"])
       self.print_tree(a[key], key_pred=f"{key_pred}{key}")
 
-  def print_tree_ml(self, a : dict):
+  def print_tree_ml_h(self, a : dict):
     for key in a.keys():
       if key == "height" or key == "label": continue
       print(key, a[key]["size"], a[key]["height"])
+
+  def print_tree_ml(self, a : dict):
+    for key in a.keys():
+      print(key, a[key])
 
   def S_height(self, a):
     M = np.array([0])
