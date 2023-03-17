@@ -29,7 +29,8 @@ lookup = F
 prob = F
 cut = F
 run = T
-distance = "MAP3D"
+structure = "LN"
+distance = "tracto16"
 nature = "original"
 mode = "ALPHA"
 mapping = "R4"
@@ -73,8 +74,9 @@ if __name__ == "__main__":
     if lookup: lup = "_lup"
     if cut: _cut = "_cut"
     data = read_class(
-        "../pickle/RAN/distbase/MAC/{}/FLN/{}/{}/BIN_{}/{}/{}/{}/{}".format(
+        "../pickle/RAN/distbase/MAC/{}/{}/{}/{}/BIN_{}/{}/{}/{}/{}".format(
           __version__,
+          structure,
           distance,
           __model__,
           str(__bin__),

@@ -28,7 +28,8 @@ def worker_swaps(
   MAXI = number_of_iterations
   linkage = "single"
   mode = "ALPHA"
-  distance = "MAP3D"
+  structure = "LN"
+  distance = "tracto16"
   nature = "original"
   imputation_method = ""
   opt_score = ["_maxmu", "_X"]
@@ -65,6 +66,7 @@ def worker_swaps(
   # Create macaque class ----
   NET = MAC(
     linkage, mode,
+    structure = structure,
     nlog10=nlog10, lookup=lookup,
     version = __version__,
     distance = distance,
@@ -97,6 +99,7 @@ def worker_swaps(
       __inj__,
       linkage,
       mode, i,
+      structure = structure,
       version = __version__,
       topology=topology,
       nature = nature,

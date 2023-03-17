@@ -21,16 +21,17 @@ nlog10 = T
 lookup = F
 prob = F
 cut = F
+structure = "LN"
 mode = "ALPHA"
-distance = "MAP3D"
+distance = "tracto16"
 nature = "original"
 imputation_method = ""
-topology = "MIX"
+topology = "SOURCE"
 mapping = "R4"
 index  = "simple"
 bias = float(0)
 opt_score = ["_maxmu", "_X"]
-save_data = T
+save_data = F
 version = 220830
 __nodes__ = 57
 __inj__ = 57
@@ -40,6 +41,7 @@ if __name__ == "__main__":
   NET = MAC(
     linkage, mode,
     nlog10 = nlog10,
+    structure = structure,
     lookup =lookup,
     version = version,
     nature = nature,
@@ -90,8 +92,6 @@ if __name__ == "__main__":
   # Entropy ----
   HS = Hierarchical_Entropy(H.Z, H.nodes, H.colregion.labels[:H.nodes])
   HS.Z2dict("short")
-  HS.zdict2newick(HS.tree, weighted=F, on=T)
-  HS.zdict2newick(HS.tree, weighted=T, on=T)
   node_entropy = HS.S(HS.tree)
   node_entropy_H = HS.S_height(HS.tree)
   H.entropy = [
@@ -100,6 +100,10 @@ if __name__ == "__main__":
   ]
   # # Picasso ----
   plot_h = Plot_H(NET, H)
+  HS.zdict2newick(HS.tree, weighted=F, on=T)
+  plot_h.plot_newick_R(HS.newick, weighted=F, on=T)
+  HS.zdict2newick(HS.tree, weighted=T, on=T)
+  plot_h.plot_newick_R(HS.newick, weighted=T, on=T)
   plot_h.plot_measurements_Entropy(on=T)
   plot_h.plot_measurements_D(on=T)
   plot_h.plot_measurements_mu(on=T)

@@ -76,6 +76,23 @@ class Plot_H:
       )
     else:
       print("No Mu with plotly")
+    
+  def plot_newick_R(self, tree_newick, weighted=False, on=True):
+    if on:
+      print("Plot tree in Newick format from R!!!")
+      import subprocess
+      # Arrange path ----
+      plot_path = join(self.path, "NEWICK")
+      # Crate path ----
+      Path(
+        plot_path
+      ).mkdir(exist_ok=True, parents=True)
+      if not weighted:
+        subprocess.run(["Rscript", "R/plot_newick_tree.R", tree_newick, join(plot_path, "tree_newick.png")])
+      else:
+        subprocess.run(["Rscript", "R/plot_newick_tree.R", tree_newick, join(plot_path, "tree_newick_H.png")])
+    else:
+      print("No tree in Newick format")
 
   def plot_measurements_mu(self, on=False, **kwargs):
     if on:

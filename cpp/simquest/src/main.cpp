@@ -264,7 +264,7 @@ double simquest::similarity_index(std::vector<double> &u, std::vector<double> &v
 	}
 	// jacw2 similarity
 	else if (index == 6) {
-		return simple(u, v, du, dv);
+		return simple(u, v);
 	}
   else {
     std::range_error("Similarity index must be a integer from 0 to 5\n");

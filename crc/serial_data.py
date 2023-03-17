@@ -28,10 +28,11 @@ linkage = "single"
 nlog10 = F
 lookup = F
 prob = F
-distance = "MAP3D"
+structure = "LN"
+distance = "tracto16"
 nature = "original"
-mapping = "trivial"
-index = "jacw3"
+mapping = "R4"
+index = "simple"
 mode = "ALPHA"
 imputation_method = ""
 opt_score = ["_maxmu", "_X"]
@@ -48,6 +49,7 @@ if __name__ == "__main__":
     # Load structure ----
     NET = MAC(
       linkage, mode,
+      structure = structure,
       nlog10=nlog10, lookup=lookup,
       version = version,
       nature = nature,

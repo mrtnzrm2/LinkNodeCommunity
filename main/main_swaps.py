@@ -24,7 +24,8 @@ prob = F
 cut = F
 run = T
 __model__ = "1k"
-distance = "MAP3D"
+structure = "LN"
+distance = "tracto16"
 topology = "MIX"
 mapping = "R4"
 index  = "simple"
@@ -43,6 +44,7 @@ if __name__ == "__main__":
     linkage,
     __mode__,
     __iter__,
+    strcuture = structure,
     version=__version__,
     model=__model__,
     topology=topology,

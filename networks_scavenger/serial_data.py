@@ -11,7 +11,6 @@ import itertools
 # Import libraries ---- 
 from plotting_modules.plotting_H import Plot_H
 from plotting_modules.plotting_N import Plot_N
-from modules.hierarentropy import Hierarchical_Entropy
 from networks.structure import MAC
 from various.data_transformations import maps
 from various.network_tools import *
@@ -28,7 +27,8 @@ linkage = "single"
 nlog10 = T
 lookup = F
 prob = F
-distance = "MAP3D"
+structure = "LN"
+distance = "tracto16"
 nature = "original"
 mapping = "R4"
 index = "simple"
@@ -48,6 +48,7 @@ if __name__ == "__main__":
     # Load structure ----
     NET = MAC(
       linkage, mode,
+      structure = structure,
       nlog10=nlog10, lookup=lookup,
       version = version,
       nature = nature,

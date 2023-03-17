@@ -23,7 +23,8 @@ nlog10 = T
 lookup = F
 prob = F
 cut = F
-distance = "MAP3D"
+structure = "LN"
+distance = "tracto16"
 nature = "original"
 __mode__ = "ALPHA"
 topology = "MIX"
@@ -54,6 +55,7 @@ if __name__ == "__main__":
   # MAC network as reference ----
   REF = MAC(
     linkage, __mode__,
+    structure = structure,
     nlog10=nlog10, lookup=lookup,
     version = __version__,
     nature = nature,
@@ -69,6 +71,7 @@ if __name__ == "__main__":
   NET = DISTBASE(
     __inj__, total_nodes,
     linkage, __bin__, __mode__, __iter__,
+    structure = structure,
     nlog10=nlog10, lookup=lookup, cut=cut,
     topology=topology, distance=distance,
     mapping=mapping, index=index, version = __version__,

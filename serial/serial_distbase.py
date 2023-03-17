@@ -27,7 +27,8 @@ lookup = F
 prob = F
 cut = F
 run = T
-distance = "MAP3D"
+structure = "LN"
+distance = "tracto16"
 nature = "original"
 mode = "ALPHA"
 topology = "MIX"
@@ -43,7 +44,7 @@ total_nodes = 106
 __inj__ = 57
 __nodes__ = 57
 __version__ = 220830
-__model__ = "M"
+__model__ = "CONSTM"
 __bin__ = 12
 bias = float(0)
 # Print summary ----
@@ -71,6 +72,7 @@ if __name__ == "__main__":
   # Create macaque class ----
   NET = MAC(
     linkage, mode,
+    structure = structure,
     nlog10=nlog10, lookup=lookup,
     version = __version__,
     nature=nature,
@@ -102,6 +104,7 @@ if __name__ == "__main__":
       RAND = DISTBASE(
         __inj__, total_nodes,
         linkage, __bin__, mode, i,
+        structure = structure,
         version=__version__, model=__model__,
         nlog10=nlog10, lookup=lookup, cut=cut,
         topology=topology, distance=distance,
@@ -173,8 +176,9 @@ if __name__ == "__main__":
       )
   else:
     data = read_class(
-      "../pickle/RAN/distbase/MAC/{}/FLN/{}/{}/BIN_{}/{}/{}/{}/b_{}".format(
+      "../pickle/RAN/distbase/MAC/{}/{}/{}/{}/BIN_{}/{}/{}/{}/b_{}".format(
         __version__,
+        structure,
         distance,
         __model__,
         str(__bin__),

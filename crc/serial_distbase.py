@@ -27,8 +27,9 @@ def worker_distbase(
   # Declare global variables NET ----
   MAXI = number_of_iterations
   linkage = "single"
+  structure = "LN"
   nature = "original"
-  distance = "MAP3D"
+  distance = "tracto16"
   mode = "ALPHA"
   imputation_method = ""
   opt_score = ["_maxmu", "_X"]  
@@ -65,6 +66,7 @@ def worker_distbase(
   # Create macaque class ----
   NET = MAC(
     linkage, mode,
+    structure = structure,
     nlog10=nlog10, lookup=lookup,
     version = __version__,
     nature=nature,
@@ -95,6 +97,7 @@ def worker_distbase(
     RAND = DISTBASE(
         __inj__, total_number_nodes,
         linkage, __bin__, mode, i,
+        structure = structure,
         version = __version__, model=distbase,
         nlog10=nlog10, lookup=lookup, cut=cut,
         topology=topology, distance=distance,

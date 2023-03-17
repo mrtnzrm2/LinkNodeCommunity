@@ -28,7 +28,8 @@ lookup = F
 prob = F
 cut = F
 run = T
-distance = "MAP3D"
+structure = "LN"
+distance = "tracto16"
 nature = "original"
 mapping = "R4"
 index = "simple"
@@ -75,8 +76,9 @@ if __name__ == "__main__":
     if cut: _cut = "_cut"
     print("Load MAC data ----")
     data = read_class(
-      "../pickle/RAN/swaps/MAC/{}/FLN/{}/{}/{}/{}/{}/b_{}".format(
+      "../pickle/RAN/swaps/MAC/{}/{}/{}/{}/{}/{}/{}/b_{}".format(
         __version__,
+        structure,
         distance,
         __model__,
        f"{linkage.upper()}_{total_nodes}_{__nodes__}{l10}{lup}{_cut}",

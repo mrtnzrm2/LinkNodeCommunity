@@ -28,7 +28,8 @@ lookup = F
 prob = F
 cut = F
 run = T
-distance = "MAP3D"
+structure = "LN"
+distance = "tracto16"
 nature = "original"
 topology = "MIX"
 mapping = "R4"
@@ -70,6 +71,7 @@ if __name__ == "__main__":
   # Create macaque class ----
   NET = MAC(
     linkage, mode, nlog10, lookup,
+    structure = structure,
     version = __version__,
     distance = distance,
     nature = nature,
@@ -99,6 +101,7 @@ if __name__ == "__main__":
       RAND = SWAPNET(
         __inj__, linkage,
         mode, i,
+        structure = structure,
         topology=topology,
         nature = nature,
         model = __model__,
@@ -176,8 +179,9 @@ if __name__ == "__main__":
       )
   else:
     data = read_class(
-      "../pickle/RAN/swaps/MAC/{}/FLN/{}/{}/{}/{}/{}/{}".format(
+      "../pickle/RAN/swaps/MAC/{}/{}/{}/{}/{}/{}/{}/{}".format(
         __version__,
+        structure,
         distance,
         __model__,
         NET.analysis,
@@ -192,24 +196,24 @@ if __name__ == "__main__":
   plot_s = PLOT_S(data)
   plot_s.plot_measurements_Entropy(on=T)
   plot_s.plot_measurements_Entropy_noodle(on=T)
-  # plot_s.plot_stats(alternative=alternative, on=T)
-  # plot_s.plot_measurements_D_noodle(on=T)
-  # plot_s.plot_measurements_X_noodle(on=T)
-  # plot_s.plot_measurements_mu_noodle(on=T)
-  # plot_s.plot_measurements_ntrees_noodle(on=T)
-  # plot_s.plot_measurements_ordp_noodle(on=T)
-  # plot_s.plot_measurements_D(on=T)
-  # plot_s.plot_measurements_X(on=T)
-  # plot_s.plot_measurements_mu(on=T)
-  # plot_s.plot_measurements_ntrees(on=T)
-  # plot_s.plot_measurements_ordp(on=T)
-  # plot_s.plot_entropy(on=T)
-  # plot_s.histogram_clustering_similarity(
-  #   on=T, c=T, hue_norm=[s.replace("_", "") for s in opt_score]
-  # )
-  # plot_o = PLOT_OS(data)
-  # for score in opt_score:
-  #   plot_s.histogram_krs(score=score, on=T)
-  #   plot_o.histogram_overlap(score, on=T)
+  plot_s.plot_stats(alternative=alternative, on=T)
+  plot_s.plot_measurements_D_noodle(on=T)
+  plot_s.plot_measurements_X_noodle(on=T)
+  plot_s.plot_measurements_mu_noodle(on=T)
+  plot_s.plot_measurements_ntrees_noodle(on=T)
+  plot_s.plot_measurements_ordp_noodle(on=T)
+  plot_s.plot_measurements_D(on=T)
+  plot_s.plot_measurements_X(on=T)
+  plot_s.plot_measurements_mu(on=T)
+  plot_s.plot_measurements_ntrees(on=T)
+  plot_s.plot_measurements_ordp(on=T)
+  plot_s.plot_entropy(on=T)
+  plot_s.histogram_clustering_similarity(
+    on=T, c=T, hue_norm=[s.replace("_", "") for s in opt_score]
+  )
+  plot_o = PLOT_OS(data)
+  for score in opt_score:
+    plot_s.histogram_krs(score=score, on=T)
+    plot_o.histogram_overlap(score, on=T)
     
   
