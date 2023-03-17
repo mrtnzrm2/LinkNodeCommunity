@@ -1,6 +1,6 @@
 import numpy as np
 
-def inverted_mapping(A, nlog10, lookup, prob, *args, **kwargs):
+def inverted_mapping(A, nlog10, lookup, prob, *args, b=0, **kwargs):
   R = A.copy()
   np.fill_diagonal(R, np.nan)
   # Prepare data for taking the log ----
@@ -14,7 +14,7 @@ def inverted_mapping(A, nlog10, lookup, prob, *args, **kwargs):
     print("     They will ve replaced by the square root of the biggest prob")
     print("     less than 1.\n")
     R[R == 1] = np.sqrt(np.nanmax(R[R < 1]))
-  ## originial shift ----
+  ## original shift ----
   shift = 0
   # If original data is prob and a  log transformation is needed ----
   if nlog10 and prob:
@@ -34,7 +34,7 @@ def inverted_mapping(A, nlog10, lookup, prob, *args, **kwargs):
     R[R > 0] = np.log(R[R > 0])
   # If non-connetions will get a weight ----
   if lookup and nlog10:
-    lookup = np.nanmax(R[R != 0]) * 1.01
+    lookup = np.nanmax(R[R != 0]) + b
     # lookup = 14.127
     R[R == 0] = lookup
   elif lookup and ~nlog10:
@@ -44,7 +44,21 @@ def inverted_mapping(A, nlog10, lookup, prob, *args, **kwargs):
     lookup = 0
   return R, lookup, shift
 
-def normal_mapping(A, nlog10, lookup, prob, *args, b=1e-5, **kwargs):
+def entropy_mapping(A, nlog10, lookup, prob, *args, b=0, **kwargs):
+  R = A.copy()
+  np.fill_diagonal(R, np.nan)
+  # Prepare data for taking the log ----
+  ## If it is a probability ----
+  if not prob: raise ValueError("Data has to be probabilities")
+  if np.sum(R > 1) > 0 or np.sum(R < 0) > 0:
+    raise ValueError("Probabilities outside the range [0, 1]")
+  ## If there are 1 entries ----
+  if np.sum(R > 1) > 0 and nlog10:
+    raise ValueError("Probabilities more than one are not accepted")
+  R[R!=0] = -R[R!=0] * np.log(R[R!=0])
+  return R, 0, 0
+
+def normal_mapping(A, nlog10, lookup, prob, *args, b=0, **kwargs):
   # log transformation ----
   R = A.copy()
   np.fill_diagonal(R, np.nan)
@@ -90,13 +104,21 @@ def normal_mapping(A, nlog10, lookup, prob, *args, b=1e-5, **kwargs):
     lookup = 0
   return R, lookup, shift
 
+def exp_count_mapping(A, *args, **kwargs):
+  AA = A.copy().astype(float)
+  np.fill_diagonal(AA, np.nan)
+  AA = np.log(1 + AA)
+  return AA, 0, 0
+
 def trivial_mapping(A, *args, **kwargs):
-  AA = A.copy()
+  AA = A.copy().astype(float)
   np.fill_diagonal(AA, np.nan)
   return AA, 0, 0
 
 maps = {
   "R1" : inverted_mapping,
   "R2" : normal_mapping,
+  "R3" : entropy_mapping,
+  "R4" : exp_count_mapping,
   "trivial" : trivial_mapping
 }

@@ -18,7 +18,7 @@ from various.network_tools import *
 # Iterable varaibles ----
 cut = [F]
 topologies = ["MIX", "TARGET", "SOURCE"]
-bias = [1e-5, 0.1, 0.3, 0.5]
+bias = [0]
 list_of_lists = itertools.product(
   *[cut, topologies, bias]
 )
@@ -27,11 +27,11 @@ list_of_lists = np.array(list(list_of_lists))
 linkage = "single"
 nlog10 = T
 lookup = F
-prob = T
+prob = F
 distance = "MAP3D"
 nature = "original"
-mapping = "R2"
-index = "jacw"
+mapping = "R4"
+index = "simple"
 mode = "ALPHA"
 imputation_method = ""
 opt_score = ["_maxmu", "_X"]

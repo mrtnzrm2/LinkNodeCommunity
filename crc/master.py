@@ -20,10 +20,10 @@ from crc.serial_swaps import worker_swaps
 THE_ARRAY = pd.DataFrame()
 ## distbase ----
 worker = ["distbase"]
-distbases = ["DEN", "M"]
+distbases = ["DEN", "M", "CONSTDEN", "CONSTM"]
 cut = [F]
 topology = ["TARGET", "SOURCE", "MIX"]
-bias = [1e-5, 1e-2, 0.1, 0.3, 0.5]
+bias = [0]
 list_of_lists = itertools.product(
   *[distbases, cut, topology, bias]
 )
@@ -93,7 +93,7 @@ array_overlap = array_overlap.loc[
 worker = ["swaps"]
 cut = [F]
 topology = ["TARGET", "SOURCE", "MIX"]
-bias = [1e-5, 1e-2, 0.1, 0.3, 0.5]
+bias = [0]
 list_of_lists = itertools.product(
   *[cut, topology, bias]
 )
@@ -123,10 +123,10 @@ def NoGodsNoMaster(number_of_iterations, t):
     version = 220830
     nlog10 = T
     lookup = F
-    prob = T
+    prob = F
     run = T
-    mapping = "R2"
-    index = "jacw"
+    mapping = "R4"
+    index = "simple"
     if array.loc["cut"] == "True": cut = T
     else: cut = F
     worker_distbase(
@@ -186,10 +186,10 @@ def NoGodsNoMaster(number_of_iterations, t):
     version = 220830
     nlog10 = T
     lookup = F
-    prob = T
+    prob = F
     run = T
-    mapping = "R2"
-    index = "jacw"
+    mapping = "R4"
+    index = "simple"
     if array.loc["cut"] == "True": cut = T
     else: cut = F
     worker_swaps(
@@ -207,4 +207,4 @@ if __name__ == "__main__":
   from collections import Counter
   print(Counter(THE_ARRAY.worker))
   print(THE_ARRAY.iloc[t - 1])
-  # NoGodsNoMaster(number_of_iterations, t)
+  NoGodsNoMaster(number_of_iterations, t)

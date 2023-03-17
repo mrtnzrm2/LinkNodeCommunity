@@ -25,7 +25,7 @@ class Sim:
       "MIX" : 0, "SOURCE" : 1, "TARGET" : 2
     }
     self.indices = {
-      "jacp" : 0, "tanimoto" : 1, "cos" : 2, "jacw" : 3, "bsim" : 4
+      "jacp" : 0, "tanimoto" : 1, "cos" : 2, "jacw" : 3, "bsim" : 4, "jacw2" : 5, "simple" : 6
     }
     self.topology = topology
     self.index = index
@@ -47,6 +47,15 @@ class Sim:
           ]
         )
     return aik
+  
+  def get_aik_bin(self):
+    bin_aik = self.nonzero.copy()
+    np.fill_diagonal(bin_aik, True)
+    return bin_aik
+  
+  def get_aik_d(self):
+    aikd = self.D.copy()[:, :self.nodes]
+    return aikd
 
   def get_aki(self):
     aki = self.R.copy().T
@@ -65,6 +74,15 @@ class Sim:
           ]
         )
     return aki
+  
+  def get_aki_bin(self):
+    bin_aki = self.nonzero.T.copy()
+    np.fill_diagonal(bin_aki, True)
+    return bin_aki
+  
+  def get_aki_d(self):
+    akid = self.D.copy()[:, :self.nodes].T
+    return akid
 
   def get_id_matrix(self):
     self.id_mat = self.A.copy()[:self.nodes, :]
@@ -192,8 +210,11 @@ class Sim:
   
   def similarity_by_feature_cpp(self):
     Quest = squest.simquest(
-      self.A, self.get_aki(), self.get_aik(), self.nodes,
-      self.leaves, self.topologies[self.topology],
+      self.nonzero,
+      self.get_aki(), self.get_aik(),
+      self.get_aki_bin(), self.get_aik_bin(),
+      self.get_aki_d(), self.get_aik_d(),
+      self.nodes, self.leaves, self.topologies[self.topology],
       self.indices[self.index]
     )
     self.linksim_matrix = np.array(Quest.get_linksim_matrix())

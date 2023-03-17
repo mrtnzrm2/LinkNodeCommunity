@@ -25,14 +25,14 @@ MAXI = 100
 linkage = "single"
 nlog10 = T
 lookup = F
-prob = T
+prob = F
 cut = F
 run = T
 distance = "MAP3D"
 nature = "original"
 topology = "MIX"
-mapping = "R2"
-index = "jacw"
+mapping = "R4"
+index = "simple"
 mode = "ALPHA"
 imputation_method = ""
 opt_score = ["_maxmu", "_X"]
@@ -42,7 +42,7 @@ __inj__ = 57
 __nodes__ = 57
 __version__ = 220830
 __model__ = "1k"
-bias = 0.01
+bias = float(0)
 # T test ----
 alternative = "less"
 # Print summary ----

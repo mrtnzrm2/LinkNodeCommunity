@@ -15,7 +15,7 @@ from plotting_modules.plotting_o_serial import PLOT_OS
 from various.network_tools import read_class
 # Declare iter variables ----
 topologies = ["TARGET", "SOURCE", "MIX"]
-bias = [1e-5, 0.1, 0.3, 0.5]
+bias = [0]
 list_of_lists = itertools.product(
   *[topologies, bias]
 )
@@ -25,13 +25,13 @@ MAXI = 504
 linkage = "single"
 nlog10 = T
 lookup = F
-prob = T
+prob = F
 cut = F
 run = T
 distance = "MAP3D"
 nature = "original"
-mapping = "R2"
-index = "jacw"
+mapping = "R4"
+index = "simple"
 mode = "ALPHA"
 imputation_method = ""
 opt_score = ["_maxmu", "_X"]

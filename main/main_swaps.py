@@ -20,20 +20,20 @@ __iter__ = 0
 linkage = "single"
 nlog10 = T
 lookup = F
-prob = T
+prob = F
 cut = F
 run = T
 __model__ = "1k"
 distance = "MAP3D"
 topology = "MIX"
-mapping = "R2"
-index  = "jacw"
+mapping = "R4"
+index  = "simple"
 __mode__ = "ALPHA"
 imputation_method = ""
 opt_score = ["_maxmu", "_X"]
 __nodes__ = 57
 __version__ = 220830
-bias = 0.3
+bias = float(0)
 save_data = T
 
 if __name__ == "__main__":

@@ -108,15 +108,15 @@ def worker_distbase(
     RC = RAND.distbase_dict[__model__](
       D, NET.C, run=run, on_save_csv=F
     )
-    G = column_normalize(RC)
+    # G = column_normalize(RC)
     # Transform data for analysis ----
     R, lookup, _ = maps[mapping](
-      G, nlog10, lookup, prob, b=bias
+      RC, nlog10, lookup, prob, b=bias
     )
     # Compute RAND Hierarchy ----
     print("Compute Hierarchy")
     RAND_H = Hierarchy(
-      RAND, G[:, :__nodes__], R[:, :__nodes__], D,
+      RAND, RC[:, :__nodes__], R[:, :__nodes__], D,
       __nodes__, linkage, mode, lookup=lookup
     )
     ## Compute features ----

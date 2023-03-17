@@ -8,8 +8,10 @@
 
 namespace py = pybind11;
 
+#define lmbda 0.07921125
+
 std::vector<std::vector<int> > create_id_matrix(
-	std::vector<std::vector<double> >& matrix,
+	std::vector<std::vector<bool> >& matrix,
 	const int& M, const int& N
 ) {
 	std::vector<std::vector<int> > id_matrix(N, std::vector<int>(M, 0));
@@ -32,9 +34,13 @@ class simquest {
     std::vector<std::vector<double> > target_matrix;
   public:
     simquest(
-      std::vector<std::vector<double> > A,
+      std::vector<std::vector<bool> > BA,
       std::vector<std::vector<double> > AKI,
       std::vector<std::vector<double> > AIK,
+			std::vector<std::vector<bool> > BAKI,
+  		std::vector<std::vector<bool> > BAIK,
+			std::vector<std::vector<double> > AKID,
+			std::vector<std::vector<double> > AIKD,
       const int N,
       const int leaves,
       const int topology,
@@ -42,28 +48,34 @@ class simquest {
     );
     ~simquest(){};
     std::vector<std::vector<double> > calculate_linksim_matrix(
-      std::vector<std::vector<double> >& matrix, const int& N, const int& leaves
+      std::vector<std::vector<bool> >& bmatrix, const int& N, const int& leaves
     );
     double similarity_index(
-      std::vector<double> &u, std::vector<double> &v, const int &index
+      std::vector<double> &u, std::vector<double> &v, std::vector<bool> &bu, std::vector<bool> &bv, std::vector<double> &du, std::vector<double> &dv, const int &index
     );
     std::vector<std::vector<double> > calculate_nodesim_matrix(
-      std::vector<std::vector<double> >& matrix, const int& N, const int& index
+      std::vector<std::vector<double> >& matrix, std::vector<std::vector<bool> >& bmatrix, std::vector<std::vector<double> > D, const int& N, const int& index
     );
 		std::vector<std::vector<double> > get_linksim_matrix();
 		std::vector<std::vector<double> > get_source_matrix();
 		std::vector<std::vector<double> > get_target_matrix();
-		double jacp(std::vector<double> &u, std::vector<double> &v);
+		double jacp(std::vector<double> &u, std::vector<double> &v, std::vector<bool> &bu, std::vector<bool> &bv);
 		double tanimoto_coefficient(std::vector<double> &u, std::vector<double> &v);
 		double cosine_similarity(std::vector<double> &u, std::vector<double> &v);
 		double jacw(std::vector<double> &u, std::vector<double> &v);
-		double bin_similarity(std::vector<double> &u, std::vector<double> &v);
+		double jacw2(std::vector<double> &u, std::vector<double> &v);
+		double simple(std::vector<double> &u, std::vector<double> &v);
+		double bin_similarity(std::vector<bool> &bu, std::vector<bool> &bv);
 };
 
 simquest::simquest(
-	std::vector<std::vector<double> > A,
+	std::vector<std::vector<bool> > BA,
   std::vector<std::vector<double> > AKI,
   std::vector<std::vector<double> > AIK,
+	std::vector<std::vector<bool> > BAKI,
+  std::vector<std::vector<bool> > BAIK,
+	std::vector<std::vector<double> > AKID,
+	std::vector<std::vector<double> > AIKD,
 	const int N,
 	const int leaves,
   const int topology,
@@ -71,30 +83,30 @@ simquest::simquest(
 ){
 	// MIX topology
 	if (topology == 0) {
-		source_matrix = calculate_nodesim_matrix(AIK, N, index);
-		target_matrix = calculate_nodesim_matrix(AKI, N, index);
+		source_matrix = calculate_nodesim_matrix(AIK, BAIK, AIKD, N, index);
+		target_matrix = calculate_nodesim_matrix(AKI, BAKI, AKID, N, index);
 	}
 	// SOURCE topology
 	else if (topology == 1) {
-		source_matrix = calculate_nodesim_matrix(AIK, N, index);
+		source_matrix = calculate_nodesim_matrix(AIK, BAIK, AIKD, N, index);
 		target_matrix = source_matrix;
 	}
 	// TARGET topology
 	else if (topology == 2) {
-		source_matrix = calculate_nodesim_matrix(AKI, N, index);
+		source_matrix = calculate_nodesim_matrix(AKI, BAKI, AKID, N, index);
 		target_matrix = source_matrix;
 	}
-	linksim_matrix = calculate_linksim_matrix(A, N, leaves);
+	linksim_matrix = calculate_linksim_matrix(BA, N, leaves);
 }
 
 std::vector<std::vector<double> > simquest::calculate_nodesim_matrix(
-	 std::vector<std::vector<double> >& matrix, const int& N, const int& index
+	 std::vector<std::vector<double> >& matrix, std::vector<std::vector<bool> >& bmatrix, std::vector<std::vector<double> > D, const int& N, const int& index
 ) {
 	std::vector<std::vector<double> > node_sim_matrix(N, std::vector<double>(N, 0.));
 	for (int i=0; i < N; i++) {
 		for (int j=i; j < N; j++) {
 			if (i == j) continue;
-			node_sim_matrix[i][j] = similarity_index(matrix[i], matrix[j], index);
+			node_sim_matrix[i][j] = similarity_index(matrix[i], matrix[j], bmatrix[i], bmatrix[j], D[i], D[j], index);
 			node_sim_matrix[j][i] = node_sim_matrix[i][j];
 		}
 	}
@@ -102,7 +114,7 @@ std::vector<std::vector<double> > simquest::calculate_nodesim_matrix(
 }
 
 std::vector<std::vector<double> > simquest::calculate_linksim_matrix(
-	std::vector<std::vector<double> >& matrix, const int& N, const int& leaves
+	std::vector<std::vector<bool> >& matrix, const int& N, const int& leaves
 ) {
 	std::vector<std::vector<int> > id_matrix = create_id_matrix(matrix, N, N);
 	std::vector<std::vector<double> > link_similarity_matrix(leaves, std::vector<double>(leaves, 0));
@@ -165,15 +177,37 @@ double simquest::jacw(
 	return maximus / N;
 }
 
-double simquest::bin_similarity(
+double simquest::jacw2(
 	std::vector<double> &u, std::vector<double> &v
 ) {
 	int N = u.size();
+	double maximus=0.;
+	for (int i=0; i < N; i++) {
+		maximus -= abs(u[i] - v[i]);
+	}
+	return maximus / N;
+}
+
+double simquest::simple(
+	std::vector<double> &u, std::vector<double> &v
+) {
+	int N = u.size();
+	double maximus=0.;
+	for (int i=0; i < N; i++)
+		maximus -= abs(u[i] - v[i]); 
+
+	return maximus / N;
+}
+
+double simquest::bin_similarity(
+	std::vector<bool> &bu, std::vector<bool> &bv
+) {
+	int N = bu.size();
 	double uv=0., uu=0., vv=0.;
 	for (int i=0; i < N; i++) {
-		if ((u[i] != 0 && v[i] != 0) || (u[i] == 0 && v[i] == 0)) uv++;
-		if (u[i] > 0) uu++;
-		if (v[i] > 0) vv++;
+		if ((bu[i] && bv[i]) || (!bu[i] && !bv[i])) uv++;
+		if (bu[i]) uu++;
+		if (bv[i]) vv++;
 	}
 	uv /= N;
 	uu /= N;
@@ -182,13 +216,14 @@ double simquest::bin_similarity(
 }
 
 double simquest::jacp(
-	std::vector<double> &u, std::vector<double> &v)
+	std::vector<double> &u, std::vector<double> &v, std::vector<bool> &bu, std::vector<bool> &bv)
 {
 	int N = u.size();
 	double JACP = 0;
 	double p;
 	for (int i=0; i < N; i++){
-		if (u[i] != 0 && v[i] !=0){
+		if (bu[i] && bv[i]){
+			if (u[i] == 0 || v[i] == 0) std::cout << "\n\tWeight-topology ambiguity: Connection exists with zero weigth\n";
 			p = 0;
 			for (int j=0; j < N; j++){
 				p += std::max(u[j]/u[i], v[j]/v[i]);
@@ -196,16 +231,16 @@ double simquest::jacp(
 			if (p != 0)
 				JACP += 1/p;
 			else
-				std::cout << "Vectors in jaccardp are both zero";
+				std::cout << "Vectors in jaccardp are both zero\n";
 		}
 	}
 	return JACP;
 }
 
-double simquest::similarity_index(std::vector<double> &u, std::vector<double> &v, const int &index) {
+double simquest::similarity_index(std::vector<double> &u, std::vector<double> &v, std::vector<bool> &bu, std::vector<bool> &bv, std::vector<double> &du, std::vector<double> &dv, const int &index) {
 	// Jaccard probability index
   if (index == 0) {
-    return jacp(u, v);
+    return jacp(u, v, bu, bv);
   }
 	// Tanimoto coefficient
   else if (index == 1) {
@@ -221,10 +256,18 @@ double simquest::similarity_index(std::vector<double> &u, std::vector<double> &v
 	}
 	// binary similarity
 	else if (index == 4) {
-		return bin_similarity(u, v);
+		return bin_similarity(bu, bv);
+	}
+	// jacw2 similarity
+	else if (index == 5) {
+		return jacw2(u, v);
+	}
+	// jacw2 similarity
+	else if (index == 6) {
+		return simple(u, v, du, dv);
 	}
   else {
-    std::range_error("Similarity index must be a integer from 0 to 4.\n");
+    std::range_error("Similarity index must be a integer from 0 to 5\n");
   }
 }
 
@@ -244,7 +287,11 @@ PYBIND11_MODULE(simquest, m) {
     py::class_<simquest>(m, "simquest")
         .def(
           py::init<
-            std::vector<std::vector<double> >,
+           std::vector<std::vector<bool> >,
+						std::vector<std::vector<double> >,
+						std::vector<std::vector<double> >,
+						std::vector<std::vector<bool> >,
+						std::vector<std::vector<bool> >,
 						std::vector<std::vector<double> >,
 						std::vector<std::vector<double> >,
 						const int,
@@ -258,6 +305,8 @@ PYBIND11_MODULE(simquest, m) {
 				.def("get_target_matrix", &simquest::get_target_matrix)
 				.def("jacp", &simquest::jacp)
         .def("jacw", &simquest::jacw)
+				.def("jacw2", &simquest::jacw2)
+				.def("simple", &simquest::simple)
 				.def("cosine_similarity", &simquest::cosine_similarity)
 			  .def("tanimoto_coefficient", &simquest::tanimoto_coefficient)
         .def("bin_similarity", &simquest::bin_similarity);

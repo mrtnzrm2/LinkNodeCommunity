@@ -294,10 +294,10 @@ void level_information(std::map<std::string, vertex_properties> &tree, const std
     auto it2 = next(tree[root].post_key.begin(), 1);
     if (!search_key(ml, tree[root].level)) {
       ml[tree[root].level].size = 1;
-      ml[tree[root].level].height = 2 * tree[root].height - tree[*it1].height - tree[*it2].height;
+      ml[tree[root].level].height = (2 * tree[root].height - tree[*it1].height - tree[*it2].height) / 2.;
     } else {
       ml[tree[root].level].size++;
-      ml[tree[root].level].height += 2 * tree[root].height - tree[*it1].height - tree[*it2].height;
+      ml[tree[root].level].height += (2 * tree[root].height - tree[*it1].height - tree[*it2].height) / 2.;
     }
     for (std::set<std::string>::iterator v = tree[root].post_key.begin(); v != tree[root].post_key.end(); ++v) {
       level_information(tree, *v, ml);
@@ -310,45 +310,47 @@ void level_information(std::map<std::string, vertex_properties> &tree, const std
     }
     else {
       ml[tree[root].level].size++;
-      // ml[tree[root].level].height += tree[root].height;
+      ml[tree[root].level].height += 0; //tree[root].height;
     }
   }
 }
 
 void level_information_H(std::map<std::string, vertex_properties> &tree, const std::string &root, std::map<int, level_properties> &ml, int &maxlvl) {
   if (!search_key(tree[root].post_key, "END")) {
-    auto it1 = next(tree[root].post_key.begin(), 0);
-    auto it2 = next(tree[root].post_key.begin(), 1);
     if (!search_key(ml, tree[root].level)) {
       ml[tree[root].level].size = 1;
-      ml[tree[root].level].height = 2 * tree[root].height - tree[*it1].height - tree[*it2].height;
+      ml[tree[root].level].height = 0;
+     for (std::set<std::string>::iterator v = tree[root].post_key.begin(); v != tree[root].post_key.end(); ++v) {
+         ml[tree[root].level].height += (tree[root].height - tree[*v].height) / 2.;
+         level_information_H(tree, *v, ml, maxlvl);
+      } 
     } else {
       ml[tree[root].level].size++;
-      ml[tree[root].level].height += 2 * tree[root].height - tree[*it1].height - tree[*it2].height;
-    }
-    for (std::set<std::string>::iterator v = tree[root].post_key.begin(); v != tree[root].post_key.end(); ++v) {
-      level_information_H(tree, *v, ml, maxlvl);
+      for (std::set<std::string>::iterator v = tree[root].post_key.begin(); v != tree[root].post_key.end(); ++v) {
+         ml[tree[root].level].height += (tree[root].height - tree[*v].height) / 2.;
+         level_information_H(tree, *v, ml, maxlvl);
+      } 
     }
   } 
   else {
     if (!search_key(ml, tree[root].level)) {
       ml[tree[root].level].size = 1;
-      ml[tree[root].level].height = tree[root].height;
+      ml[tree[root].level].height = 0; //tree[root].height;
     }
     else {
       ml[tree[root].level].size++;
-      ml[tree[root].level].height += tree[root].height;
+      ml[tree[root].level].height += 0; //tree[root].height;
     }
-    int nextL = tree[root].level + 1;
-    if (nextL <= maxlvl) {
-      if (!search_key(ml, nextL)) {
-        ml[nextL].size = 1;
-        ml[nextL].height = 0;
-      }
-      else {
-        ml[nextL].size++;
-      }
-    }
+    // int nextL = tree[root].level + 1;
+    // if (nextL <= maxlvl) {
+    //   if (!search_key(ml, nextL)) {
+    //     ml[nextL].size = 1;
+    //     ml[nextL].height = 0;
+    //   }
+    //   else {
+    //     ml[nextL].size++;
+    //   }
+    // }
   }
 }
 
@@ -376,17 +378,19 @@ void level_entropy(std::map<std::string, vertex_properties> &tree, std::map<int,
 void vertex_entropy_H(std::map<std::string, vertex_properties> &tree, std::map<int, level_properties> ml, const std::string &root, const int &nodes, int &max_levels, std::vector<double> &Sh) {
   double Mul = tree[root].post_key.size();
   int nextL = tree[root].level + 1, tL = tree[root].level;
-  if (!search_key(tree[root].post_key, "END") && nextL <= max_levels) {
+  if (!search_key(tree[root].post_key, "END")) {
+    // for (std::set<std::string>::iterator roo = tree[root].post_key.begin(); roo != tree[root].post_key.end(); ++roo)
+    //   len_tree_root++;
     for (std::set<std::string>::iterator roo = tree[root].post_key.begin(); roo != tree[root].post_key.end(); ++roo) {
       // std::cout << root << " " << *roo << " " << tree[root].height << " " << tree[*roo].height << " " << Mul  << " " << ml[nextL].size << "\n";
-      Sh[nodes - tL - 1] -= (tree[root].height - tree[*roo].height) * stirling_3(Mul, static_cast<double>(ml[nextL].size)) / nodes;
+      Sh[nodes - tL - 1] -= (tree[root].height - tree[*roo].height) * stirling_3(Mul, static_cast<double>(ml[nextL].size)) / nodes / 2.;
       vertex_entropy_H(tree, ml, *roo, nodes, max_levels, Sh);
     }
   }
-  else if (nextL <= max_levels) {
-    // std::cout << "**" << root << " " << tree[root].height << " " << Mul  << " " << ml[nextL].size << "\n";
-    Sh[nodes - tL - 1] -= tree[root].height * stirling_3(1.,  ml[nextL].size) / nodes;
-  }
+  // else if (nextL <= max_levels) {
+  //   // std::cout << "**" << root << " " << tree[root].height << " " << Mul  << " " << ml[nextL].size << "\n";
+  //   Sh[nodes - tL - 1] -= tree[root].height * stirling_3(1.,  ml[nextL].size) / nodes;
+  // }
 }
 
 void level_entrop_H(std::map<std::string, vertex_properties> &tree, std::map<int, level_properties> &ml, const std::string &root, const int &nodes, std::vector<double> &sv) {

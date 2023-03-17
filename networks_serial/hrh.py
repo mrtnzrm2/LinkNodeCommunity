@@ -105,7 +105,8 @@ class HRH:
             "S" : np.hstack([s[0].ravel(), s[1].ravel()]), "data" : ["0"] * 4 * dim,
             "c" : ["node_hierarchy"] * 2 * dim  + ["node_hierarch_H"] * 2 * dim,
             "dir" : ["H"] * dim + ["V"] * dim + ["H"] * dim + ["V"] * dim,
-            "level" : np.tile(np.arange(dim, 0, -1), 4), "iter" : [(self.iter+1)] * 4 * dim
+            "level" : np.tile(np.arange(dim, 0, -1), 4),
+            "iter" : [(self.iter+1)] * dim + [-(self.iter+1)] * dim + [(self.iter+1)] * dim + [-(self.iter+1)] * dim
           } 
         )
       ], ignore_index=True
@@ -119,7 +120,8 @@ class HRH:
             "S" : np.hstack([s[2].ravel(), s[3].ravel()]), "data" : ["0"] * 4 * dim,
             "c" : ["link_hierarchy"] * 2 * dim  + ["link_hierarch_H"] * 2 * dim,
             "dir" : ["H"] * dim + ["V"] * dim + ["H"] * dim + ["V"] * dim,
-            "level" : np.tile(np.arange(dim, 0, -1), 4), "iter" : [(self.iter+1)] * 4 * dim
+            "level" : np.tile(np.arange(dim, 0, -1), 4),
+            "iter" : [(self.iter+1)] * dim + [-(self.iter+1)] * dim + [(self.iter+1)] * dim + [-(self.iter+1)] * dim
           }
         )
       ], ignore_index=True
@@ -291,8 +293,7 @@ class HRH:
     self.pickle_path = join(
       self.pickle_path, H.mode, H.subfolder
     )
-    if bias != 0:
-      self.pickle_path = join(self.pickle_path, f"b_{bias}")
+    self.pickle_path = join(self.pickle_path, f"b_{bias}")
     Path(self.pickle_path).mkdir(exist_ok=True, parents=True)
 
   def set_plot_path(self, H : Hierarchy, bias=0):
@@ -306,8 +307,7 @@ class HRH:
     self.plot_path = join(
       self.plot_path, H.mode, H.subfolder
     )
-    if bias != 0:
-      self.plot_path = join(self.plot_path, f"b_{bias}")
+    self.plot_path = join(self.plot_path, f"b_{bias}")
     Path(self.plot_path).mkdir(exist_ok=True, parents=True)
 
   def set_overlap_data_zero(self, overlap, score):

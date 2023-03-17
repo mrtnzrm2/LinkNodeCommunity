@@ -103,6 +103,7 @@ class Plot_H:
         y="mu",
         hue="beta"
       ).set(xscale="log")
+      g.add_legend()
       # Arrange path ----
       plot_path = join(self.path, "Features")
       # Crate path ----

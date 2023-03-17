@@ -112,12 +112,12 @@ def worker_swaps(
     RAND.random_one_k(run=run, on_save_csv=F)   #****
     # Transform data for analysis ----
     R, lookup, _ = maps[mapping](
-      RAND.A, nlog10, lookup, prob, b=bias
+      RAND.C, nlog10, lookup, prob, b=bias
     )
     # Compute RAND Hierarchy ----
     print("Compute Hierarchy")
     RAND_H = Hierarchy(
-      RAND, RAND.A[:, :__nodes__], R[:, :__nodes__], RAND.D,
+      RAND, RAND.C[:, :__nodes__], R[:, :__nodes__], RAND.D,
       __nodes__, linkage, mode, lookup=lookup
     )
     ## Compute features ----

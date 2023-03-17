@@ -326,6 +326,9 @@ class Plot_N:
         D.copy()[:self.nodes, :self.nodes]
       )
       daki = self.aki.copy()
+      # print(np.sum(np.isnan(daki)))
+      # print(np.nanmin(daki))
+      # print(np.sum(daki == np.nanmin(daki)))
       daki[np.isnan(daki)] = np.nanmin(daki) - 1
       daki = adj2df(daki)
       daki = daki.loc[

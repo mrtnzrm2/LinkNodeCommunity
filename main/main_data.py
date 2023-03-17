@@ -19,16 +19,16 @@ from various.network_tools import *
 linkage = "single"
 nlog10 = T
 lookup = F
-prob = T
+prob = F
 cut = F
 mode = "ALPHA"
 distance = "MAP3D"
 nature = "original"
 imputation_method = ""
-topology = "TARGET"
-mapping = "R2"
-index  = "jacw"
-bias = 1e-5
+topology = "MIX"
+mapping = "R4"
+index  = "simple"
+bias = float(0)
 opt_score = ["_maxmu", "_X"]
 save_data = T
 version = 220830
@@ -56,7 +56,7 @@ if __name__ == "__main__":
   NET.create_plot_directory()
   # Transform data for analysis ----
   R, lookup, _ = maps[mapping](
-    NET.A, nlog10, lookup, prob, b=bias
+    NET.C, nlog10, lookup, prob, b=bias
   )
   # Compute Hierarchy ----
   print("Compute Hierarchy")
@@ -64,7 +64,7 @@ if __name__ == "__main__":
   if save_data:
     ## Hierarchy object!! ----
     H = Hierarchy(
-      NET, NET.A, R, NET.D,
+      NET, NET.C, R, NET.D,
       __nodes__, linkage, mode, lookup=lookup
     )
     ## Compute features ----
@@ -101,9 +101,9 @@ if __name__ == "__main__":
   # # Picasso ----
   plot_h = Plot_H(NET, H)
   plot_h.plot_measurements_Entropy(on=T)
-  plot_h.plot_measurements_D(on=F)
-  plot_h.plot_measurements_mu(on=F)
-  plot_h.plot_measurements_X(on=F)
+  plot_h.plot_measurements_D(on=T)
+  plot_h.plot_measurements_mu(on=T)
+  plot_h.plot_measurements_X(on=T)
   plot_n = Plot_N(NET, H)
   plot_n.A_vs_dis(NET.A, s=5, on=F, reg=T)
   plot_n.projection_probability(
@@ -111,7 +111,7 @@ if __name__ == "__main__":
   )
   plot_n.histogram_weight(on=F)
   plot_n.histogram_dist(on=F)
-  plot_n.plot_akis(NET.D, s=5, on=F)
+  plot_n.plot_akis(NET.D, s=5, on=T)
   for score in opt_score:
     print(f"Find node partition using {score}")
     # Get best K and R ----
@@ -127,12 +127,12 @@ if __name__ == "__main__":
     H.set_cover(cover, score)
     # Plot H ----
     plot_h.core_dendrogram([r], on=T) #
-    plot_h.lcmap_pure([k], labels = rlabels, on=F) #
-    plot_h.heatmap_pure(r, on=F, labels = rlabels) #
-    plot_h.heatmap_dendro(r, on=F) #
-    plot_h.lcmap_dendro([k], on=F) #
+    plot_h.lcmap_pure([k], labels = rlabels, on=F)
+    plot_h.heatmap_pure(r, on=T, labels = rlabels) #
+    plot_h.heatmap_dendro(r, on=F)
+    plot_h.lcmap_dendro([k], on=T) #
     plot_h.flatmap_dendro(
-      NET, [k], [r], on=F, EC=T #
+      NET, [k], [r], on=T, EC=T #
     )
   save_class(
     H, NET.pickle_path,

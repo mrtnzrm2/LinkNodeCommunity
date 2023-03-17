@@ -858,13 +858,14 @@ class PLOT_S:
         data.groupby(["c", "dir", "data"])["S"].transform("idxmax").drop_duplicates(keep="first").to_numpy()
       ].sort_values("c", ascending=False)
       print(mx)
-      # _cmap = sns.cubehelix_palette(start=.5, rot=-.75, as_cmap=True)
-      _cmap = sns.color_palette("viridis", as_cmap=True)
-      color_palette = {col : _cmap(col / data.iter.max()) for col in np.unique(data.loc[data.data == "0"].iter)}
+      _cmap_v = sns.cubehelix_palette(start=.5, rot=-.75, as_cmap=True, reverse=True)
+      _cmap_h = sns.cubehelix_palette(as_cmap=True)
+      color_palette = {col : _cmap_v(-col / data.iter.max()) for col in np.unique(data.loc[(data.data == "0") & (data.dir == "V")].iter)}
+      color_palette.update({col : _cmap_h(col / data.iter.max()) for col in np.unique(data.loc[(data.data == "0") & (data.dir == "H")].iter)})
       data.iter.loc[(data.data == "1" )] = 0.1
       data["width"] = "thick"
       data.width.loc[data.data == "0"] = "thin"
-      color_palette.update({0.1 : "#C70039"})
+      color_palette.update({0.1 : "#dc4d01"})
       # Create figure ----
       g = sns.FacetGrid(
         data=data,
@@ -881,7 +882,7 @@ class PLOT_S:
         x="level",
         y="S",
         size="width",
-        sizes={"thick" : 2, "thin" : 0.5},
+        sizes={"thick" : 1, "thin" : 0.5},
         estimator=None,
         alpha=0.4
       )#.set(xscale="log")
