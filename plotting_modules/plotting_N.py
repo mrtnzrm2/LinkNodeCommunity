@@ -43,15 +43,16 @@ class Plot_N:
         self.D.copy()[:, :self.nodes]
       )
       # Get No connections ---
-      zeros = dA["weight"] == 0
+      zeros = dA.weight == 0
+      isnan = np.isnan(dA.weight)
       # Elllminate zeros ---
-      dA = dA.loc[~zeros]
-      dD = dD.loc[~zeros]
+      dA = dA.loc[(~zeros) & (~isnan)]
+      dD = dD.loc[(~zeros) & (~isnan)]
       # Create data ----
       from pandas import DataFrame
       data = DataFrame(
         {
-          "weight" : np.log(dA["weight"]),
+          "weight" : dA["weight"],
           "dist" : dD["weight"]
         }
       )
@@ -89,7 +90,7 @@ class Plot_N:
         ha='center', va='center',
         transform=ax.transAxes
       )
-      plt.ylabel("log(FLN)")
+      # plt.ylabel("log(FLN)")
       plt.xlabel("dist [mm]")
       # Arrange path ----
       plot_path = os.path.join(
@@ -268,21 +269,25 @@ class Plot_N:
     else:
       print("No histogram")
 
-  def histogram_weight(self, feature="", on=True):
+  def histogram_weight(self, A, feature="", on=True):
     if on:
       print("Plot weight histogram!!!")
       # Transform FLN to DataFrame ----
-      dA = self.dA.copy()
+      dA = A.copy()
+      dA = adj2df(A)
+      dA["connection"] = "exist"
+      dA.connection.loc[dA.weight == 0] = "~exist"
       # Transform FLN to weights ----
-      dA["weight"] = np.log(dA["weight"])
       fig, ax = plt.subplots(1, 1)
       sns.histplot(
-        data=dA,
+        data=dA.loc[dA.connection == "exist"],
         x="weight",
-        stat="density"
+        hue = "connection",
+        stat="density",
+        ax=ax
       )
-      plt.xlabel(r"$\log(FLN)$")
-      plt.ylabel(r"density $([\log(FLN)]^{-1})$")
+      # plt.xlabel(r"$\log(FLN)$")
+      # plt.ylabel(r"density $([\log(FLN)]^{-1})$")
       fig.tight_layout()
       # self.normal(
       #   dA["weight"].to_numpy().mean(),

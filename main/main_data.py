@@ -26,7 +26,7 @@ mode = "ALPHA"
 distance = "tracto16"
 nature = "original"
 imputation_method = ""
-topology = "SOURCE"
+topology = "MIX"
 mapping = "R4"
 index  = "simple"
 bias = float(0)
@@ -42,7 +42,7 @@ if __name__ == "__main__":
     linkage, mode,
     nlog10 = nlog10,
     structure = structure,
-    lookup =lookup,
+    lookup = lookup,
     version = version,
     nature = nature,
     model = imputation_method,
@@ -109,11 +109,11 @@ if __name__ == "__main__":
   plot_h.plot_measurements_mu(on=T)
   plot_h.plot_measurements_X(on=T)
   plot_n = Plot_N(NET, H)
-  plot_n.A_vs_dis(NET.A, s=5, on=F, reg=T)
+  plot_n.A_vs_dis(R, s=5, on=F, reg=T)
   plot_n.projection_probability(
     NET.C, bins=12, on=F
   )
-  plot_n.histogram_weight(on=F)
+  plot_n.histogram_weight(R, on=F)
   plot_n.histogram_dist(on=F)
   plot_n.plot_akis(NET.D, s=5, on=T)
   for score in opt_score:
