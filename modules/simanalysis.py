@@ -25,7 +25,7 @@ class Sim:
       "MIX" : 0, "SOURCE" : 1, "TARGET" : 2
     }
     self.indices = {
-      "jacp" : 0, "tanimoto" : 1, "cos" : 2, "jacw" : 3, "bsim" : 4, "jacw2" : 5, "simple" : 6
+      "jacp" : 0, "tanimoto" : 1, "cos" : 2, "jacw" : 3, "bsim" : 4, "jacw2" : 5, "simple" : 6, "from_reg": 7, "from_clf" : 8
     }
     self.topology = topology
     self.index = index
@@ -210,10 +210,9 @@ class Sim:
   
   def similarity_by_feature_cpp(self):
     Quest = squest.simquest(
-      self.nonzero,
+      self.nonzero, self.D,
       self.get_aki(), self.get_aik(),
       self.get_aki_bin(), self.get_aik_bin(),
-      self.get_aki_d(), self.get_aik_d(),
       self.nodes, self.leaves, self.topologies[self.topology],
       self.indices[self.index]
     )
