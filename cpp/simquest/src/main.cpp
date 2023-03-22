@@ -62,8 +62,8 @@ class simquest {
 		double tanimoto_coefficient(std::vector<double> &u, std::vector<double> &v);
 		double cosine_similarity(std::vector<double> &u, std::vector<double> &v);
 		double jacw(std::vector<double> &u, std::vector<double> &v);
-		double jacw2(std::vector<double> &u, std::vector<double> &v);
 		double simple(std::vector<double> &u, std::vector<double> &v);
+		double simple2(std::vector<double> &u, std::vector<double> &v);
 		double from_reg(std::vector<double> &u, std::vector<double> &v, std::vector<bool> &bu, std::vector<bool> &bv, double &D);
 		double from_clf(std::vector<double> &u, std::vector<double> &v, std::vector<bool> &bu, std::vector<bool> &bv, double &D);
 		double bin_similarity(std::vector<bool> &bu, std::vector<bool> &bv);
@@ -177,17 +177,6 @@ double simquest::jacw(
 	return maximus / N;
 }
 
-double simquest::jacw2(
-	std::vector<double> &u, std::vector<double> &v
-) {
-	int N = u.size();
-	double maximus=0.;
-	for (int i=0; i < N; i++) {
-		maximus -= abs(u[i] - v[i]);
-	}
-	return maximus / N;
-}
-
 double simquest::simple(
 	std::vector<double> &u, std::vector<double> &v
 ) {
@@ -195,6 +184,17 @@ double simquest::simple(
 	double maximus=0.;
 	for (int i=0; i < N; i++)
 		maximus -= abs(u[i] - v[i]); 
+
+	return maximus / N;
+}
+
+double simquest::simple2(
+	std::vector<double> &u, std::vector<double> &v
+) {
+	int N = u.size();
+	double maximus=0.;
+	for (int i=0; i < N; i++)
+		maximus -= pow(u[i] - v[i], 2.); 
 
 	return maximus / N;
 }
@@ -268,13 +268,12 @@ double simquest::similarity_index(std::vector<double> &u, std::vector<double> &v
 	else if (index == 4) {
 		return bin_similarity(bu, bv);
 	}
-	// jacw2 similarity
-	else if (index == 5) {
-		return jacw2(u, v);
-	}
 	// simple similarity
-	else if (index == 6) {
+	else if (index == 5) {
 		return simple(u, v);
+	}
+	else if (index == 6) {
+		return simple2(u, v);
 	}
 	// not simple
 	else if (index == 7) {
@@ -321,8 +320,8 @@ PYBIND11_MODULE(simquest, m) {
 				.def("get_target_matrix", &simquest::get_target_matrix)
 				.def("jacp", &simquest::jacp)
         .def("jacw", &simquest::jacw)
-				.def("jacw2", &simquest::jacw2)
 				.def("simple", &simquest::simple)
+				.def("simple2", &simquest::simple2)
 				.def("from_reg", &simquest::from_reg)
 				.def("from_clf", &simquest::from_clf)
 				.def("cosine_similarity", &simquest::cosine_similarity)

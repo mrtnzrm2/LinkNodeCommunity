@@ -28,10 +28,10 @@ nature = "original"
 imputation_method = ""
 topology = "MIX"
 mapping = "R4"
-index  = "from_clf"
+index  = "simple"
 bias = float(0)
 opt_score = ["_maxmu", "_X"]
-save_data = T
+save_data = F
 version = 220830
 __nodes__ = 57
 __inj__ = 57
@@ -111,9 +111,9 @@ if __name__ == "__main__":
   plot_n = Plot_N(NET, H)
   plot_n.A_vs_dis(R, s=5, on=F, reg=T)
   plot_n.projection_probability(
-    NET.C, bins=12, on=F
+    NET.C, bins=12, on=T
   )
-  plot_n.histogram_weight(R, on=F)
+  plot_n.histogram_weight(R, on=T)
   plot_n.histogram_dist(on=F)
   plot_n.plot_akis(NET.D, s=5, on=T)
   for score in opt_score:
