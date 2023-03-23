@@ -126,18 +126,18 @@ if __name__ == "__main__":
     ## Take a look in case of SLN ----
     rlabels = get_labels_from_Z(H.Z, r)
     NET.overlap, _ = H.get_ocn_discovery(k, rlabels)
-    H.set_overlap_labels(NET.overlap, score+f"{ii}")
+    H.set_overlap_labels(NET.overlap, score)
     ## Single linkage ----
     plot_h.core_dendrogram([r], on=F)
     plot_h.heatmap_pure(
       r, on=F, labels = rlabels,
-      score="_"+score+f"{ii}"
+      score="_"+score
     )
     plot_h.heatmap_dendro(
-      r, on=F, score="_"+score+f"{ii}"
+      r, on=F, score="_"+score
     )
     plot_h.lcmap_dendro(
-      [k], on=F, score="_"+score+f"{ii}"
+      [k], on=F, score="_"+score
     )
   print("End!")
   # #@@ Todo:
