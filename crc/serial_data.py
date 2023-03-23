@@ -18,21 +18,21 @@ from various.network_tools import *
 # Iterable varaibles ----
 cut = [F]
 topologies = ["MIX", "TARGET", "SOURCE"]
-bias = [0]
+bias = [1e-5, 1e-2, 0.1, 0.3, 0.5]
 list_of_lists = itertools.product(
   *[cut, topologies, bias]
 )
 list_of_lists = np.array(list(list_of_lists))
 # Declare global variables ----
 linkage = "single"
-nlog10 = F
+nlog10 = T
 lookup = F
-prob = F
-structure = "LN"
-distance = "tracto16"
+prob = T
+structure = "FLN"
+distance = "MAP3D"
 nature = "original"
-mapping = "R4"
-index = "simple"
+mapping = "R2"
+index = "jacw"
 mode = "ALPHA"
 imputation_method = ""
 opt_score = ["_maxmu", "_X"]
@@ -63,13 +63,13 @@ if __name__ == "__main__":
     NET.create_pickle_directory()
     # Transform data for analysis ----
     R, lookup, _ = maps[mapping](
-      NET.C, nlog10, lookup, prob, b=bias
+      NET.A, nlog10, lookup, prob, b=bias
     )
     # Compute Hierarchy ----
     print("Compute Hierarchy")
     ## Hierarchy object!! ----
     H = Hierarchy(
-      NET, NET.C, R, NET.D,
+      NET, NET.A, R, NET.D,
       __nodes__, linkage, mode, lookup=lookup
     )
     ## Compute features ----

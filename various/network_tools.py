@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 pd.options.mode.chained_assignment = None
-from os.path import join, exists
+from os.path import join, exists, isfile
 from os import remove
 import pickle as pk
 from various.omega import Omega
@@ -153,16 +153,16 @@ def get_best_kr(score, H):
     k = get_k_from_D(
       get_H_from_BH(H)
     )
+    k = [k]
   elif score == "_X":
     k = get_k_from_X(
       get_H_from_BH(H), order=0
     )
+    k = [k]
   else: raise ValueError(f"Unexpected score: {score}")
   r = get_r_from_X_diag(
     k, H.H, H.Z, H.A, H.nodes
   )
-  k = int(k)
-  r = int(r)
   return k, r
 
 def get_best_kr_equivalence(score, H):
@@ -334,14 +334,11 @@ def get_k_from_avmu(H):
     k = k[0]
   return k
 
-def get_k_from_maxmu(H):
-  avH = H.groupby(["K", "alpha"]).max()
-  avH = avH.groupby(["K"]).mean()
-  k = avH.index[
-    avH["mu"] == np.nanmax(avH["mu"])
-  ].to_numpy().ravel().astype(int)
-  if len(k) > 0:
-    k = k[0]
+def get_k_from_maxmu(H : pd.DataFrame):
+  alphas = np.unique(H.alpha)
+  avH = H.copy().groupby(["K", "alpha"]).max().reset_index()
+  avH = [avH.loc[avH.alpha == al] for al in alphas]
+  k = [np.min(avH[i].K.loc[avH[i].mu == np.nanmax(avH[i].mu)]).astype(int) for i in np.arange(alphas.shape[0])]
   return k
 
 def get_k_from_X(H, order=0):
@@ -434,37 +431,40 @@ def get_r_from_X(H):
 def get_r_from_equivalence(k, H):
   return H.equivalence[H.equivalence[:, 0] == k, 1][0]
 
-def get_r_from_X_diag(k, H, Z, R, nodes):
+def get_r_from_X_diag(K, H, Z, R, nodes):
   from scipy.cluster.hierarchy import cut_tree, dendrogram
-  labels = cut_tree(H, k).ravel()
-  dR = adj2df(R[:nodes, :])
-  dR = dR.loc[(dR.weight != 0)]
-  dR["id"] = labels
-  minus_one_Dc(dR)
-  aesthetic_ids(dR)
-  ##
-  den_order = np.array(
-    dendrogram(Z, no_plot=True)["ivl"]
-  ).astype(int)
-  RR = df2adj(dR, var="id")[:, den_order][den_order, :]
-  dR = adj2df(RR)
-  dR["id"] = dR.weight
-  dR = dR.loc[(dR.id != 0)]
-  ##
-  unique_labels = np.unique(dR.id)
-  len_unique_labels = 0
-  dR = dR.loc[dR.id != -1]
-  for label in unique_labels:
-    if label == -1: continue
-    dr_down = dR.source.loc[(dR.id == label) & (dR.target < dR.source)]
-    dr_up = dR.target.loc[(dR.id == label) & (dR.source < dR.target)]
-    len_between_up_down = len(set(dr_up).intersection(set(dr_down)))
-    if len_between_up_down > 0:
-      len_unique_labels += 1
-    else:
-      dR = dR.loc[dR.id != label]
-  nodes_fair_communities = set(dR.source).intersection(set(dR.target))
-  return nodes - len(nodes_fair_communities) + len_unique_labels
+  r = []
+  for k in K:
+    labels = cut_tree(H, k).ravel()
+    dR = adj2df(R[:nodes, :])
+    dR = dR.loc[(dR.weight != 0)]
+    dR["id"] = labels
+    minus_one_Dc(dR)
+    aesthetic_ids(dR)
+    ##
+    den_order = np.array(
+      dendrogram(Z, no_plot=True)["ivl"]
+    ).astype(int)
+    RR = df2adj(dR, var="id")[:, den_order][den_order, :]
+    dR = adj2df(RR)
+    dR["id"] = dR.weight
+    dR = dR.loc[(dR.id != 0)]
+    ##
+    unique_labels = np.unique(dR.id)
+    len_unique_labels = 0
+    dR = dR.loc[dR.id != -1]
+    for label in unique_labels:
+      if label == -1: continue
+      dr_down = dR.source.loc[(dR.id == label) & (dR.target < dR.source)]
+      dr_up = dR.target.loc[(dR.id == label) & (dR.source < dR.target)]
+      len_between_up_down = len(set(dr_up).intersection(set(dr_down)))
+      if len_between_up_down > 0:
+        len_unique_labels += 1
+      else:
+        dR = dR.loc[dR.id != label]
+    nodes_fair_communities = set(dR.source).intersection(set(dR.target))
+    r.append(nodes - len(nodes_fair_communities) + len_unique_labels)
+  return r
 
 def get_r_from_X_diag_2(k, H, Z, R, nodes):
   from scipy.cluster.hierarchy import cut_tree, dendrogram
@@ -608,7 +608,8 @@ def read_class(pickle_path, class_name="duck", **kwargs):
     pickle_path, "{}.pk".format(class_name)
   )
   C = 0
-  if exists(path):
+  print(path)
+  if isfile(path):
     with open(path, "rb") as f:
       C =  pk.load(f)
   else: print(f"\nFile {path} does not exist\n")

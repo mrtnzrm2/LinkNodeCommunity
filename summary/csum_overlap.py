@@ -11,6 +11,7 @@ F = False
 import itertools
 import seaborn as sns
 import matplotlib.pyplot as plt
+from pathlib import Path
 ## Personal libs ----
 from various.network_tools import *
 
@@ -22,15 +23,16 @@ def draw_heatmap(*args, **kwargs):
 # Declare iter variables ----
 topologies = ["TARGET", "SOURCE", "MIX"]
 indices = ["jacw", "jacp", "cos", "bsim"]
-KAV = [7, 25]
-MUT = [0.2, 0.4]
-MUW = [0.2, 0.4]
+KAV = [7, 15]
+MUT = [0.1, 0.3, 0.5]
+MUW = [0.1, 0.5]
+OM = [2, 5]
 list_of_lists = itertools.product(
-  *[topologies, indices, KAV, MUT, MUW]
+  *[topologies, indices, KAV, MUT, MUW, OM]
 )
 list_of_lists = np.array(list(list_of_lists))
 # Constant parameters ---
-MAXI = 500
+MAXI = 503
 __nodes__ = 128
 linkage = "single"
 nlog10 = F
@@ -50,89 +52,93 @@ opt_score = ["_maxmu", "_X", "_D"]
 if __name__ == "__main__":
   # Extract data ----
   THE_DF = pd.DataFrame()
-  for topology, index, kav, mut, muw in list_of_lists:
+  for topology, index, kav, mut, muw, om in list_of_lists:
     # WDN paramters ----
     opar = {
       "-N" : "{}".format(str(__nodes__)),
       "-k" : f"{kav}.0",
-      "-maxk" : "50",
+      "-maxk" : "30",
       "-mut" : f"{mut}",
       "-muw" : f"{muw}",
       "-beta" : "2.5",
       "-t1" : "2",
       "-t2" : "1",
-      "-nmin" : "5",
-      "-nmax" : "20",
+      "-nmin" : "2",
+      "-nmax" : "10",
       "-on" : "10",
-      "-om" : "2"
+      "-om" : f"{int(om)}"
     }
     data = read_class(
-      "../pickle/RAN/scalefree/-N_{}/-k_{}/-maxk_{}/-mut_{}/-muw_{}/-beta_{}/-t1_{}/-t2_{}/-on_{}/-om_{}/{}{}{}{}/{}/{}".format(
+      "../pickle/RAN/scalefree/-N_{}/-k_{}/-maxk_{}/-mut_{}/-muw_{}/-beta_{}/-t1_{}/-t2_{}/-nmin_{}/-nmax_{}/-on_{}/-om_{}/{}/{}{}{}{}/{}/{}".format(
         str(__nodes__),
         opar["-k"], opar["-maxk"],
         opar["-mut"], opar["-muw"],
-        opar["-beta"], opar["-t1"], opar["-t2"],
-        opar["-on"], opar["-om"],
+        opar["-beta"], opar["-t1"], opar["-t2"], opar["-nmin"], opar["-nmax"],
+        opar["-on"], opar["-om"], MAXI,
         linkage.upper(), l10, lup, _cut,
         __mode__, f"{topology}_{index}_{mapping}"
       ),
       "series_{}".format(MAXI)
     )
+    if isinstance(data, int): continue
+    l = data.data["values"].loc[data.data.sim == "NMI"].shape[0]
     THE_DF = pd.concat(
       [
         THE_DF, 
         pd.DataFrame(
           {
-            "NMI" : data.data.value[data.data.sim == "NMI"].to_numpy().astype(float),
-            "OMEGA" : data.data.value[data.data.sim == "OMEGA"].to_numpy().astype(float),
+            "NMI" : data.data["values"].loc[data.data.sim == "NMI"].to_numpy().astype(float),
+            "OMEGA" : data.data["values"].loc[data.data.sim == "OMEGA"].to_numpy().astype(float),
             "TPR":  data.data_overlap.sensitivity.astype(float),
             "FPR":  1 - data.data_overlap.specificity.astype(float),
-            "score" : data.data.c,
-            "topology": [topology] * data.data.shape[0],
-            "index" : [index] * data.data.shape[0] / 2,
-            "kav" : [int(kav)] * data.data.shape[0] / 2,
-            "mut" : [float(mut)] * data.data.shape[0] / 2,
-            "muw" : [float(muw)] * data.data.shape[0] / 2
+            "score" : data.data.c.loc[data.data.sim == "NMI"].to_numpy(),
+            "topology": [f"{topology}"] * l,
+            "index" : [index] * l,
+            "kav" : [int(kav)] * l,
+            "mut" : [float(mut)] * l,
+            "muw" : [float(muw)] * l
           }
         )
       ], ignore_index=T
     )
   # Comparing topology, index, & score for given kav, mut, and muw
-  KAV = [7, 25]
-  MUT = [0.2, 0.4]
-  MUW = [0.2, 0.4]
+  KAV = [7, 15]
+  MUT = [0.1, 0.3, 0.5]
+  MUW = [0.1, 0.5]
+  OM = [2, 5]
   list_of_lists = itertools.product(
-    *[KAV, MUT, MUW]
+    *[KAV, MUT, MUW, OM]
   )
   list_of_lists = np.array(list(list_of_lists))
-  for kav, mut, muw in list_of_lists:
-    print(kav, mut, muw)
+  for kav, mut, muw, om in list_of_lists:
+    print(kav, mut, muw, om)
     #
     # Prepare path ----
     #
     opar = {
       "-N" : "{}".format(str(__nodes__)),
       "-k" : f"{kav}",
-      "-maxk" : "50",
+      "-maxk" : "30",
       "-mut" : f"{mut}",
       "-muw" : f"{muw}",
       "-beta" : "2.5",
       "-t1" : "2",
       "-t2" : "1",
-      "-nmin" : "5",
-      "-nmax" : "20",
+      "-nmin" : "2",
+      "-nmax" : "10",
       "-on" : "10",
-      "-om" : "2"
+      "-om" : f"{int(om)}"
     }
-    IM_ROOT =  "../plots/RAN/scalefree/-N_{}/-k_{}/-maxk_{}/-mut_{}/-muw_{}/-beta_{}/-t1_{}/-t2_{}/-on_{}/-om_{}/{}{}{}{}/{}".format(
+    IM_ROOT =  "../plots/RAN/scalefree/-N_{}/-k_{}/-maxk_{}/-mut_{}/-muw_{}/-beta_{}/-t1_{}/-t2_{}/-nmin_{}/-nmax_{}/-on_{}/-om_{}/{}/{}{}{}{}/{}".format(
         str(__nodes__),
         opar["-k"], opar["-maxk"],
         opar["-mut"], opar["-muw"],
-        opar["-beta"], opar["-t1"], opar["-t2"],
-        opar["-on"], opar["-om"],
+        opar["-beta"], opar["-t1"], opar["-t2"], opar["-nmin"], opar["-nmax"],
+        opar["-on"], opar["-om"], MAXI,
         linkage.upper(), l10, lup, _cut,
         __mode__
       )
+    Path(IM_ROOT).mkdir(exist_ok=True, parents=True)
     data = THE_DF.loc[
       (THE_DF.kav == int(kav)) &
       (THE_DF.mut == float(mut)) &
@@ -155,49 +161,85 @@ if __name__ == "__main__":
     FPR.columns = ["topology", "index", "score", "values"]
     FPR["score2"] = ["FPR"] * FPR.shape[0]
     TR = pd.concat([TPR, FPR], ignore_index=True)
-    g = sns.FacetGrid(
-      data=TR,
-      row="score2",
-      col="score"
-    )
-    g.map_dataframe(
-      draw_heatmap,
-      "topology",
-      "index",
-      "values",
-      vmin=0, vmax=1,
-      square=T,
-      cmap=sns.color_palette("viridis"),
-      cbar=T
-    )
-    plt.savefig(
-      os.path.join(
-        IM_ROOT, "NOCS_facet_score.png"
-      ),
-      dpi = 300
-    )
+    if TR.shape[0] > 0:
+      g = sns.FacetGrid(
+        data=TR,
+        row="score2",
+        col="score"
+      )
+      g.map_dataframe(
+        draw_heatmap,
+        "topology",
+        "index",
+        "values",
+        vmin=0, vmax=1,
+        square=T,
+        cmap=sns.color_palette("viridis"),
+        cbar=T
+      )
+      # for axes in g.axes.flat:
+      #   _ = axes.set_xticklabels(axes.get_xticklabels(), rotation=90)
+      plt.tight_layout()
+      plt.savefig(
+        os.path.join(
+          IM_ROOT, "NOCS_facet_score.png"
+        ),
+        dpi = 300
+      )
     #
     # Prepare dat NMI ----
     #
     x = data.groupby(["topology", "index", "score"]).agg({"NMI": ["mean"]}).reset_index()
     x.columns = ["topology", "index", "score", "NMI"]
-    g = sns.FacetGrid(
-      data=x,
-      col="score"
-    )
-    g.map_dataframe(
-      draw_heatmap,
-      "topology",
-      "index",
-      "NMI",
-      vmin=0, vmax=1,
-      square=T,
-      cbar=T,
-      cmap=sns.color_palette("viridis")
-    )
-    plt.savefig(
-      os.path.join(
-        IM_ROOT, "NMI_facet_score.png"
-      ),
-      dpi = 300
-    )
+    if x.shape[0] > 0:
+      g = sns.FacetGrid(
+        data=x,
+        col="score"
+      )
+      g.map_dataframe(
+        draw_heatmap,
+        "topology",
+        "index",
+        "NMI",
+        vmin=0, vmax=1,
+        square=T,
+        cbar=T,
+        cmap=sns.color_palette("viridis")
+      )
+      for axes in g.axes.flat:
+          _ = axes.set_xticklabels(axes.get_xticklabels(), rotation=90)
+      plt.tight_layout()
+      plt.savefig(
+        os.path.join(
+          IM_ROOT, "NMI_facet_score.png"
+        ),
+        dpi = 300
+      )
+    # Prepare dat OMEGA ----
+    #
+    x = data.groupby(["topology", "index", "score"]).agg({"OMEGA": ["mean"]}).reset_index()
+    x.columns = ["topology", "index", "score", "OMEGA"]
+    if x.shape[0] > 0:
+      g = sns.FacetGrid(
+        data=x,
+        col="score"
+      )
+      g.map_dataframe(
+        draw_heatmap,
+        "topology",
+        "index",
+        "OMEGA",
+        vmin=0, vmax=1,
+        square=T,
+        cbar=T,
+        cmap=sns.color_palette("viridis")
+      )
+      for axes in g.axes.flat:
+        _ = axes.set_xticklabels(axes.get_xticklabels(), rotation=90)
+      plt.tight_layout()
+      plt.savefig(
+        os.path.join(
+          IM_ROOT, "OMEGA_facet_score.png"
+        ),
+        dpi = 300
+      )

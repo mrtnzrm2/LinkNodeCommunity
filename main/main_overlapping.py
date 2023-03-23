@@ -84,7 +84,7 @@ if __name__ == "__main__":
       __nodes__, linkage, __mode__
     )
     ## Compute features ----
-    H.BH_features_cpp()
+    H.BH_features_parallel()
     ## Compute lq arbre de merde ----
     H.la_abre_a_merde_cpp(H.BH[0])
     H.set_colregion(L)
@@ -106,28 +106,30 @@ if __name__ == "__main__":
   )
   for score in opt_score:
     # Find best k partition ----
-    k, r = get_best_kr(score, H)
-    rlabels = get_labels_from_Z(H.Z, r)
-    nocs, noc_covers = H.get_ocn_discovery(k, rlabels)
-    #Prints ----
-    nmi = AD_NMI_overlap(
-      NET.labels, rlabels, NET.overlap, noc_covers, on=T
-    )
-    sen, sep = NET.overlap_score_discovery(
-      k, nocs, H.colregion.labels[:H.nodes], on=T
-    )
-    omega = NET.omega_index(
-      rlabels, noc_covers, H.colregion.labels[:H.nodes], on=T
-    )
-    ## Plots ---
-    plot_h.core_dendrogram(
-      [r], on=T, score="_"+score
-    )
-    plot_h.heatmap_pure(
-      r, on=T, labels = rlabels,
-      score=f"{r}_{nmi:.4f}"
-    )
-    plot_h.lcmap_dendro(
-      [k], on=T, score="_"+score
-    )
+    K, R = get_best_kr(score, H)
+    for ii, kr in enumerate(zip(K, R)):
+      k, r = kr
+      rlabels = get_labels_from_Z(H.Z, r)
+      nocs, noc_covers = H.get_ocn_discovery(k, rlabels)
+      #Prints ----
+      nmi = AD_NMI_overlap(
+        NET.labels, rlabels, NET.overlap, noc_covers, on=T
+      )
+      sen, sep = NET.overlap_score_discovery(
+        k, nocs, H.colregion.labels[:H.nodes], on=T
+      )
+      omega = NET.omega_index(
+        rlabels, noc_covers, H.colregion.labels[:H.nodes], on=T
+      )
+      ## Plots ---
+      plot_h.core_dendrogram(
+        [r], on=T, score="_"+score
+      )
+      plot_h.heatmap_pure(
+        r, on=T, labels = rlabels,
+        score=f"{r}_{nmi:.4f}"
+      )
+      plot_h.lcmap_dendro(
+        [k], on=T, score="_"+score
+      )
   print("End!")

@@ -21,18 +21,18 @@ list_of_lists = itertools.product(
 )
 list_of_lists = np.array(list(list_of_lists))
 # Declare global variables NET ----
-MAXI = 504
+MAXI = 505
 linkage = "single"
 nlog10 = T
 lookup = F
-prob = F
+prob = T
 cut = F
 run = T
-structure = "LN"
-distance = "tracto16"
+structure = "FLN"
+distance = "MAP3D"
 nature = "original"
-mapping = "R4"
-index = "simple"
+mapping = "R2"
+index = "jacw"
 mode = "ALPHA"
 imputation_method = ""
 opt_score = ["_maxmu", "_X"]

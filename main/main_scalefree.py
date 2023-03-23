@@ -16,7 +16,7 @@ from numpy import zeros
 from various.network_tools import *
 
 __iter__ = 0
-__nodes__ = 128
+__nodes__ = 1000
 linkage = "single"
 nlog10 = F
 lookup = F
@@ -25,22 +25,22 @@ cut = F
 run = T
 topology = "SOURCE"
 mapping = "trivial"
-index  = "jacp"
+index  = "bsim"
 __mode__ = "ALPHA"
 opt_score = ["_maxmu", "_X", "_D"]
 save_data = T
 # WDN paramters ----
 par = {
   "-N" : "{}".format(str(__nodes__)),
-  "-k" : "25.0",
-  "-maxk" : "50.0",
+  "-k" : "10",
+  "-maxk" : "50",
   "-mut" : "0.2",
   "-muw" : "0.2",
   "-beta" : "2.5",
   "-t1" : "2",
   "-t2" : "1",
-  "-nmin" : "5",
-  "-nmax" : "20"
+  "-nmin" : "50",
+  "-nmax" : "100"
 }
 if __name__ == "__main__":
   # Create EDR network ----
@@ -57,6 +57,8 @@ if __name__ == "__main__":
   )
   NET.create_plot_path()
   NET.create_pickle_path()
+  NET.set_alpha([6, 50, 100])
+  NET.set_beta([0.1, 0.25, 0.5])
   # Create network ----
   print("Create random graph")
   NET.random_WDN_cpp(run=run, on_save_pickle=T)
@@ -72,7 +74,7 @@ if __name__ == "__main__":
       __nodes__, linkage, __mode__
     )
     ## Compute features ----
-    H.BH_features_cpp()
+    H.BH_features_parallel()
     ## Compute lq arbre de merde ----
     H.la_abre_a_merde_cpp(H.BH[0])
     # Set labels to network ----
@@ -99,27 +101,29 @@ if __name__ == "__main__":
   )
   # Find best k partition ----
   for score in opt_score:
-    k, r = get_best_kr_equivalence(score, H)
-    rlabels = get_labels_from_Z(H.Z, r)
-    # Check labels safety ----
-    if np.nan in rlabels:
-        print("Warning: Impossible node dendrogram")
-        break
-    ## Prints ----
-    nmi = AD_NMI_label(NET.labels, rlabels, on=T)
-    ## Plots ----
-    plot_h.core_dendrogram([r], on=F)
-    plot_h.heatmap_pure(
-      r, on=T, labels = rlabels, name=f"{r}_{nmi:.4f}"
-    )
-    plot_h.heatmap_dendro([k], on=F)
-    plot_h.lcmap_dendro(
-      [k], score="_"+score, on=T
-    )
-    plot_h.lcmap_pure(
-      [r],
-      labels=rlabels,
-      on = F
-    )
+    K, R = get_best_kr(score, H)
+    for ii, kr in enumerate(zip(K, R)):
+      k, r = kr
+      rlabels = get_labels_from_Z(H.Z, r)
+      # Check labels safety ----
+      if np.nan in rlabels:
+          print("Warning: Impossible node dendrogram")
+          break
+      ## Prints ----
+      nmi = AD_NMI_label(NET.labels, rlabels, on=T)
+      ## Plots ----
+      plot_h.core_dendrogram([r], on=F)
+      plot_h.heatmap_pure(
+        r, on=T, labels = rlabels, name=f"{r}_{nmi:.4f}"
+      )
+      plot_h.heatmap_dendro([k], on=F)
+      plot_h.lcmap_dendro(
+        [k], score="_"+score, on=T
+      )
+      plot_h.lcmap_pure(
+        [r],
+        labels=rlabels,
+        on = F
+      )
   print("End!")
   # #@@ Todo:

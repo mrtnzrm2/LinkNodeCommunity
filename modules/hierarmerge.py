@@ -31,7 +31,7 @@ class Hierarchy(Sim):
     self.similarity_by_feature_cpp()
     # Compute distance matrix ----
     self.dist_mat = self.linksim_matrix
-    self.dist_mat[self.dist_mat != 0] -= np.max(self.dist_mat[self.dist_mat != 0]) + 0.01
+    # self.dist_mat[self.dist_mat != 0] -= np.max(self.dist_mat[self.dist_mat != 0]) + 0.01
     self.dist_mat[self.dist_mat == 0] = np.nan
     self.dist_mat = 1 - self.dist_mat
     self.dist_mat[np.isnan(self.dist_mat)] = np.nanmax(self.dist_mat) + 1
@@ -105,6 +105,71 @@ class Hierarchy(Sim):
     )
     features.vite()
     return features
+  
+  def H_features_parallel(self, listargs):
+    # Get network dataframe ----
+    dA =  self.dA.copy()
+    # Run process_hclust_fast.cpp ----
+    features = ph(
+      self.leaves,
+      self.dist_mat,
+      dA["source"].to_numpy(),
+      dA["target"].to_numpy(),
+      self.nodes,
+      listargs[0],
+      listargs[3],
+      listargs[1],
+      listargs[2]
+    )
+    features.vite()
+    result = np.array(
+      [
+        features.get_K(), features.get_Height(),
+        features.get_NEC(), features.get_MU(),
+        features.get_D(), features.get_ntrees(),
+        features.get_X(), features.get_OrP(), features.get_XM()
+      ]
+    )
+    return result, listargs[1], listargs[2]
+  
+  def BH_features_parallel(self):
+    import multiprocessing as mp
+    print("Computing features over mu-score space")
+    # Set up linkage ----
+    if self.linkage == "single":
+      linkage = 0
+    elif self.linkage == "average":
+      linkage = 2
+    else:
+      linkage = -1
+      raise ValueError("Link community model has not been tested with the input linkage.")
+    # Create BH ----
+    self.BH = []
+    # Create parameter list
+    paralist = []
+    for alpha in self.alpha:
+      for beta in self.beta:
+        paralist.append([linkage, alpha, beta, self.cut])
+    with mp.Pool(4) as p:
+      process = p.map(self.H_features_parallel, paralist)
+    for feature, alpha, beta in process:
+      self.BH.append(
+        pd.DataFrame(
+          {
+            "alpha" : [alpha] * feature.shape[1],
+            "beta" : [np.round(beta, 4)] * feature.shape[1],
+            "K" : feature[0, :],
+            "height" : feature[1, :],
+            "NEC" : feature[2, :],
+            "mu" : feature[3, :],
+            "D" : feature[4, :],
+            "ntrees": feature[5, :],
+            "X" : feature[6, :],
+            "m" : feature[7, :],
+            "xm" : feature[8, :]
+          }
+        )
+      )   
 
   def BH_features_cpp(self):
     print("Computing features over mu-score space")

@@ -76,7 +76,7 @@ if __name__ == "__main__":
       NET.D, __nodes__, linkage, __mode__, lookup=lookup
     )
     ## Compute features ----
-    H.BH_features_cpp()
+    H.BH_features_parallel()
     ## Compute link entropy ----
     H.link_entropy_cpp("short", cut=cut)
     ## Compute lq arbre de merde ----
@@ -119,26 +119,25 @@ if __name__ == "__main__":
   )
   for score in opt_score:
     print(f"Find node partition using {score}")
-    # Get best K and R ----
-    k, r = get_best_kr_equivalence(score, H)
-    print(
-      "Best K: {}\nBest R: {}".format(k, r)
-    )
+    K, R = get_best_kr(score, H)
+    r = R[K == np.min(K)]
+    k = K[K == np.min(K)]
+    print("Best K: {}\nBest R: {}\t Score: {}".format(k, r, score))
     ## Take a look in case of SLN ----
     rlabels = get_labels_from_Z(H.Z, r)
     NET.overlap, _ = H.get_ocn_discovery(k, rlabels)
-    H.set_overlap_labels(NET.overlap, score)
+    H.set_overlap_labels(NET.overlap, score+f"{ii}")
     ## Single linkage ----
     plot_h.core_dendrogram([r], on=F)
     plot_h.heatmap_pure(
       r, on=F, labels = rlabels,
-      score="_"+score
+      score="_"+score+f"{ii}"
     )
     plot_h.heatmap_dendro(
-      r, on=F, score="_"+score
+      r, on=F, score="_"+score+f"{ii}"
     )
     plot_h.lcmap_dendro(
-      [k], on=F, score="_"+score
+      [k], on=F, score="_"+score+f"{ii}"
     )
   print("End!")
   # #@@ Todo:

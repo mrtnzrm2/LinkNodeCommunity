@@ -105,7 +105,7 @@ if __name__ == "__main__":
       lookup=lookup
     )
     ## Compute quality functions ----
-    H.BH_features_cpp()
+    H.BH_features_parallel()
     ## Compute link entropy ----
     H.link_entropy_cpp("short", cut=cut)
     ## Compute lq arbre de merde ----
@@ -147,9 +147,10 @@ if __name__ == "__main__":
   )
   plot_n.plot_akis(D, s=5, on=F)
   for score in opt_score:
-    # Get best K and R ----
-    k, r = get_best_kr(score, H)
-    print("Best K: {}\nBest R: {}".format(k, r))
+    K, R = get_best_kr(score, H)
+    r = R[K == np.min(K)]
+    k = K[K == np.min(K)]
+    print("Best K: {}\nBest R: {}\t Score: {}".format(k, r, score))
     rlabels = get_labels_from_Z(H.Z, r)
     # Overlap ----
     ocn, _ = H.get_ocn_discovery(k, rlabels)

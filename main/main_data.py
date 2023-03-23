@@ -19,17 +19,17 @@ from various.network_tools import *
 linkage = "single"
 nlog10 = T
 lookup = F
-prob = F
+prob = T
 cut = F
-structure = "LN"
+structure = "FLN"
 mode = "ALPHA"
-distance = "tracto16"
+distance = "MAP3D"
 nature = "original"
 imputation_method = ""
 topology = "MIX"
-mapping = "R4"
-index  = "simple"
-bias = float(0)
+mapping = "R2"
+index  = "jacw"
+bias = float(1e-5)
 opt_score = ["_maxmu", "_X"]
 save_data = F
 version = 220830
@@ -54,11 +54,12 @@ if __name__ == "__main__":
     cut = cut,
     b = bias
   )
+  NET.set_alpha([6, 10, 15])
   NET.create_pickle_directory()
   NET.create_plot_directory()
   # Transform data for analysis ----
   R, lookup, _ = maps[mapping](
-    NET.C, nlog10, lookup, prob, b=bias
+    NET.A, nlog10, lookup, prob, b=bias
   )
   # Compute Hierarchy ----
   print("Compute Hierarchy")
@@ -66,11 +67,11 @@ if __name__ == "__main__":
   if save_data:
     ## Hierarchy object!! ----
     H = Hierarchy(
-      NET, NET.C, R, NET.D,
+      NET, NET.A, R, NET.D,
       __nodes__, linkage, mode, lookup=lookup
     )
     ## Compute features ----
-    H.BH_features_cpp()
+    H.BH_features_parallel()
     ## Compute link entropy ----
     H.link_entropy_cpp("short", cut=cut)
     ## Compute lq arbre de merde ----
@@ -81,13 +82,13 @@ if __name__ == "__main__":
     # Save ----
     save_class(
       H, NET.pickle_path,
-      "hanalysis_{}".format(H.subfolder),
+      "hanalysis",
       on=F
     )
   else:
     H = read_class(
       NET.pickle_path,
-      "hanalysis_{}".format(NET.subfolder)
+      "hanalysis"
     )
   # Entropy ----
   HS = Hierarchical_Entropy(H.Z, H.nodes, H.colregion.labels[:H.nodes])
@@ -101,27 +102,29 @@ if __name__ == "__main__":
   # # Picasso ----
   plot_h = Plot_H(NET, H)
   HS.zdict2newick(HS.tree, weighted=F, on=T)
-  plot_h.plot_newick_R(HS.newick, weighted=F, on=T)
+  plot_h.plot_newick_R(HS.newick, weighted=F, on=F)
   HS.zdict2newick(HS.tree, weighted=T, on=T)
-  plot_h.plot_newick_R(HS.newick, weighted=T, on=T)
-  plot_h.plot_measurements_Entropy(on=T)
-  plot_h.plot_measurements_D(on=T)
-  plot_h.plot_measurements_mu(on=T)
-  plot_h.plot_measurements_X(on=T)
+  plot_h.plot_newick_R(HS.newick, weighted=T, on=F)
+  plot_h.plot_measurements_Entropy(on=F)
+  plot_h.plot_measurements_D(on=F)
+  plot_h.plot_measurements_mu(on=F)
+  plot_h.plot_measurements_X(on=F)
   plot_n = Plot_N(NET, H)
   plot_n.A_vs_dis(R, s=5, on=F, reg=T)
   plot_n.projection_probability(
-    NET.C, bins=12, on=T
+    NET.C, bins=12, on=F
   )
-  plot_n.histogram_weight(R, on=T)
+  plot_n.histogram_weight(R, on=F)
   plot_n.histogram_dist(on=F)
-  plot_n.plot_akis(NET.D, s=5, on=T)
+  plot_n.plot_akis(NET.D, s=5, on=F)
   for score in opt_score:
     print(f"Find node partition using {score}")
     # Get best K and R ----
-    k, r = get_best_kr(score, H)
+    K, R = get_best_kr(score, H)
+    r = R[K == np.min(K)]
+    k = K[K == np.min(K)]
     H.set_kr(k, r, score=score)
-    print("Best K: {}\nBest R: {}".format(k, r))
+    print("Best K: {}\nBest R: {}\t Score: {}".format(k, r, score))
     rlabels = get_labels_from_Z(H.Z, r)
     # Overlap ----
     NET.overlap, NET.data_nocs = H.get_ocn_discovery(k, rlabels)
@@ -130,17 +133,17 @@ if __name__ == "__main__":
     cover = omega_index_format(rlabels,  NET.data_nocs, NET.struct_labels[:NET.nodes])
     H.set_cover(cover, score)
     # Plot H ----
-    plot_h.core_dendrogram([r], on=T) #
+    plot_h.core_dendrogram([r], on=F) #
     plot_h.lcmap_pure([k], labels = rlabels, on=F)
-    plot_h.heatmap_pure(r, on=T, labels = rlabels) #
+    plot_h.heatmap_pure(r, on=F, labels = rlabels) #
     plot_h.heatmap_dendro(r, on=F)
-    plot_h.lcmap_dendro([k], on=T) #
+    plot_h.lcmap_dendro([k], on=F) #
     plot_h.flatmap_dendro(
-      NET, [k], [r], on=T, EC=T #
+      NET, [k], [r], on=F, EC=T #
     )
   save_class(
     H, NET.pickle_path,
-    "hanalysis_{}".format(H.subfolder)
+    "hanalysis"
   )
   print("End!")
   # #@@ Todo:

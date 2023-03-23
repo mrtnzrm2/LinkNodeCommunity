@@ -28,8 +28,8 @@ def worker_swaps(
   MAXI = number_of_iterations
   linkage = "single"
   mode = "ALPHA"
-  structure = "LN"
-  distance = "tracto16"
+  structure = "FLN"
+  distance = "MAP3D"
   nature = "original"
   imputation_method = ""
   opt_score = ["_maxmu", "_X"]
@@ -115,16 +115,16 @@ def worker_swaps(
     RAND.random_one_k(run=run, on_save_csv=F)   #****
     # Transform data for analysis ----
     R, lookup, _ = maps[mapping](
-      RAND.C, nlog10, lookup, prob, b=bias
+      RAND.A, nlog10, lookup, prob, b=bias
     )
     # Compute RAND Hierarchy ----
     print("Compute Hierarchy")
     RAND_H = Hierarchy(
-      RAND, RAND.C[:, :__nodes__], R[:, :__nodes__], RAND.D,
+      RAND, RAND.A[:, :__nodes__], R[:, :__nodes__], RAND.D,
       __nodes__, linkage, mode, lookup=lookup
     )
     ## Compute features ----
-    RAND_H.BH_features_cpp()
+    RAND_H.BH_features_parallel()
     ## Compute link entropy ----
     RAND_H.link_entropy_cpp("short", cut=cut)
     ## Compute lq arbre de merde ----
@@ -148,7 +148,9 @@ def worker_swaps(
     )
     for score in opt_score:
       # Get best k, r for given score ----
-      k, r = get_best_kr(score, RAND_H)
+      K, R = get_best_kr(score, RAND_H)
+      r = R[K == np.min(K)]
+      k = K[K == np.min(K)]
       RAND_H.set_kr(k, r, score)
       data.set_kr_zero(RAND_H)
       # Add iteartion to data----

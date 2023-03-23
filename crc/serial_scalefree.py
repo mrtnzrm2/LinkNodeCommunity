@@ -83,7 +83,7 @@ def worker_scalefree(
       __nodes__, linkage, __mode__
     )
     ## Compute features ----
-    RAND_H.BH_features_cpp()
+    RAND_H.BH_features_parallel()
     ## Compute lq arbre de merde ----
     RAND_H.la_abre_a_merde_cpp(RAND_H.BH[0])
     # Save stats ----
@@ -97,14 +97,16 @@ def worker_scalefree(
     for score in opt_score:
       print("Score: {}".format(score))
       # Get best k, r for given score ----
-      k, r = get_best_kr(score, RAND_H)
-      # Single linkage part ----
-      print("Best K: {}\nBest R: {}".format(k, r))
-      rlabels = get_labels_from_Z(RAND_H.Z, r)
-      if np.nan in rlabels:
-        print("*** BAD dendrogram")
-        break
-      data.set_nmi_nc(RAND.labels, rlabels, score = score)
+      K, R = get_best_kr(score, RAND_H)
+      for ii, kr in enumerate(zip(K, R)):
+        k, r = kr
+        # Single linkage part ----
+        print("Best K: {}\nBest R: {}".format(k, r))
+        rlabels = get_labels_from_Z(RAND_H.Z, r)
+        if np.nan in rlabels:
+          print("*** BAD dendrogram")
+          break
+        data.set_nmi_nc(RAND.labels, rlabels, score = score)
     if np.sum(np.isnan(rlabels)) == 0: i += 1
   # Save ----
   if isinstance(RAND_H, Hierarchy):

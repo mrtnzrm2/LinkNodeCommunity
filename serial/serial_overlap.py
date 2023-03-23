@@ -115,25 +115,27 @@ if __name__ == "__main__":
         )
       for score in opt_score:
         # Get best k, r for given score ----
-        k, r = get_best_kr(score, RAND_H)
-        # Single linkage part ----
-        print("Best K: {}\nBest R: {}".format(k, r))
-        rlabels = get_labels_from_Z(RAND_H.Z, r)
-        nocs, noc_covers = RAND_H.get_ocn_discovery(k, rlabels)
-        sen, sep = RAND.overlap_score_discovery(
-          k, nocs, RAND_H.colregion.labels[:RAND_H.nodes], on=T
-        )
-        omega = RAND.omega_index(
-          rlabels, noc_covers, RAND_H.colregion.labels[:RAND_H.nodes], on=T
-        )
-        # NMI between ground-truth and pred labels ----
-        data.set_nmi_nc_overlap(
-          RAND.labels, rlabels, RAND.overlap, noc_covers, omega,
-          score = score
-        )
-        data.set_overlap_scores(
-          omega, sen, sep, score = score
-        )
+        K, R = get_best_kr(score, RAND_H)
+        for ii, kr in enumerate(zip(K, R)):
+          k, r = kr
+          # Single linkage part ----
+          print("Best K: {}\nBest R: {}\t Score: {}".format(k, r, score+f"{ii}"))
+          rlabels = get_labels_from_Z(RAND_H.Z, r)
+          nocs, noc_covers = RAND_H.get_ocn_discovery(k, rlabels)
+          sen, sep = RAND.overlap_score_discovery(
+            k, nocs, RAND_H.colregion.labels[:RAND_H.nodes], on=T
+          )
+          omega = RAND.omega_index(
+            rlabels, noc_covers, RAND_H.colregion.labels[:RAND_H.nodes], on=T
+          )
+          # NMI between ground-truth and pred labels ----
+          data.set_nmi_nc_overlap(
+            RAND.labels, rlabels, RAND.overlap, noc_covers, omega,
+            score = score
+          )
+          data.set_overlap_scores(
+            omega, sen, sep, score = score
+          )
     # Save ----
     if isinstance(RAND_H, Hierarchy):
       data.set_subfolder(RAND_H.subfolder)

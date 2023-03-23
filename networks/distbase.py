@@ -200,14 +200,14 @@ class DISTBASE(EDR):
         dD = dD.to_numpy()
         # Leaves!!!
         if np.sum(np.isnan(args[0])) > 0:
-          leaves = np.sum(~np.isnan(args[0])).astype(int)
+          counting_edges = np.sum(~np.isnan(args[0])).astype(int)
         else:
-          leaves = np.sum(args[0] != 0).astype(int)
+          counting_edges = np.sum(args[0] != 0).astype(int)
         # Initiate samplenet ----
         from rand_network import sample_distbase_M
         NET = sample_distbase_M(
           dD, bin_ranges, self.bin,
-          args[0].shape[0], args[0].shape[1], dD.shape[0], leaves,
+          args[0].shape[0], args[0].shape[1], dD.shape[0], counting_edges,
           self.lb
         )
         NET = np.array(NET)

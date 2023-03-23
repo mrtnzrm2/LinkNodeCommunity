@@ -125,7 +125,7 @@ if __name__ == "__main__":
         __nodes__, linkage, mode, lookup=lookup
       )
       ## Compute features ----
-      RAND_H.BH_features_cpp()
+      RAND_H.BH_features_parallel()
       ## Compute link entropy ----
       RAND_H.link_entropy_cpp("short", cut=cut)
       ## Compute lq arbre de merde ----
@@ -154,7 +154,9 @@ if __name__ == "__main__":
       plot_h.D_plotly(on=F)
       for score in opt_score:
         # Get best k, r for given score ----
-        k, r = get_best_kr(score, RAND_H)
+        K, R = get_best_kr(score, RAND_H)
+        r = R[K == np.min(K)]
+        k = K[K == np.min(K)]
         RAND_H.set_kr(k, r, score)
         data.set_kr_zero(RAND_H)
         # Add iteartion to data----

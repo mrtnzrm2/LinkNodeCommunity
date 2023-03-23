@@ -11,6 +11,7 @@ F = False
 import itertools
 import seaborn as sns
 import matplotlib.pyplot as plt
+from pathlib import Path
 ## Personal libs ----
 from networks_serial.scalehrh import SCALEHRH
 from various.network_tools import *
@@ -66,31 +67,32 @@ if __name__ == "__main__":
       "-nmax" : "10"
     }
     data = read_class(
-      "../pickle/RAN/scalefree/-N_{}/-k_{}/-maxk_{}/-mut_{}/-muw_{}/-beta_{}/-t1_{}/-t2_{}/-nmin_{}/-nmax{}/{}{}{}{}/{}/{}".format(
+      "../pickle/RAN/scalefree/-N_{}/-k_{}/-maxk_{}/-mut_{}/-muw_{}/-beta_{}/-t1_{}/-t2_{}/-nmin_{}/-nmax_{}/{}/{}{}{}{}/{}/{}".format(
         str(__nodes__),
         par["-k"], par["-maxk"],
         par["-mut"], par["-muw"],
         par["-beta"], par["-t1"], par["-t2"],
-        par["-nmin"], par["-nmax"],
+        par["-nmin"], par["-nmax"], MAXI,
         linkage.upper(), l10, lup, _cut,
         __mode__, f"{topology}_{index}_{mapping}"
       ),
       "series_{}".format(MAXI)
     )
     if not isinstance(data, SCALEHRH): continue
+    # print(data.data.shape[0])
     THE_DF = pd.concat(
       [
         THE_DF, 
         pd.DataFrame(
           {
-            "NMI" : data.data.values.loc[data.data.sim == "NMI"].to_numpy().astype(float),
-            "OMEGA" : data.data.values.loc[data.data.sim == "OMEGA"].to_numpy().astype(float), 
+            "NMI" : data.data.NMI.to_numpy().astype(float),
+            # "OMEGA" : data.data.values.loc[data.data.sim == "OMEGA"].to_numpy().astype(float), 
             "score" : data.data.c,
-            "topology": [topology] * data.data.shape[0] / 2,
-            "index" : [index] * data.data.shape[0] / 2,
-            "kav" : [int(kav)] * data.data.shape[0] / 2,
-            "mut" : [float(mut)] * data.data.shape[0] / 2,
-            "muw" : [float(muw)] * data.data.shape[0] / 2
+            "topology": [f"{topology}"] * data.data.shape[0],
+            "index" : [index] * data.data.shape[0],
+            "kav" : [int(kav)] * data.data.shape[0],
+            "mut" : [float(mut)] * data.data.shape[0],
+            "muw" : [float(muw)] * data.data.shape[0]
           }
         )
       ], ignore_index=T
@@ -109,21 +111,21 @@ if __name__ == "__main__":
     par = {
       "-N" : "{}".format(str(__nodes__)),
       "-k" : f"{kav}",
-      "-maxk" : "50",
+      "-maxk" : "30",
       "-mut" : f"{mut}",
       "-muw" : f"{muw}",
       "-beta" : "2.5",
       "-t1" : "2",
       "-t2" : "1",
-      "-nmin" : "5",
-      "-nmax" : "20"
+      "-nmin" : "2",
+      "-nmax" : "10"
     }
-    IM_ROOT =  "../plots/RAN/scalefree/-N_{}/-k_{}/-maxk_{}/-mut_{}/-muw_{}/-beta_{}/-t1_{}/-t2_{}/-nmin_{}/-nmax_{}/{}{}{}{}/{}".format(
+    IM_ROOT =  "../plots/RAN/scalefree/-N_{}/-k_{}/-maxk_{}/-mut_{}/-muw_{}/-beta_{}/-t1_{}/-t2_{}/-nmin_{}/-nmax_{}/{}/{}{}{}{}/{}".format(
         str(__nodes__),
         par["-k"], par["-maxk"],
         par["-mut"], par["-muw"],
         par["-beta"], par["-t1"], par["-t2"],
-        par["-nmin"], par["-nmax"],
+        par["-nmin"], par["-nmax"], MAXI,
         linkage.upper(), l10, lup, _cut,
         __mode__
       )
@@ -150,6 +152,9 @@ if __name__ == "__main__":
       cbar=T,
       cmap=sns.color_palette("viridis")
     )
+    for axes in g.axes.flat:
+      _ = axes.set_xticklabels(axes.get_xticklabels(), rotation=90)
+    plt.tight_layout()
     plt.savefig(
       os.path.join(
         IM_ROOT, "NMI_facet_score.png"
