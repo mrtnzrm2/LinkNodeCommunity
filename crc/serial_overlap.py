@@ -104,11 +104,6 @@ def worker_overlap(
       RAND_H.set_colregion(L)
       # Save stats ----
       data.set_data_measurements(RAND_H, i)
-      save_class(
-        RAND_H, RAND.pickle_path,
-        "hanalysis_{}".format(RAND_H.subfolder),
-        on=F
-      )
       for score in opt_score:
         # Get best k, r for given score ----
         K, R = get_best_kr(score, RAND_H)

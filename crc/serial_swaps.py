@@ -82,7 +82,7 @@ def worker_swaps(
   # Load hierarhical analysis ----
   NET_H = read_class(
     NET.pickle_path,
-    "hanalysis_{}".format(NET.subfolder),
+    "hanalysis"
   )
   # Create colregions ----
   L = colregion(NET)
@@ -149,8 +149,8 @@ def worker_swaps(
     for score in opt_score:
       # Get best k, r for given score ----
       K, R = get_best_kr(score, RAND_H)
-      r = R[K == np.min(K)]
-      k = K[K == np.min(K)]
+      r = R[K == np.min(K)][0]
+      k = K[K == np.min(K)][0]
       RAND_H.set_kr(k, r, score)
       data.set_kr_zero(RAND_H)
       # Add iteartion to data----
@@ -171,7 +171,7 @@ def worker_swaps(
     print(data.pickle_path)
     save_class(
       data, data.pickle_path,
-      "series_{}".format(number_of_iterations)
+      f"series_{MAXI}"
     )
   print("End")
   

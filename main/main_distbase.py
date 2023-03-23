@@ -114,13 +114,13 @@ if __name__ == "__main__":
     H.set_colregion(L)
     save_class(
       H, NET.pickle_path,
-      "hanalysis_{}".format(H.subfolder),
+      "hanalysis",
       on=F
     )
   else:
     H = read_class(
       NET.pickle_path,
-      "hanalysis_{}".format(NET.subfolder),
+      "hanalysis"
     )
   # Entropy ----
   HS = Hierarchical_Entropy(
@@ -165,7 +165,7 @@ if __name__ == "__main__":
     )
   save_class(
     H, NET.pickle_path,
-    "hanalysis_{}".format(H.subfolder),
+    "hanalysis",
     on=F
   )
   print("End!")

@@ -96,8 +96,8 @@ if __name__ == "__main__":
       print(f"Find node partition using {score}")
       # Get best K and R ----
       K, R = get_best_kr(score, H)
-      r = R[K == np.min(K)]
-      k = K[K == np.min(K)]
+      r = R[K == np.min(K)][0]
+      k = K[K == np.min(K)][0]
       H.set_kr(k, r, score=score)
       print("\n\tBest K: {}\nBest R: {}\n".format(k, r))
       rlabels = get_labels_from_Z(H.Z, r)
@@ -109,6 +109,6 @@ if __name__ == "__main__":
       H.set_cover(cover, score)
     save_class(
       H, NET.pickle_path,
-      "hanalysis_{}".format(H.subfolder),
+      "hanalysis"
     )
   print("End!")

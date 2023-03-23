@@ -88,11 +88,6 @@ def worker_scalefree(
     RAND_H.la_abre_a_merde_cpp(RAND_H.BH[0])
     # Save stats ----
     data.set_data_measurements(RAND_H, i)
-    save_class(
-      RAND_H, RAND.pickle_path,
-     "hanalysis_{}".format(RAND_H.subfolder),
-      on=F
-    )
     rlabels = zeros(1)
     for score in opt_score:
       print("Score: {}".format(score))

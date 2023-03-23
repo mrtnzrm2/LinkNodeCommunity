@@ -163,7 +163,7 @@ def get_best_kr(score, H):
   r = get_r_from_X_diag(
     k, H.H, H.Z, H.A, H.nodes
   )
-  return k, r
+  return np.array(k), np.array(r)
 
 def get_best_kr_equivalence(score, H):
   k = 1

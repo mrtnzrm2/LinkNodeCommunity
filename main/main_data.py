@@ -54,7 +54,6 @@ if __name__ == "__main__":
     cut = cut,
     b = bias
   )
-  NET.set_alpha([6, 10, 15])
   NET.create_pickle_directory()
   NET.create_plot_directory()
   # Transform data for analysis ----
@@ -121,8 +120,8 @@ if __name__ == "__main__":
     print(f"Find node partition using {score}")
     # Get best K and R ----
     K, R = get_best_kr(score, H)
-    r = R[K == np.min(K)]
-    k = K[K == np.min(K)]
+    r = R[K == np.min(K)][0]
+    k = K[K == np.min(K)][0]
     H.set_kr(k, r, score=score)
     print("Best K: {}\nBest R: {}\t Score: {}".format(k, r, score))
     rlabels = get_labels_from_Z(H.Z, r)

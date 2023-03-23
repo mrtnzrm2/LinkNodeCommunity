@@ -112,7 +112,8 @@ class Plot_H:
       dF.beta = dF.beta.to_numpy().astype(str)
       # Create figure ----
       g = sns.FacetGrid(
-        dF, col="alpha"
+        dF, col="alpha",
+        sharey=False
       )
       g.map_dataframe(
         sns.lineplot,
