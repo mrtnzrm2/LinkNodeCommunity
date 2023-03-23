@@ -73,7 +73,7 @@ if __name__ == "__main__":
       __nodes__, linkage, mode, lookup=lookup
     )
     ## Compute features ----
-    H.BH_features_cpp()
+    H.BH_features_parallel()
     ## Compute link entropy ----
     H.link_entropy_cpp("short", cut=cut)
     ## Compute lq arbre de merde ----
@@ -95,7 +95,9 @@ if __name__ == "__main__":
     for score in opt_score:
       print(f"Find node partition using {score}")
       # Get best K and R ----
-      k, r = get_best_kr(score, H)
+      K, R = get_best_kr(score, H)
+      r = R[K == np.min(K)]
+      k = K[K == np.min(K)]
       H.set_kr(k, r, score=score)
       print("\n\tBest K: {}\nBest R: {}\n".format(k, r))
       rlabels = get_labels_from_Z(H.Z, r)
