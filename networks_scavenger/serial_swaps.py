@@ -15,13 +15,13 @@ from plotting_modules.plotting_o_serial import PLOT_OS
 from various.network_tools import read_class
 # Declare iter variables ----
 topologies = ["TARGET", "SOURCE", "MIX"]
-bias = [0]
+bias = [1e-5, 1e-2, 0.1, 0.3, 0.5]
 list_of_lists = itertools.product(
   *[topologies, bias]
 )
 list_of_lists = np.array(list(list_of_lists))
 # Declare global variables NET ----
-MAXI = 505
+MAXI = 506
 linkage = "single"
 nlog10 = T
 lookup = F
@@ -36,7 +36,6 @@ index = "jacw"
 mode = "ALPHA"
 imputation_method = ""
 opt_score = ["_maxmu", "_X"]
-save_data = T
 # Declare global variables DISTBASE ----
 total_nodes = 106
 __inj__ = 57
@@ -91,6 +90,8 @@ if __name__ == "__main__":
     # Plotting ----
     print("Statistical analysis")
     plot_s = PLOT_S(data)
+    plot_s.plot_measurements_Entropy(on=T)
+    plot_s.plot_measurements_Entropy_noodle(on=F)
     plot_s.plot_stats(alternative=alternative, on=T)
     plot_s.plot_measurements_D_noodle(on=T)
     plot_s.plot_measurements_X_noodle(on=T)
@@ -102,7 +103,6 @@ if __name__ == "__main__":
     plot_s.plot_measurements_mu(on=T)
     plot_s.plot_measurements_ntrees(on=T)
     plot_s.plot_measurements_ordp(on=T)
-    plot_s.plot_entropy(on=T, s=10)
     plot_s.histogram_clustering_similarity(
       on=T, c=T, hue_norm=[s.replace("_", "") for s in opt_score]
     )

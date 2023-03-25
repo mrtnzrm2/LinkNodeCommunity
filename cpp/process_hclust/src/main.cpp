@@ -12,16 +12,10 @@
 #include <pybind11/pybind11.h>
 namespace py = pybind11;
 
-double mean(std::vector<double> &v) {
-  if (v.size() == 0) {
-    printf("Warning: mean of vector with zero size\n");
-    return 0;
-  }
-  double mv = 0;
-  for (int i = 0; i < v.size(); i++)
-    mv += v[i];
-  return mv / v.size();
-}
+struct lcprops {
+  int m = 0;
+  int n = 0;
+};
 
 double sum(std::vector<double> &v) {
   if (v.size() == 0) {
@@ -48,30 +42,6 @@ void unique(std::vector<T> &v) {
 }
 
 template<typename T>
-void print_v(std::vector<T> &v) {
-  for (int i = 0; i < v.size(); i++)
-    printf("%i ", (int) v[i]);
-  printf("\n");
-}
-
-template<typename T>
-void quotient_set(
-  std::vector<T> &a,std::vector<T> &b, std::vector<T> &result
-) {
-  // result = a / b
-  bool exist;
-  for (int i = 0; i < a.size(); i++) {
-    exist = false;
-    for (int j = 0; j <= b.size() / 2; j++) {
-      if (a[i] == b[j] || a[i] == b[b.size() - j - 1])
-        exist = true;
-    }
-    if (!exist)
-      result.push_back(a[i]);
-  }
-}
-
-template<typename T>
 void intersection(
   std::vector<T> &a, std::vector<T> &b, std::vector<T> &result
 ) {
@@ -82,88 +52,68 @@ void intersection(
   );
 }
 
-void vec_times_k(std::vector<int>& v, int k) {
-    std::transform(v.begin(), v.end(), v.begin(), [k](int &c){ return c*k; });
-}
-
-template <typename T>
-std::vector<size_t> sort_indexes(const std::vector<T> &v) {
-
-  // initialize original index locations
-  std::vector<size_t> idx(v.size());
-  std::iota(idx.begin(), idx.end(), 0);
-
-  // sort indexes based on comparing values in v
-  // using std::stable_sort instead of std::sort
-  // to avoid unnecessary index re-orderings
-  // when v contains elements of equal values 
-  std::stable_sort(idx.begin(), idx.end(),
-    [&v](size_t i1, size_t i2) {return v[i1] < v[i2];}
-  );
-
-  return idx;
-}
-
 double get_muscore(
-  std::vector<int> lc, int &ntrees, double &k, int &linkage,
-  int& size, int& M, int& alpha, double& beta
+  std::vector<int> &sizes, double &K, int& M, int& alpha, double& beta
 ) {
-  // Order lc ----
-  vec_times_k(lc, -1);
-  std::sort(lc.begin(), lc.end());
-  vec_times_k(lc, -1);
   double mu = 0;
   double D;
-  if (size >= alpha) {
+  if (K >= alpha) {
     for (int i=0; i < alpha - 1; i++) {
-      for (int j=(i + 1); j < alpha; j++) {
-        D = static_cast<double>(lc[j]) / static_cast<double>(lc[i]) ;
+      for (int j=i + 1; j <alpha; j++) {
+        D = sizes[j]/ (sizes[i] * 1.) ;
         if (D > beta)
-          mu += D * (static_cast<double>(lc[i] + lc[j]) / static_cast<double>(2 * M));
+          mu += D * (sizes[j] + sizes[i]) / (2. * M);
         else
-          mu -= D * (static_cast<double>(lc[i] + lc[j]) / static_cast<double>(2 * M));
+          mu -= D * (sizes[j] + sizes[i]) / (2. * M);
       }
     }
     mu /= 0.5 * alpha * (alpha - 1);
-  } else {
-    for (int i=0; i < size - 1; i++) {
-      for (int j=(i + 1); j < size; j++) {
-         D = static_cast<double>(lc[j]) / static_cast<double>(lc[i]) ;
+  } else if (K >= 2) {
+    for (int i=0; i < K - 1; i++) {
+      for (int j=i + 1; j < K; j++) {
+         D = sizes[j] /(sizes[i] * 1.)  ;
         if (D > beta)
-          mu += D * (static_cast<double>(lc[i] + lc[j]) / static_cast<double>(2 * M));
+          mu += D * (sizes[i] + sizes[j]) / (2. * M);
         else
-          mu -= D * (static_cast<double>(lc[i] + lc[j]) / static_cast<double>(2 * M));
+          mu -= D * (sizes[i] + sizes[j]) / (2. * M);
       }
     }
-    mu /= 0.5 * size * (size - 1);
+    mu /= 0.5 * K * (K - 1);
+  } else {
+    mu = 0.;
   }
-  if (ntrees == 0 && linkage == 2) mu *= k * k;
   return mu;
 }
 
-void get_sizes(
-  int* labels,
-  std::vector<int>& lcs,
-  std::vector<int>& nds,
-  std::vector<int>& unique_labels,
-  std::vector<int>& source,
-  std::vector<int>& target,
-  int& n
-) {
+bool search_key(std::map<int, std::vector<int> > &a, const int &key) {
+  for (std::map<int, std::vector<int> >::iterator f=a.begin(); f != a.end(); ++f) {
+    if (f->first == key) return true;
+  }
+  return false;
+}
 
-  std::vector<std::set<int> > node_buffer(unique_labels.size());
-  for (int i = 0; i < n; i++) {
-    for (int j = 0; j < unique_labels.size(); j++) {
-      if (labels[i] == unique_labels[j]) {
-        lcs[j]++;
-        node_buffer[j].insert(source[i]);
-        node_buffer[j].insert(target[i]);
-      }
-    }
+bool search_key(std::map<int, lcprops > &a, const int &key) {
+  for (std::map<int, lcprops>::iterator f=a.begin(); f != a.end(); ++f) {
+    if (f->first == key) return true;
   }
-  for (int j = 0; j < unique_labels.size(); j++) {
-    nds[j] = node_buffer[j].size();
-  }
+  return false;
+}
+
+bool cmp( std::pair<int, std::vector<int> > &a, std::pair <int, std::vector<int> > &b ){
+   return a.second[0] > b.second[0];
+}
+
+std::map<int, std::vector<int>> sort_map(std::map<int, std::vector<int>> givenMap){
+   std::vector<std::pair<int, std::vector<int> > > pairVec;
+   std::map<int, std::vector<int>> newMap;
+   for ( auto& it : givenMap ) {
+      pairVec.push_back( it );
+   }
+   sort( pairVec.begin(), pairVec.end(), cmp); 
+   for ( auto& it : pairVec ) {
+      newMap.insert( { it.first, it.second } );
+   }
+   return newMap;
 }
 
 std::vector<double> simplify_height_to_k_end(
@@ -234,99 +184,44 @@ std::vector<double> complete_height_to_k(
   return sim_k;
 }
 
-void get_dc(
-  std::vector<int> &source,
-  std::vector<int> &target,
-  int* labels, int& lc_id, int& n,
-  double &dc
+double Dc(
+  int&m, int& n
 ) {
-  double m = 0, N;
-  std::set<int> nodes;
-  for (int i = 0; i < n; i++) {
-    if (labels[i] == lc_id) {
-      m++;
-      nodes.insert(source[i]);
-      nodes.insert(target[i]);
-    }
-  }
-  N = nodes.size();
-  dc = static_cast<double>(m - N + 1) /
-    static_cast<double>(pow(N - 1, 2));
+  double dc;
+  dc = static_cast<double>(m - n + 1) /
+    static_cast<double>(pow(n- 1, 2));
+  return dc;
 }
 
-double get_percolation_susceptability(
-  std::vector<int> lc_sizes,
-  std::vector<int> lc_number_of_nodes,
-  int& number_of_lcs
-) {
-  double N = 0;
+double get_percolation_susceptability(std::map<int, lcprops> &v, int &N, int &order) {
   double  x = 0; // percolation suceptability
-  std::vector<int> new_lc_sizes(lc_sizes);
-  sort(
-    new_lc_sizes.begin(), new_lc_sizes.end(), std::greater<int>()
-  );
-  // for (int i = 0; i < number_of_lcs; i++) {
-    // N += lc_sizes[i];
-  // }
-  // N = pow(N, 2);
-  for (int i = 0; i < number_of_lcs; i++) {
-    if (lc_sizes[i] <= 1 || lc_number_of_nodes[i] <= 2) continue;
-    if (lc_sizes[i] != new_lc_sizes[0])
-      x += pow(lc_sizes[i], 2);
-    N += lc_sizes[i];
+  for (std::map<int, lcprops >::iterator it = v.begin(); it != v.end(); ++it) {
+    if (it->second.m <= 1 || it->second.n <= 2) continue;
+    if (it->second.m != order)
+      x += pow(it->second.m, 2.);
   }
   return x / N;
 }
 
-template<typename T>
-double order_parameter(std::vector<T> & v, int &M) {
-  double n = v.size();
-  double m = 0;
-  for (int i=0; i < n; i++) {
-    if (m < v[i]) m = v[i];
-  }
-  m /= M;
-  return m;
+double order_parameter(std::vector<int> &v, int &M) {
+  return v[0] / (M * 1.);
 }
 
-struct tree {
-  int size;
-  int count;
-};
-
-template<typename T>
-double Xm(std::vector<T> & v) {
+double Xm(std::map<int, lcprops> &v) {
   double n = v.size();
   double xm2 = 0, xm = 0;
-  // Number of clusters of size s
-  tree new_tree;
-  std::vector<tree> ns;
-  bool check_size_exist;
-  int size_index;
-  for (int i=0; i < n; i++) {
-    check_size_exist = false;
-    for (int j=0; j < ns.size(); j++) {
-      if (ns[j].size == v[i]) {
-        check_size_exist = true;
-        size_index = j;
-        break;
-      }
-    }
-    if (check_size_exist) {
-      ns[size_index].count++;
-    }
-    else {
-      new_tree.size = v[i];
-      new_tree.count = 1;
-      ns.push_back(new_tree);
-    }
+  std::map<int, int> v_count;
+  for (std::map<int, lcprops>::iterator it = v.begin(); it != v.end(); ++it) {
+    if (!search_key(v, it->second.m)) v_count[it->second.m] = 1;
+    else v_count[it->second.m]++;
   }
-  // Sum over the number of different link community sizes
-  for (int i=0; i < ns.size(); i++) {
-    xm2 += pow(ns[i].size, 2.0) * ns[i].count;
-    xm += ns[i].size * ns[i].count;
+  for (std::map<int, int >::iterator it = v_count.begin(); it != v_count.end(); ++it) {
+    xm2 += pow(it->first, 2.0) * it->second;
+    xm += it->first * it->second * 1.;
   }
-  return xm2 / xm;
+  if (xm > 0)
+    return xm2 / xm;
+  else return 0;
 }
 
 class ph {
@@ -393,6 +288,14 @@ class ph {
     std::vector<double> get_entropy_h_H();
     std::vector<double> get_entropy_v_H();
     int get_max_level();
+    void get_sizes(
+      std::map<int, lcprops> &info_sizes,
+      int* labels, std::vector<int> &lcsize,
+      std::vector<int>& unique_labels,
+      std::vector<int>& source,
+      std::vector<int>& target,
+      int& n
+    );
 };
 
 ph::ph(
@@ -569,25 +472,46 @@ void ph::arbre(std::string &t_size) {
   delete[] tri_distmat;
 }
 
+void ph::get_sizes(
+  std::map<int, lcprops> &info_sizes,
+  int* labels, std::vector<int> &lcsize,
+  std::vector<int>& unique_labels,
+  std::vector<int>& source,
+  std::vector<int>& target,
+  int& n
+) {
+  std::vector<std::set<int> > node_buffer(unique_labels.size());
+  for (int i = 0; i < n; i++) {
+    for (int j = 0; j < unique_labels.size(); j++) {
+      if (labels[i] == unique_labels[j]) {
+        info_sizes[unique_labels[j]].m++;
+        lcsize[j]++;
+        node_buffer[j].insert(source[i]);
+        node_buffer[j].insert(target[i]);
+      }
+    }
+  }
+  for (int j = 0; j < unique_labels.size(); j++)
+    info_sizes[unique_labels[j]].n = node_buffer[j].size();
+  sort(lcsize.begin(), lcsize.end(), std::greater<int>());
+}
+
 void ph::vite() {
   // Various variables ----
-  int nt, number_lcs, nec;
+  int nt, nec;
   double dc;
+  std::vector<double> sim_k, sim_height, dcv;
+  std::vector<int> lcsizes;
+  std::map<int, lcprops > sizes;
   // Condense distance matrix ----
   double* tri_distmat = new double[(number_of_elements * (number_of_elements - 1)) / 2];
   // hclust arrays ----
   int* merge = new int[2 * (number_of_elements - 1)];
   double* height = new double[number_of_elements-1];
-  // Reduced K and heigths ----
-  std::vector<double> sim_k, sim_height;
-  // Dc vector ----
-  std::vector<double> dcv;
   // Effective number of merging steps ----
   int* kk = new int;
   *kk = 0;
-  // labels pointer ----
   int* labels = new int[number_of_elements];
-  /////////////////////
   // Get condense matrix ----
   for (int i = 0, k = 0; i < number_of_elements; i++) {
     for (int j = i +1 ; j < number_of_elements; j++) {
@@ -637,51 +561,37 @@ void ph::vite() {
     );
     std::vector<int> unique_labels(labels, labels + number_of_elements);
     unique(unique_labels);
-    number_lcs = unique_labels.size();
+    lcsizes = std::vector<int>(unique_labels.size(), 0);
     // Get LCs sizes in order
-    std::vector<int> lc_size(number_lcs, 0);
-    std::vector<int> node_size(number_lcs, 0);
-    get_sizes(
-      labels, lc_size, node_size, unique_labels, source_vertices, target_vertices, number_of_elements
-    );
+    get_sizes(sizes, labels, lcsizes, unique_labels, source_vertices, target_vertices, number_of_elements);
     nec = 0;
     nt = 0;
     // Loop over link communities ----
-    for (int j=0; j < number_lcs; j++) {
-      // Check if the community is a tree ----
-      if (lc_size[j] > 1 && node_size[j] > 2) {
-        get_dc(
-          source_vertices, target_vertices, labels,
-          unique_labels[j], number_of_elements, dc
-        );
-        dcv.push_back(dc * lc_size[j] / number_of_elements);
-        // ntrees
+    for (std::map<int, lcprops >::iterator it=sizes.begin(); it != sizes.end(); ++it) {
+      if (it->second.m > 1 && it->second.n > 2) {
+        dc = Dc(it->second.m, it->second.n);
+        dcv.push_back(dc * it->second.m / number_of_elements);
         if (dc <= 0) nt++;
         nec++;
       } else {
         dcv.push_back(0);
       }
     }
-    // Number of trees
     ntrees[i] = nt;
     // Mu-score
-    MU[i] = get_muscore(
-      lc_size, nt, sim_k[i], Linkage,
-      number_lcs, number_of_elements, ALPHA, BETA
-    );
+    MU[i] = get_muscore(lcsizes, sim_k[i], number_of_elements, ALPHA, BETA);
     // NEC
     NEC[i] = nec;
     // D
     D[i] = sum(dcv);
     // Order parameter
-    OrP[i] = order_parameter(lc_size, number_of_elements);
+    OrP[i] = order_parameter(lcsizes, number_of_elements);
     // XM
-    XM[i] = Xm(lc_size);
+    XM[i] = Xm(sizes);
     // X
-    X[i] = get_percolation_susceptability(
-      lc_size, node_size, number_lcs
-    );
+    X[i] = get_percolation_susceptability(sizes, number_of_elements, lcsizes[0]);
     dcv.clear();
+    sizes.clear();
   }
   // Delete phase
   delete[] labels;

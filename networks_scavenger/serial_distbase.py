@@ -22,7 +22,7 @@ list_of_lists = itertools.product(
 )
 list_of_lists = np.array(list(list_of_lists))
 # Declare global variables NET ----
-MAXI = 505
+MAXI = 506
 linkage = "single"
 nlog10 = T
 lookup = F
@@ -91,7 +91,7 @@ if __name__ == "__main__":
     print("Statistical analysis")
     plot_s = PLOT_S(data)
     plot_s.plot_measurements_Entropy(on=T)
-    plot_s.plot_measurements_Entropy_noodle(on=T)
+    plot_s.plot_measurements_Entropy_noodle(on=F)
     plot_s.plot_stats(alternative=alternative, on=T)
     plot_s.plot_measurements_D(on=T)
     plot_s.plot_measurements_X(on=T)

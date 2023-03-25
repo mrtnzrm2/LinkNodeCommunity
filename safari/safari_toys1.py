@@ -121,47 +121,48 @@ if __name__ == "__main__":
     )
     ## Compute features ----
     H.BH_features_cpp()
-    ## Compute link entropy ----
-    H.link_entropy_cpp("short", cut=cut)
-    ## Compute lq arbre de merde ----
-    H.la_abre_a_merde_cpp(H.BH[0])
-    # Entropy ----
-    HS = Hierarchical_Entropy(H.H, H.leaves, labels=list(range(H.leaves)))
-    HS.Z2dict("short")
-    HS.zdict2newick(HS.tree, weighted=F, on=F)
-    HS.zdict2newick(HS.tree, weighted=T, on=F)
-    node_entropy = HS.S(HS.tree)
-    node_entropy_H = HS.S_height(HS.tree)
-    H.entropy = [
-      node_entropy, node_entropy_H,
-      H.link_entropy, H.link_entropy_H
-    ]
-    # Set labels to network ----
-    L = colregion(net, labels=net.labels)
-    L.get_regions()
-    H.set_colregion(L)
-    plot_h = Plot_H(net, H)
-    plot_h.plot_measurements_Entropy(on=T)
-    for score in opt_score:
-      k, r = get_best_kr(score, H)
-      rlabels = get_labels_from_Z(H.Z, r)
-      net.overlap, noc_covers = H.get_ocn_discovery(k, rlabels)
-      H.set_overlap_labels(net.overlap, score)
-      plot_h.lcmap_dendro(
-        [k], cmap_name="deep",
-        font_size=30,
-        score="_"+score+"_"+toy_names[i], on=F
-      )
-      plot_h.plot_networx(
-        r, rlabels, score="_"+score+"_"+toy_names[i],
-        on=F, labels=labels_dict, cmap_name="deep"
-      )
-      plot_h.plot_networx_link_communities(
-        [k], score="_"+score+"_"+toy_names[i],
-        cmap_name="deep",
-        on=F, labels=labels_dict
-      )
-      plot_h.core_dendrogram(
-        [r], score="_"+score+"_"+toy_names[i],
-        on= T, cmap_name="deep"
-      )
+    print(H.BH[0])
+    # ## Compute link entropy ----
+    # H.link_entropy_cpp("short", cut=cut)
+    # ## Compute lq arbre de merde ----
+    # H.la_abre_a_merde_cpp(H.BH[0])
+    # # Entropy ----
+    # HS = Hierarchical_Entropy(H.H, H.leaves, labels=list(range(H.leaves)))
+    # HS.Z2dict("short")
+    # HS.zdict2newick(HS.tree, weighted=F, on=F)
+    # HS.zdict2newick(HS.tree, weighted=T, on=F)
+    # node_entropy = HS.S(HS.tree)
+    # node_entropy_H = HS.S_height(HS.tree)
+    # H.entropy = [
+    #   node_entropy, node_entropy_H,
+    #   H.link_entropy, H.link_entropy_H
+    # ]
+    # # Set labels to network ----
+    # L = colregion(net, labels=net.labels)
+    # L.get_regions()
+    # H.set_colregion(L)
+    # plot_h = Plot_H(net, H)
+    # plot_h.plot_measurements_Entropy(on=T)
+    # for score in opt_score:
+    #   k, r = get_best_kr(score, H)
+    #   rlabels = get_labels_from_Z(H.Z, r)
+    #   net.overlap, noc_covers = H.get_ocn_discovery(k, rlabels)
+    #   H.set_overlap_labels(net.overlap, score)
+    #   plot_h.lcmap_dendro(
+    #     [k], cmap_name="deep",
+    #     font_size=30,
+    #     score="_"+score+"_"+toy_names[i], on=F
+    #   )
+    #   plot_h.plot_networx(
+    #     r, rlabels, score="_"+score+"_"+toy_names[i],
+    #     on=F, labels=labels_dict, cmap_name="deep"
+    #   )
+    #   plot_h.plot_networx_link_communities(
+    #     [k], score="_"+score+"_"+toy_names[i],
+    #     cmap_name="deep",
+    #     on=F, labels=labels_dict
+    #   )
+    #   plot_h.core_dendrogram(
+    #     [r], score="_"+score+"_"+toy_names[i],
+    #     on= T, cmap_name="deep"
+    #   )
