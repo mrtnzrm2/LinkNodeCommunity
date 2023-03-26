@@ -51,7 +51,8 @@ class Plot_H:
     # Create figure ----
     g = sns.FacetGrid(
       dF, col="alpha",
-      aspect=1, height=6
+      aspect=1, height=6,
+      sharey=False
     )
     g.map_dataframe(
       sns.lineplot,

@@ -49,18 +49,7 @@ class Hierarchical_Entropy:
         else:
           ml[ski]["size"] += 1
           ml[ski]["height"] += 0 #tree[key]["height"]
-        # ski2 = int(ski[1:]) + 1
-        # if ski2 <= maxlvl:
-        #   ski2 = f"L{ski2}"
-        #   if ski2 not in ml.keys():
-        #     ml[ski2] = {
-        #       "size" : 1,
-        #       "height" : 0
-        #     }
-        #   else:
-        #     ml[ski2]["size"] += 1
       else:
-        # len_tree_key = np.sum([1 for key in tree[key].keys() if key != "height" and key != "label"])
         if ski not in ml.keys():
           ml[ski] = {
             "size" : 1,
@@ -101,12 +90,8 @@ class Hierarchical_Entropy:
       Mul = np.sum([1 for key in tree[key].keys() if key != "height" and key != "label"])
       for key2 in tree[key].keys():
         if key2 == "height" or key2 == "label": continue
-        # print(key, key2, tree[key]["height"], tree[key][key2]["height"], Mul, Ml[f"L{i+1}"]["size"])
         Sh[self.total_nodes - i -1] -= (tree[key]["height"] - tree[key][key2]["height"]) * stirling_3(Mul, Ml[f"L{i+1}"]["size"]) / 2
         self.SH_height(tree[key], key2, Ml, maxl, Sh)
-    # elif i < maxl:
-    #   # print("**", key, tree[key]["height"], Mul, Ml[f"L{i+1}"]["size"])
-    #   Sh[self.total_nodes - i -1] -= tree[key]["height"] * stirling_3(1, Ml[f"L{i+1}"]["size"])
 
   def SV_height(self, Ml : dict, M, Sv):
     for key in Ml.keys():
@@ -134,9 +119,10 @@ class Hierarchical_Entropy:
     self.ML(a, Ml)
     self.SH(a, Ml, Sh)
     self.SV(Ml, M, Sv)
-    Sh /= self.nodes.shape[0]
-    Sv /= self.nodes.shape[0]
-    print(f"\n\tNode entropy : {np.sum(Sh + Sv):.4f}, Sh : {np.sum(Sh):.4f}, and Sv : {np.sum(Sv):.4f}\n")
+    total_entropy = np.sum(Sh + Sv)
+    Sh /= total_entropy
+    Sv /= total_entropy
+    print(f"\n\tNode entropy :  Sh : {np.sum(Sh):.4f}, and Sv : {np.sum(Sv):.4f}\n")
     return np.vstack([Sh[(self.total_nodes - maxlevl):], Sv[(self.total_nodes - maxlevl):]])
   
   def print_tree(self, a : dict, key_pred=""):
@@ -169,9 +155,10 @@ class Hierarchical_Entropy:
     Sv = np.zeros(self.total_nodes)
     self.SH_height(a, self.root, Ml, maxlevl, Sh)
     self.SV_height(Ml, M, Sv)
-    Sh /= self.nodes.shape[0]
-    Sv /= self.nodes.shape[0]
-    print(f"\n\tNode entropy H: {np.sum(Sh + Sv):.4f}, Sh : {np.sum(Sh):.4f}, and Sv : {np.sum(Sv):.4f}\n")
+    total_entropy_H = np.sum(Sv + Sh)
+    Sh /= total_entropy_H
+    Sv /= total_entropy_H
+    print(f"\n\tNode entropy H: Sh : {np.sum(Sh):.4f}, and Sv : {np.sum(Sv):.4f}\n")
     return np.vstack([Sh[(self.total_nodes - maxlevl):], Sv[(self.total_nodes - maxlevl):]])
 
   def Z2dict_long(self, M, tree : dict, key_prev, nodes_prev : set, L, tL):

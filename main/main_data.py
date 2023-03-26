@@ -31,7 +31,7 @@ mapping = "R2"
 index  = "jacw"
 bias = float(1e-5)
 opt_score = ["_maxmu", "_X"]
-save_data = T
+save_data = F
 version = 220830
 __nodes__ = 57
 __inj__ = 57
@@ -104,7 +104,7 @@ if __name__ == "__main__":
   plot_h.plot_newick_R(HS.newick, weighted=F, on=F)
   HS.zdict2newick(HS.tree, weighted=T, on=T)
   plot_h.plot_newick_R(HS.newick, weighted=T, on=F)
-  plot_h.plot_measurements_Entropy(on=F)
+  plot_h.plot_measurements_Entropy(on=T)
   plot_h.plot_measurements_D(on=T)
   plot_h.plot_measurements_mu(on=T)
   plot_h.plot_measurements_X(on=T)
