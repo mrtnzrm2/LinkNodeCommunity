@@ -7,6 +7,7 @@
 #include <cmath>
 #include "hclust-cpp/fastcluster.h"
 #include "entropy_tools.cpp"
+#include "bene_tools.cpp"
 
 #include <pybind11/stl.h>
 #include <pybind11/pybind11.h>
@@ -270,9 +271,10 @@ class ph {
     void vite();
     // std::vector<std::vector<int> > &link_communities, std::vector<double> & H, 
     void arbre(std::string &t_size);
+    void bene(std::string &t_size);
 
     template <typename T>
-    void expand_vector(std::vector<T>& v, int& N);
+    void expand_vector(std::vector<T>& v, const int& N);
 
     std::vector<int> get_K();
     std::vector<double> get_Height();
@@ -321,7 +323,7 @@ ph::ph(
 }
 
 template <typename T>
-void ph::expand_vector(std::vector<T>& v, int& N) {
+void ph::expand_vector(std::vector<T>& v, const int& N) {
   v = std::vector<T>(N, 0);
 }
 
@@ -371,6 +373,74 @@ std::vector<double> ph::get_entropy_v_H(){
 int ph::get_max_level(){
   return max_level;
 }
+
+void ph::bene(std::string &t_size) {
+  std::vector<double> H(number_of_elements, 0);
+  std::vector<std::vector<double> >  bene(6, std::vector<double>(number_of_elements - 1, 0.));
+  std::vector<std::vector<int> > link_communities(number_of_elements, std::vector<int>(number_of_elements, 0));
+  std::map<std::string, vertex_properties_bene> tree;
+  std::map<int, tracer_properties > tracer;
+  //
+  expand_vector(K, number_of_elements - 1);
+  expand_vector(Height, number_of_elements - 1);
+  expand_vector(D, number_of_elements - 1);
+  expand_vector(MU, number_of_elements - 1);
+  expand_vector(NEC, number_of_elements - 1);
+  expand_vector(ntrees, number_of_elements - 1);
+  expand_vector(X, number_of_elements - 1);
+  expand_vector(XM, number_of_elements - 1);
+  expand_vector(OrP, number_of_elements - 1);
+  //
+  double* tri_distmat = new double[(number_of_elements * (number_of_elements - 1)) / 2];
+  int* merge = new int[2 * (number_of_elements - 1)];
+  double* height = new double[number_of_elements-1];
+  int* labels = new int[number_of_elements];
+  // Get condense matrix ----
+  for (int i = 0, k = 0; i < number_of_elements; i++) {
+    for (int j = i +1 ; j < number_of_elements; j++) {
+      tri_distmat[k] = distane_matrix[i][j];
+      k++;
+    }
+  }
+  hclust_fast(
+    number_of_elements,
+    tri_distmat,
+    Linkage,
+    merge,
+    height
+  );
+  // Get link community matrix ----
+  for (int i=1; i <= number_of_elements - 1; i++) {
+    cutree_k(number_of_elements, merge, i, labels);
+    for (int j=0; j < number_of_elements; j++) link_communities[i-1][j] = labels[j];
+  }
+  for (int i=0; i < number_of_elements; i++) {
+    link_communities[number_of_elements - 1][i] = i;
+  }
+  // Get heights ----
+  for (int i=0; i < number_of_elements - 1; i++)
+    H[i+1] = height[i];
+  Z2dict_bene(link_communities, tree, tracer, H, source_vertices, target_vertices, t_size);
+  BUONO(tracer, tree, bene, ALPHA, BETA, number_of_elements);
+
+  for (int i = 0; i < number_of_elements - 1; i++) {
+    NEC[i] = bene[0][i];
+    ntrees[i] = bene[3][i];
+    Height[i] = height[i];
+    K[i] = number_of_elements - i - 1;
+    MU[i] = bene[1][i];
+    D[i] = bene[2][i];
+    X[i] = bene[4][i];
+    XM[i] = bene[4][i];
+    OrP[i] = bene[5][i];
+  }
+  // Delete pointers
+  delete[] labels;
+  delete[] merge;
+  delete[] height;
+  delete[] tri_distmat;
+}
+
 // std::vector<std::vector<int> > &link_communities, std::vector<double> & H,
 void ph::arbre(std::string &t_size) {
   const std::string root = "L00";
@@ -618,6 +688,7 @@ PYBIND11_MODULE(process_hclust, m) {
         )
         .def("vite", &ph::vite)
         .def("arbre", &ph::arbre)
+        .def("bene", &ph::bene)
         .def("get_K", &ph::get_K)
 				.def("get_Height", &ph::get_Height)
 				.def("get_NEC", &ph::get_NEC)

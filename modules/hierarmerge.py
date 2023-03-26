@@ -103,6 +103,7 @@ class Hierarchy(Sim):
       alpha,
       beta
     )
+    # features.bene("long")
     features.vite()
     return features
   
@@ -121,6 +122,7 @@ class Hierarchy(Sim):
       listargs[1],
       listargs[2]
     )
+    # features.bene("long")
     features.vite()
     result = np.array(
       [
@@ -134,6 +136,10 @@ class Hierarchy(Sim):
   
   def BH_features_parallel(self):
     import multiprocessing as mp
+    # from various.pickle4reducer import Pickle4Reducer
+    # ctx = mp.get_context()
+    # ctx.reducer = Pickle4Reducer()
+
     print("Computing features over mu-score space")
     # Set up linkage ----
     if self.linkage == "single":

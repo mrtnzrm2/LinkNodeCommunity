@@ -72,6 +72,8 @@ def worker_scalefree(
       index=index,
       parameters = par
     )
+    RAND.set_alpha([6, 50, 100])
+    RAND.set_beta([0.1, 0.2, 0.4])
     # Create network ----
     print("Create random graph")
     RAND.random_WDN_cpp(run=run, on_save_pickle=F)     #*****

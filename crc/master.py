@@ -40,13 +40,16 @@ array_distbase = pd.DataFrame(
 ## scalefree -----------------
 worker = ["scalefree"]
 cut = [F]
-topology = ["TARGET", "SOURCE", "MIX"]
-indices = ["jacw", "jacp", "cos", "bsim"]
-kav = [7, 15]
+number_of_nodes = [100]
+topology = ["SOURCE", "MIX"]
+indices = ["jacp",  "bsim"]
+kav = [4]
 mut = [0.1, 0.3, 0.5]
-muw = [0.1, 0.5]
+muw = [0.3]
+nmin = [5]
+nmax = [10]
 list_of_lists = itertools.product(
-  *[cut, topology, indices, kav, mut, muw]
+  *[cut, topology, indices, kav, mut, muw, number_of_nodes, nmin, nmax]
 )
 list_of_lists = np.array(list(list_of_lists))
 array_scalefree = pd.DataFrame(
@@ -58,19 +61,29 @@ array_scalefree = pd.DataFrame(
     "kav" : list_of_lists[:, 3].astype(float),
     "mut" : list_of_lists[:, 4].astype(float),
     "muw" : list_of_lists[:, 5].astype(float),
+    "number_of_nodes" : list_of_lists[:, 6].astype(int),
+    "nmin" : list_of_lists[:, 7].astype(int),
+    "nmax" : list_of_lists[:, 8].astype(int)
   }
 )
+array_scalefree = array_scalefree.loc[
+  (array_scalefree.nmax > array_scalefree.nmin)
+]
 ## overlap -----------------
 worker = ["overlap"]
 cut = [F]
-topology = ["TARGET", "SOURCE", "MIX"]
-indices = ["jacw", "jacp", "cos", "bsim"]
-kav = [7, 15]
+number_of_nodes = [1000, 5000]
+topology = ["SOURCE", "MIX"]
+indices = ["jacp", "bsim"]
+kav = [10]
 mut = [0.1, 0.3, 0.5]
-muw = [0.1, 0.5]
-om = [2, 5]
+muw = [0.3]
+on = [0.1, 0.5]
+om = [2, 5, 8]
+nmin = [10, 50]
+nmax = [20, 100]
 list_of_lists = itertools.product(
-  *[cut, topology, indices, kav, mut, muw, om]
+  *[cut, topology, indices, kav, mut, muw, on, om, number_of_nodes, nmin, nmax]
 )
 list_of_lists = np.array(list(list_of_lists))
 array_overlap = pd.DataFrame(
@@ -82,12 +95,16 @@ array_overlap = pd.DataFrame(
     "kav" : list_of_lists[:, 3].astype(float),
     "mut" : list_of_lists[:, 4].astype(float),
     "muw" : list_of_lists[:, 5].astype(float),
-    "om" : list_of_lists[:, 6].astype(int),
+    "on" : list_of_lists[:, 6].astype(float),
+    "om" : list_of_lists[:, 7].astype(int),
+    "number_of_nodes" : list_of_lists[:, 8].astype(int),
+    "nmin" : list_of_lists[:, 9].astype(int),
+    "nmax" : list_of_lists[:, 10].astype(int)
   }
 )
 ## Overlapping condition -----------------
 array_overlap = array_overlap.loc[
-  ~((array_overlap.kav > 7) & (array_overlap.om > 2))
+  (array_overlap.nmax > array_overlap.nmin)
 ]
 ## swaps -----------------
 worker = ["swaps"]
@@ -107,10 +124,11 @@ array_swaps = pd.DataFrame(
   }
 )
 ## Merge arrays -----------------
-THE_ARRAY = pd.concat([THE_ARRAY, array_distbase], ignore_index=True)
-# THE_ARRAY = pd.concat([THE_ARRAY, array_scalefree], ignore_index=True)
-# THE_ARRAY = pd.concat([THE_ARRAY, array_overlap], ignore_index=True)
-THE_ARRAY = pd.concat([THE_ARRAY, array_swaps], ignore_index=True)
+# THE_ARRAY = pd.concat([THE_ARRAY, array_distbase], ignore_index=True)
+THE_ARRAY = pd.concat([THE_ARRAY, array_scalefree], ignore_index=True)
+THE_ARRAY = pd.concat([THE_ARRAY, array_overlap], ignore_index=True)
+# THE_ARRAY = pd.concat([THE_ARRAY, array_swaps], ignore_index=True)
+
 
 def NoGodsNoMaster(number_of_iterations, t):
   # Get array ----
@@ -136,49 +154,43 @@ def NoGodsNoMaster(number_of_iterations, t):
       mapping, index, array.loc["bias"]
     )
   elif array.loc["worker"] == "scalefree":
-    number_of_nodes = 128
     nlog10 = F
     lookup = F
     prob = F
     run = T
-    maxk = 30
-    beta = 2.5
+    maxk = 5
+    beta = 3
     t1 = 2
     t2 = 1
-    nmin = 2
-    nmax = 10
     mapping = "trivial"
     if array.loc["cut"] == "True": cut = T
     else: cut = F
     worker_scalefree(
-      number_of_iterations, number_of_nodes, nlog10,
+      number_of_iterations, int(array.loc["number_of_nodes"]), nlog10,
       lookup, prob, cut, run, array.loc["topology"],
       mapping, array.loc["index"],
       array.loc["kav"], maxk, array.loc["mut"], array.loc["muw"],
-      beta, t1, t2, nmin, nmax
+      beta, t1, t2, int(array.loc["nmin"]), int(array.loc["nmax"])
     )
   elif array.loc["worker"] == "overlap":
-    number_of_nodes = 128
     nlog10 = F
     lookup = F
     prob = F
     run = T
-    maxk = 30
-    beta = 2.5
+    maxk = 50
+    beta = 3
     t1 = 2
     t2 = 1
-    nmin = 2
-    nmax = 10
-    on = 10
     mapping = "trivial"
     if array.loc["cut"] == "True": cut = T
     else: cut = F
     worker_overlap(
-      number_of_iterations, number_of_nodes, nlog10,
+      number_of_iterations, int(array.loc["number_of_nodes"]), nlog10,
       lookup, prob, cut, run, array.loc["topology"],
       mapping, array.loc["index"],
       array.loc["kav"], maxk, array.loc["mut"], array.loc["muw"],
-      beta, t1, t2, nmin, nmax, on , int(array.loc["om"])
+      beta, t1, t2, int(array.loc["nmin"]), int(array.loc["nmax"]),
+      int(array.loc["number_of_nodes"] * array.loc["on"]), int(array.loc["om"])
     )
   elif array.loc["worker"] == "swaps":
     number_of_inj = 57

@@ -17,24 +17,13 @@ struct vertex_properties {
 };
 
 struct tracer_properties {
-  double D;
-  int m;
-  std::set<int> node_pred;
-  std::set<std::string> post_keys;
+  std::vector<std::string> neighbors;
 };
 
 struct level_properties {
   int size;
   double height;
 };
-
-template <typename T>
-void unique_2(std::vector<T> &v) {
-  std::sort(v.begin(), v.end());
-  std::vector<int>::iterator it;
-  it = std::unique(v.begin(), v.end());  
-  v.resize(std::distance(v.begin(), it));  
-}
 
 std::set<int> intersection(std::set<int> &a, std::set<int> &b) {
   std::set<int> intersect;
@@ -189,7 +178,7 @@ double Dc(std::set<int> &nodes, std::vector<int> &source, std::vector<int> &targ
     return 0.;
 }
 
-void Z2dict_short(
+void Z2dict_long(
   std::vector<std::vector<int> > &A, std::map<std::string, vertex_properties> &tree,
   const std::string key_pred, std::set<int> nodes_pred, std::vector<double> &H, std::vector<int> &source, std::vector<int> &target, const int L, const int tL, const int &nodes
 ) {
@@ -203,30 +192,25 @@ void Z2dict_short(
       nodes_com = where(A[L], nodes_pred, *com);
       compare = intersection(nodes_com, nodes_pred);
       if (compare.size() == 0) continue;
-      if (nodes_com.size() == nodes_pred.size()) {
-        Z2dict_short(A, tree, key_pred, nodes_com, H, source, target, next_L, tL, nodes);
-      }
-      else if (nodes_com.size() < nodes_pred.size()) {
+      if (nodes_com.size() <= nodes_pred.size()) {
         if (!search_key(tree, key_pred)) {
           tree[key_pred].level = tL;
           tree[key_pred].k = L;
-          tree[key_pred].node_pred = nodes_pred;
           tree[key_pred].m = nodes_pred.size();
-          tree[key_pred].D = Dc(nodes_pred, source, target); // * nodes_pred.size() / nodes;
+          tree[key_pred].D = Dc(nodes_pred, source, target) * nodes_pred.size() / nodes;
           tree[key_pred].height = H[nodes - L];
           tree[key_pred].post_key.insert(key_pred + key);
         }
         else {
           tree[key_pred].post_key.insert(key_pred + key);
         }
-        Z2dict_short(A, tree, key_pred + key, nodes_com, H, source, target, next_L, next_tL, nodes);
+        Z2dict_long(A, tree, key_pred + key, nodes_com, H, source, target, next_L, next_tL, nodes);
       }
     }
   } else {
     if (!search_key(tree, key_pred)) {
       tree[key_pred].level = tL;
       tree[key_pred].k = L;
-      tree[key_pred].node_pred = nodes_pred;
       tree[key_pred].m = nodes_pred.size();
       tree[key_pred].D = Dc(nodes_pred, source, target);
       tree[key_pred].height = H[nodes - L];
@@ -235,47 +219,15 @@ void Z2dict_short(
   }
 }
 
-bool cmp(std::pair<int, tracer_properties > &a, std::pair<int, tracer_properties > &b) {
-  return a.first > b.first;
-}
-
-std::vector<std::pair<int, tracer_properties > > sort_map(std::map<int, tracer_properties> &M) {
-  std::vector<std::pair<int, tracer_properties > > A;
-  for (auto& it : M) {
-    A.push_back(it);
-  }
-  sort(A.begin(), A.end(), cmp);
-  return A;
-}
-
-std::vector<std::pair<int, tracer_properties> > tract_tracing(std::map<std::string, vertex_properties> &tree, const int &nodes) {
+std::map<int, tracer_properties > tract_tracing(std::map<std::string, vertex_properties> &tree, const int &nodes) {
   std::map<int, tracer_properties > tracer;
   for (std::map<std::string, vertex_properties>::iterator leaf=tree.begin(); leaf != tree.end(); ++leaf) {
-    if (!search_key(tracer, leaf->second.k) && leaf->second.D > 0) {
-      tracer[leaf->second.k].node_pred = leaf->second.node_pred;
-      tracer[leaf->second.k].post_keys = leaf->second.post_key;
-      tracer[leaf->second.k].D = leaf->second.D;
-      tracer[leaf->second.k].m = leaf->second.m;
-    }
+    if (leaf->second.k == nodes) continue;
+    tracer[leaf->second.k].neighbors.push_back(leaf->first);
   }
-  for (int i=1 ; i < nodes; i ++) {
-    if (!search_key(tracer, i)) {
-      tracer[i].D = 0;
-      tracer[i].post_keys.insert("END");
-    }
-  }
-  std::vector<std::pair<int, tracer_properties> > S = sort_map(tracer);
-  return S;
+  return tracer;
 }
 
-void sum_vertices(std::map<std::string, vertex_properties> &tree, const std::string &root, int &t) {
-  for (std::set<std::string>::iterator s = tree[root].post_key.begin(); s != tree[root].post_key.end(); ++s) {
-    if ((*s).compare("END") == 0) continue;
-    t++;
-    sum_vertices(tree, *s, t);
-  }
-}
-  // double last_m = 1;
   // {0 ,0 ,0 ,0 ,0 ,0 ,0, 0, 0, 0 ,0 ,0 ,0 ,0, 0 ,0}, // 1
   // {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0}, // 2
   // {0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 2, 1, 1, 1, 1, 1}, // 3
@@ -292,58 +244,146 @@ void sum_vertices(std::map<std::string, vertex_properties> &tree, const std::str
   // {0, 1, 2, 3, 4, 5, 5, 6, 7, 8, 9, 10, 11, 12, 13, 10}, // 14
   // {0, 1, 2, 3, 4, 5, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14}, // 15
   // {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15} // 16
-void D(std::vector<std::pair<int, tracer_properties> > &tracer, std::map<std::string, vertex_properties> &tree, std::vector<double> &d, const int &nodes) {
-  std::set<int> used_nodes;
-  std::vector<int> used_nodes2;
-  std::set<int> compared;
-  for (std::vector<std::pair<int, tracer_properties> >::iterator it = tracer.begin(); it != tracer.end(); ++it) {
-    if (search_key(it->second.post_keys, "END")) {
-      d[it->first - 1] += d[it->first];
-    } else {
-      compared = intersection(used_nodes, it->second.node_pred);
-      if (compared.size() > 0) {
-        auto it1 = next(it->second.post_keys.begin(), 0);
-        auto it2 = next(it->second.post_keys.begin(), 1);
-        d[it->first - 1] = d[it->first]  + (it->second.D - tree[*it1].D - tree[*it2].D) * it->second.m / nodes;
-      } else {
-        d[it->first - 1] = d[it->first] + it->second.D * it->second.m / nodes;
+void D(std::map<int, tracer_properties > &tracer, std::map<std::string, vertex_properties> &tree, std::vector<double> &d, const int &nodes) {
+  for (std::map<int, tracer_properties>::iterator tr = tracer.begin(); tr != tracer.end(); ++tr) {
+    for (std::vector<std::string>::iterator keys=tr->second.neighbors.begin(); keys != tr->second.neighbors.end(); ++keys)
+      d[nodes - tr->first - 1] += tree[*keys].D;
+  }
+}
+
+void MU(std::map<int, tracer_properties > &tracer, std::map<std::string, vertex_properties> &tree, std::vector<double> &mu, int &alpha, double &beta, const int &nodes) {
+  int lci, lcj, K = nodes - 1;
+  double d;
+  std::vector<std::vector<int> > resevoir(nodes - 1);
+  for (std::map<int, tracer_properties>::iterator tr = tracer.begin(); tr != tracer.end(); ++tr) {
+    for (std::vector<std::string>::iterator keys=tr->second.neighbors.begin(); keys != tr->second.neighbors.end(); ++keys)
+      resevoir[nodes - tr->first - 1].push_back(tree[*keys].m);
+  }
+  for (std::vector<std::vector<int> >::iterator re = resevoir.begin(); re != resevoir.end(); ++re) {
+    sort(re->begin(), re->end(), std::greater<int>());
+    if (K >= alpha) {
+      for (int i=0; i < alpha - 1; i++) {
+        for (int j=i + 1; j < alpha; j++) {
+          if (i < re->size())
+            lci = *std::next(re->begin(), i);
+          else lci = 1;
+          if (j < re->size())
+            lcj = *std::next(re->begin(), j);
+          else lcj = 1;
+          d = lcj / (lci * 1.) ;
+          if (d > beta)
+            mu[nodes - K - 1] += d * (lcj + lci) / (2. * nodes);
+          else
+            mu[nodes- K - 1] -= d * (lcj + lci) / (2. * nodes);
+        }
       }
-      std::set_union(used_nodes.begin(), used_nodes.end(), it->second.node_pred.begin(), it->second.node_pred.end(), std::back_inserter(used_nodes2));
-      used_nodes.clear();
-      for (auto u : used_nodes2)
-        used_nodes.insert(u);
-    }
-  }
-}
-
-void level_information(std::map<std::string, vertex_properties> &tree, const std::string &root, std::map<int, level_properties> &ml) {
-  if (!search_key(tree[root].post_key, "END")) {
-    auto it1 = next(tree[root].post_key.begin(), 0);
-    auto it2 = next(tree[root].post_key.begin(), 1);
-    if (!search_key(ml, tree[root].level)) {
-      ml[tree[root].level].size = 1;
-      ml[tree[root].level].height = (2 * tree[root].height - tree[*it1].height - tree[*it2].height) / 2.;
+      mu[nodes - K - 1] /= 0.5 * alpha * (alpha - 1);
+    } else if (K >= 2) {
+      for (int i=0; i < K - 1; i++) {
+        for (int j=i + 1; j < K; j++) {
+          if (i < re->size())
+            lci = *std::next(re->begin(), i);
+          else lci = 1;
+          if (j < re->size())
+            lcj = *std::next(re->begin(), j);
+          else lcj = 1;
+          d = lcj / (lci * 1.);
+          if (d > beta)
+            mu[nodes - K - 1] += d * (lci + lcj) / (2. * nodes);
+          else
+            mu[nodes - K - 1] -= d * (lci + lcj) / (2. * nodes);
+        }
+      }
+      mu[nodes - K - 1] /= 0.5 * K  * (K - 1);
     } else {
-      ml[tree[root].level].size++;
-      ml[tree[root].level].height += (2 * tree[root].height - tree[*it1].height - tree[*it2].height) / 2.;
+      mu[nodes - K - 1] = 0.;
     }
-    for (std::set<std::string>::iterator v = tree[root].post_key.begin(); v != tree[root].post_key.end(); ++v) {
-      level_information(tree, *v, ml);
-    }
-  } 
-  else {
-    if (!search_key(ml, tree[root].level)) {
-      ml[tree[root].level].size = 1;
-      ml[tree[root].level].height = 0; //tree[root].height;
-    }
-    else {
-      ml[tree[root].level].size++;
-      ml[tree[root].level].height += 0; //tree[root].height;
-    }
+    K--;
   }
 }
 
-std::vector<std::pair<int, tracer_properties > > Z2dict(std::vector<std::vector<int> > &A,  std::map<std::string, vertex_properties> &tree, std::vector<double> &H, std::vector<int> &source, std::vector<int> &target, std::string &type) {
+void X(std::map<int, tracer_properties > &tracer, std::map<std::string, vertex_properties> &tree, std::vector<double> &x, const int &nodes) {
+  int K = nodes - 1;
+  std::vector<std::vector<int> > resevoir(nodes - 1, std::vector<int>(1));
+  for (std::map<int, tracer_properties>::iterator tr = tracer.begin(); tr != tracer.end(); ++tr) {
+    for (std::vector<std::string>::iterator keys=tr->second.neighbors.begin(); keys != tr->second.neighbors.end(); ++keys)
+      resevoir[nodes - tr->first - 1].push_back(tree[*keys].m);
+  }
+  for (std::vector<std::vector<int> >::iterator re = resevoir.begin(); re != resevoir.end(); ++re) {
+    for (auto r : *re) {
+      if (r <= 1) continue;
+      if (r != *std::next(re->begin(), 0))
+        x[nodes - K - 1] += pow(r, 2.);
+    }
+    x[nodes - K - 1] /= nodes;
+    K--;
+  }
+}
+
+void BUONO(std::map<int, tracer_properties > &tracer, std::map<std::string, vertex_properties> &tree, std::vector<std::vector<double> > &BENE, int &alpha, double &beta, const int &nodes) {
+  int lci, lcj, K = nodes - 1;
+  double d;
+  std::vector<std::vector<int> > resevoir(nodes - 1);
+  for (std::map<int, tracer_properties>::iterator tr = tracer.begin(); tr != tracer.end(); ++tr) {
+    for (std::vector<std::string>::iterator keys=tr->second.neighbors.begin(); keys != tr->second.neighbors.end(); ++keys) {
+      resevoir[nodes - tr->first - 1].push_back(tree[*keys].m);
+      BENE[nodes - tr->first - 1][2] += tree[*keys].D;
+      if (tree[*keys].D == 0)
+        BENE[nodes - tr->first - 1][3]++;
+      else
+        BENE[nodes - tr->first - 1][0]++;
+    }
+  }
+  for (std::vector<std::vector<int> >::iterator re = resevoir.begin(); re != resevoir.end(); ++re) {
+    sort(re->begin(), re->end(), std::greater<int>());
+    BENE[nodes - K - 1][5] = static_cast<double>(*std::next(re->begin(), 0)) / nodes;
+    for (auto r : *re) {
+      if (r <= 1) continue;
+      if (r != *std::next(re->begin(), 0))
+        BENE[nodes - K - 1][4] += pow(r, 2.);
+    }
+    if (K >= alpha) {
+      for (int i=0; i < alpha - 1; i++) {
+        for (int j=i + 1; j < alpha; j++) {
+          if (i < re->size())
+            lci = *std::next(re->begin(), i);
+          else lci = 1;
+          if (j < re->size())
+            lcj = *std::next(re->begin(), j);
+          else lcj = 1;
+          d = lcj / (lci * 1.) ;
+          if (d > beta)
+            BENE[nodes - K - 1][1] += d * (lcj + lci) / (2. * nodes);
+          else
+            BENE[nodes- K - 1][1] -= d * (lcj + lci) / (2. * nodes);
+        }
+      }
+      BENE[nodes - K - 1][1] /= 0.5 * alpha * (alpha - 1);
+    } else if (K >= 2) {
+      for (int i=0; i < K - 1; i++) {
+        for (int j=i + 1; j < K; j++) {
+          if (i < re->size())
+            lci = *std::next(re->begin(), i);
+          else lci = 1;
+          if (j < re->size())
+            lcj = *std::next(re->begin(), j);
+          else lcj = 1;
+          d = lcj / (lci * 1.);
+          if (d > beta)
+            BENE[nodes - K - 1][1] += d * (lci + lcj) / (2. * nodes);
+          else
+            BENE[nodes - K - 1][1] -= d * (lci + lcj) / (2. * nodes);
+        }
+      }
+      BENE[nodes - K - 1][1] /= 0.5 * K  * (K - 1);
+    } else {
+      BENE[nodes - K - 1][1] = 0.;
+    }
+    K--;
+  }
+}
+
+std::map<int, tracer_properties > Z2dict(std::vector<std::vector<int> > &A,  std::map<std::string, vertex_properties> &tree, std::vector<double> &H, std::vector<int> &source, std::vector<int> &target, std::string &type) {
   const int N = A.size();
   std::set<int> nodes;
   for (int i=0; i < A.size(); i++) {
@@ -351,17 +391,19 @@ std::vector<std::pair<int, tracer_properties > > Z2dict(std::vector<std::vector<
   }
   const int L = 1, tL = 0;
   const std::string root = "L00";
-  if (type.compare("short") == 0) Z2dict_short(A, tree, root, nodes, H, source, target, L, tL, N);
+  if (type.compare("long") == 0) Z2dict_long(A, tree, root, nodes, H, source, target, L, tL, N);
   else {
     throw std::runtime_error("\nOnly types: short\n");
   }
-  std::vector<std::pair<int, tracer_properties> > tracer = tract_tracing(tree, N);
+  std::map<int, tracer_properties >tracer = tract_tracing(tree, N);
   return tracer;
 }
 
 int main() {
   std::string root = "L00";
-  std::string t_short = "short";
+  std::string t_short = "long";
+  int alpha = 6;
+  double beta = 0.01;
 
   std::vector<std::vector<int> > a{
     {0 ,0 ,0 ,0 ,0 ,0 ,0, 0, 0, 0 ,0 ,0 ,0 ,0, 0 ,0}, // 1
@@ -409,31 +451,47 @@ int main() {
 
   std::vector<double> h_b{ 0.,  0.046875 ,  0.046875  , 0.046875, 0.07465278};
 
-  std::vector<std::pair<int, tracer_properties > > tracer = Z2dict(a, tree, h_a, out_a, in_a, t_short);
+  std::map<int, tracer_properties > tracer = Z2dict(a, tree, h_a, out_a, in_a, t_short);
 
-  std::vector<double> d(nodes, 0.);
-  D(tracer, tree, d, nodes);
+  // std::vector<double> d(nodes-1, 0.);
+  // std::vector<double> mu(nodes-1, 0.);
+  // std::vector<double> x(nodes-1, 0.);
+  // D(tracer, tree, d, nodes);
+  // MU(tracer, tree, mu, alpha, beta, nodes);
+  // X(tracer, tree, x, nodes);
 
-  for (auto it : d) {
-    std::cout << it << " ";
-  }
+  std::vector<std::vector<double> >  bene(nodes - 1, std::vector<double>(6, 0.));
+  BUONO(tracer, tree, bene, alpha, beta, nodes);
 
-  std::cout << "\n";
-
-  for (std::map<std::string, vertex_properties>::iterator it = tree.begin(); it != tree.end(); ++it) {
-    std::cout << it->first << "\t\t\t" << it->second.k << "\t" << it->second.D << std::endl;
-    // for (std::set<std::string>::iterator ii = it->second.post_key.begin(); ii != it->second.post_key.end(); ii++) {
-    //   std::cout << *ii << "\t\t";
-    // }
-    // std::cout << "\n\n";
-  }
-
-  for (auto& it : tracer) {
-    std::cout << it.first << "\t" << it.second.D << std::endl;
-    for (std::set<std::string>::iterator ip=it.second.post_keys.begin(); ip != it.second.post_keys.end(); ++ip)
-      std::cout << *ip << " ";
+  for (auto gio : bene) {
+    for (auto mio : gio) {
+      std::cout << mio << " ";
+    }
     std::cout << "\n";
   }
+
+  // for (auto it : d) {
+  //   std::cout << it << " ";
+  // }
+  // std::cout << "\n";
+
+  // for (auto it : mu) {
+  //   std::cout << it << " ";
+  // }
+  // std::cout << "\n";
+
+  // for (auto it : x) {
+  //   std::cout << it << " ";
+  // }
+  // std::cout << "\n";
+
+  // for (std::map<std::string, vertex_properties>::iterator it = tree.begin(); it != tree.end(); ++it) {
+  //   std::cout << it->first << "\t\t\t" << it->second.k << "\t" << it->second.D << std::endl;
+  //   // for (std::set<std::string>::iterator ii = it->second.post_key.begin(); ii != it->second.post_key.end(); ii++) {
+  //   //   std::cout << *ii << "\t\t";
+  //   // }
+  //   // std::cout << "\n\n";
+  // }
 
   return 0;
 }

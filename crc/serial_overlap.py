@@ -78,6 +78,8 @@ def worker_overlap(
       index=index,
       parameters = opar
     )
+    RAND.set_alpha([6, 50, 100])
+    RAND.set_beta([0.1, 0.2, 0.4])
     # Create network ----
     print("Create random graph")
     RAND.random_WDN_overlap_cpp(
