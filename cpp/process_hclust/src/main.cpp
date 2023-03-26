@@ -53,7 +53,7 @@ void intersection(
   );
 }
 
-double get_muscore(
+double mu_score(
   std::vector<int> &sizes, double &K, int& M, int& alpha, double& beta
 ) {
   double mu = 0;
@@ -121,7 +121,7 @@ std::vector<double> simplify_height_to_k_end(
   int &n,
   double* height,
   std::vector<double>& sim_height,
-  int* size
+  int  &size
 ) {
   double h = height[0];
   std::vector<double> sim_k;
@@ -131,14 +131,14 @@ std::vector<double> simplify_height_to_k_end(
         sim_k.push_back(n - i);
         sim_height.push_back(h);
         h = height[i + 1];
-        ++(*size);
+        ++(size);
       }
     } else {
       if (height[i] != height[i - 1]) {
         sim_k.push_back(n - i);
         h = height[i];
         sim_height.push_back(h);
-        ++(*size);
+        ++(size);
       }
     }
     
@@ -150,7 +150,7 @@ std::vector<double> simplify_height_to_k_start(
   int &n,
   double* height,
   std::vector<double>& sim_height,
-  int* size
+  int &size
 ) {
   double h = height[0];
   std::vector<double> sim_k;
@@ -158,13 +158,13 @@ std::vector<double> simplify_height_to_k_start(
     if (i == 0) {
       sim_k.push_back(n - 1);
       sim_height.push_back(h);
-      ++(*size);
+      ++size;
     }
     if (height[i] != h && i != 0) {
       h = height[i];
       sim_k.push_back(n - i - 1);
       sim_height.push_back(h);
-      ++(*size);
+      ++size;
     }
   }
   return sim_k;
@@ -174,27 +174,24 @@ std::vector<double> complete_height_to_k(
   int &n,
   double* height,
   std::vector<double>& sim_height,
-  int* size
+  int &size
 ) {
   std::vector<double> sim_k;
   for (int i = 0; i < n - 1; i++) {
     sim_k.push_back(n - i - 1);
     sim_height.push_back(height[i]);
-    ++(*size);
+    size++;
 }
   return sim_k;
 }
 
-double Dc(
-  int&m, int& n
-) {
-  double dc;
-  dc = static_cast<double>(m - n + 1) /
-    static_cast<double>(pow(n- 1, 2));
-  return dc;
+double Dc(int &m, int &n) {
+  double dc = (m - n + 1.) / pow(n - 1., 2.);
+  if (dc > 0) return dc;
+  else return 0;
 }
 
-double get_percolation_susceptability(std::map<int, lcprops> &v, int &N, int &order) {
+double Xsus(std::map<int, lcprops> &v, int &N, int &order) {
   double  x = 0; // percolation suceptability
   for (std::map<int, lcprops >::iterator it = v.begin(); it != v.end(); ++it) {
     if (it->second.m <= 1 || it->second.n <= 2) continue;
@@ -568,7 +565,7 @@ void ph::get_sizes(
 
 void ph::vite() {
   // Various variables ----
-  int nt, nec;
+  int nt, nec, length = 0;
   double dc;
   std::vector<double> sim_k, sim_height, dcv;
   std::vector<int> lcsizes;
@@ -578,9 +575,6 @@ void ph::vite() {
   // hclust arrays ----
   int* merge = new int[2 * (number_of_elements - 1)];
   double* height = new double[number_of_elements-1];
-  // Effective number of merging steps ----
-  int* kk = new int;
-  *kk = 0;
   int* labels = new int[number_of_elements];
   // Get condense matrix ----
   for (int i = 0, k = 0; i < number_of_elements; i++) {
@@ -598,31 +592,26 @@ void ph::vite() {
     height
   );
   if (CUT) {
-    // Delete duplicated heights preserving the
-    // first K and height ----
-    sim_k = simplify_height_to_k_start(number_of_elements, height, sim_height, kk);
+    // Delete duplicated heights preserving the first K and height ----
+    sim_k = simplify_height_to_k_start(number_of_elements, height, sim_height, length);
   } else {
-    // Keep complete the all the steps ----
-    sim_k = complete_height_to_k(number_of_elements, height, sim_height, kk);
+    // Keep the all the steps ----
+    sim_k = complete_height_to_k(number_of_elements, height, sim_height, length);
   }
-  expand_vector(K, *kk);
-  expand_vector(Height, *kk);
-  expand_vector(D, *kk);
-  expand_vector(MU, *kk);
-  expand_vector(NEC, *kk);
-  expand_vector(ntrees, *kk);
-  expand_vector(X, *kk);
-  expand_vector(XM, *kk);
-  expand_vector(OrP, *kk);
+  expand_vector(K, length);
+  expand_vector(Height, length);
+  expand_vector(D, length);
+  expand_vector(MU, length);
+  expand_vector(NEC, length);
+  expand_vector(ntrees, length);
+  expand_vector(X, length);
+  expand_vector(XM, length);
+  expand_vector(OrP, length);
   // THE GAME STARTS
-  for (int i=0; i < *kk; i++) {
-    // Assign height ----
-    // K
+  for (int i=0; i < length; i++) {
     K[i] = sim_k[i];
-    // Height
     Height[i] = sim_height[i];
-    // Cut tree at given sim_k and get
-    // memberships ----
+    // Cut tree at given sim_k and get memberships ----
     cutree_k(
       number_of_elements,
       merge,
@@ -632,40 +621,32 @@ void ph::vite() {
     std::vector<int> unique_labels(labels, labels + number_of_elements);
     unique(unique_labels);
     lcsizes = std::vector<int>(unique_labels.size(), 0);
-    // Get LCs sizes in order
+    // Get number of links and number of nodes in link communities in order
     get_sizes(sizes, labels, lcsizes, unique_labels, source_vertices, target_vertices, number_of_elements);
     nec = 0;
     nt = 0;
-    // Loop over link communities ----
+    dcv = std::vector<double>(sizes.size(), 0.);
     for (std::map<int, lcprops >::iterator it=sizes.begin(); it != sizes.end(); ++it) {
       if (it->second.m > 1 && it->second.n > 2) {
-        dc = Dc(it->second.m, it->second.n);
-        dcv.push_back(dc * it->second.m / number_of_elements);
-        if (dc <= 0) nt++;
+        dcv[nec] = Dc(it->second.m, it->second.n) * it->second.m / number_of_elements;
+        if (dcv[nec] <= 0) {
+          nt++;
+        }
         nec++;
-      } else {
-        dcv.push_back(0);
       }
     }
-    ntrees[i] = nt;
-    // Mu-score
-    MU[i] = get_muscore(lcsizes, sim_k[i], number_of_elements, ALPHA, BETA);
-    // NEC
-    NEC[i] = nec;
-    // D
     D[i] = sum(dcv);
-    // Order parameter
+    ntrees[i] = nt;
+    // NEC: number of edge compact LCs
+    NEC[i] = nec;
+    MU[i] = mu_score(lcsizes, sim_k[i], number_of_elements, ALPHA, BETA);
     OrP[i] = order_parameter(lcsizes, number_of_elements);
-    // XM
     XM[i] = Xm(sizes);
-    // X
-    X[i] = get_percolation_susceptability(sizes, number_of_elements, lcsizes[0]);
-    dcv.clear();
+    X[i] = Xsus(sizes, number_of_elements, lcsizes[0]);
     sizes.clear();
   }
-  // Delete phase
+  // Delete pointers
   delete[] labels;
-  delete kk;
   delete[] merge;
   delete[] height;
   delete[] tri_distmat;

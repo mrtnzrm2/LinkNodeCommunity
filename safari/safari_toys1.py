@@ -122,10 +122,10 @@ if __name__ == "__main__":
     ## Compute features ----
     H.BH_features_cpp()
     print(H.BH[0])
-    # ## Compute link entropy ----
-    # H.link_entropy_cpp("short", cut=cut)
-    # ## Compute lq arbre de merde ----
-    # H.la_abre_a_merde_cpp(H.BH[0])
+    ## Compute link entropy ----
+    H.link_entropy_cpp("short", cut=cut)
+    ## Compute lq arbre de merde ----
+    H.la_abre_a_merde_cpp(H.BH[0])
     # # Entropy ----
     # HS = Hierarchical_Entropy(H.H, H.leaves, labels=list(range(H.leaves)))
     # HS.Z2dict("short")

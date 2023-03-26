@@ -259,15 +259,19 @@ class Hierarchy(Sim):
     self.link_entropy = np.array(
       [entropy.get_entropy_h()[(self.leaves - max_level-1):], entropy.get_entropy_v()[(self.leaves - max_level-1):]]
     )
+    total_entropy = np.sum(self.link_entropy)
+    self.link_entropy = self.link_entropy / total_entropy
     self.link_entropy_H = np.array(
       [entropy.get_entropy_h_H()[(self.leaves - max_level-1):], entropy.get_entropy_v_H()[(self.leaves - max_level-1):]]
     )
+    total_entropy_H = np.sum(self.link_entropy_H)
+    self.link_entropy_H = self.link_entropy_H / total_entropy_H
     sh = np.nansum(self.link_entropy[0, :])
     sv = np.nansum(self.link_entropy[1, :])
-    print(f"\n\tlink entropy : {(sv + sh):.4f}, Sh : {sh:.4f}, and Sv : {sv:.4f}\n")
+    print(f"\n\tlink entropy :  Sh : {sh:.4f}, and Sv : {sv:.4f}\n")
     sh = np.nansum(self.link_entropy_H[0, :])
     sv = np.nansum(self.link_entropy_H[1, :])
-    print(f"\n\tlink entropy H: {(sv + sh):.4f}, Sh : {sh:.4f}, and Sv : {sv:.4f}\n")
+    print(f"\n\tlink entropy H: Sh : {sh:.4f}, and Sv : {sv:.4f}\n")
 
 
   def la_abre_a_merde_cpp(self, features):

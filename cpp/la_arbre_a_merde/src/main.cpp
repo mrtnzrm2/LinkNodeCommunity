@@ -182,10 +182,6 @@ std::vector<std::vector<double> > noeud_arbre::get_node_hierarchy() {
 }
 
 std::vector<std::vector<int> > noeud_arbre::get_equivalence() {
-  // for (int i=0; i < equivalence.size(); i++) {
-  //   std::cout << equivalence[i][0] << " " << equivalence[i][1] << " | ";
-  // }
-  // std::cout << "\n";
   return equivalence;
 }
 
@@ -197,26 +193,26 @@ void noeud_arbre::vite() {
   //
   std::cout << "Commencer: la abre a merde\n";
   // From distance matrix to upper triangular array
-  double* upper_distance = new double[(leaves * (leaves - 1)) / 2];
+  double* triangular_matrix = new double[(leaves * (leaves - 1)) / 2];
   for (int i = 0, k = 0; i < leaves; i++) {
     for (int j = i + 1; j < leaves; j++) {
-      upper_distance[k] = distance[i][j];
+      triangular_matrix[k] = distance[i][j];
       k++;
     }
   }
   // hclust
+  int* labels = new int[leaves];
   int* merge = new int[2 * (leaves - 1)];
   double* height = new double[leaves - 1];
   hclust_fast(
     leaves,
-    upper_distance,
+    triangular_matrix,
     linkage, // linkage method
     merge,
     height
   );
   // Get NEC >= 1
   std::vector<int> nec_more_one = NEC_one(NEC, n);
-  // Create the NumericMatrix
   // Create merge list
   std::vector<node> merge_list(nodes);
   for (int i = 0; i < nodes; i++) {
@@ -227,7 +223,6 @@ void noeud_arbre::vite() {
   for (int i = 0; i < nec_more_one.size(); i++) {
     k = K[nec_more_one[i]];
     double h = height_feature[nec_more_one[i]];
-    int* labels = new int[leaves];
     cutree_k(
       leaves,
       merge,
@@ -383,8 +378,6 @@ void noeud_arbre::vite() {
         merge_list = merge_list_clone;
       }
     }
-      // std::cout << "Warning: There must be only one community in the end.\n";
-    delete[] labels;
     if (!eq_true) {
       eq[0] = k;
       eq[1] = nodes - ct;
@@ -412,8 +405,11 @@ void noeud_arbre::vite() {
       ct++;
     }
   }
-  // Set R=1 for K=1
   equivalence[equivalence.size() - 1][1] = 1;
+  delete[] labels;
+  delete[] merge;
+  delete[] height;
+  delete[] triangular_matrix;
   std::cout << "Voila, bon ami\n";
 }
 
