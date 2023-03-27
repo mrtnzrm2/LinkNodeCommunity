@@ -9,6 +9,34 @@
 namespace py = pybind11;
 
 template<typename T>
+std::vector<double> linspace(T start_in, T end_in, int num_in)
+{
+
+  std::vector<double> linspaced;
+
+  double start = static_cast<double>(start_in);
+  double end = static_cast<double>(end_in);
+  double num = static_cast<double>(num_in);
+
+  if (num == 0) { return linspaced; }
+  if (num == 1) 
+    {
+      linspaced.push_back(start);
+      return linspaced;
+    }
+
+  double delta = (end - start) / (num - 1);
+
+  for(int i=0; i < num-1; ++i)
+    {
+      linspaced.push_back(start + delta * i);
+    }
+  linspaced.push_back(end); // I want to ensure that start and end
+                            // are exactly the same as the input
+  return linspaced;
+}
+
+template<typename T>
 void display_progress(T &ini, T &total, int &carrier, int &sp) {
   int true_percent;
   double percent = static_cast<double>(ini) / static_cast<double>(total);
@@ -186,7 +214,7 @@ std::vector<std::vector<int> > const_sample_elliptic(
 void  get_subnets(
   std::vector<std::vector<double> > &net,
   std::vector<double> &bins,
-  int &leaves, int&nbins,
+  int &leaves, int& nbins,
   std::vector<std::vector<std::vector<double> > > &subnet
 ) {
   // Declare variables ----
@@ -209,39 +237,22 @@ void  get_subnets(
 }
 
 int find_bin(double &d, std::vector<double> &bins, int & nbins) {
-  int c;
+  int c = -1;
   for (int i = 0; i < nbins - 1; i++) {
     if (i < nbins - 2) {
-      if (bins[i] <= d && bins[i + 1] > d)
+      if (bins[i] <= d && bins[i + 1] > d) {
         c = i;
+        return c;
+      }
     } else {
-      if (bins[i] <= d && bins[i + 1] + 0.1 > d)
+      if (bins[i] <= d && bins[i + 1] + 0.1 > d) {
         c = i; 
+        return c;
+      }
     }
    
   }
   return c;
-}
-
-void filter_net(
-  std::vector<std::vector<double> > &net, int &leaves,
-  double &d, std::vector<double> &bins, int &nbins,
-   std::vector<std::vector<double> > &subnet
-) {
-  // Declare variables ----
-  double dmin, dmax;
-  // Find bin ----
-  for (int i = 0; i < nbins - 1; i++) {
-    if (bins[i] <= d && bins[i + 1] > d) {
-      dmin = bins[i];
-      dmax = bins[i + 1];
-    }
-  }
-  // Get connections within bin ----
-  for (int i = 0; i < leaves; i++) {
-    if (dmin <= net[i][2] && dmax > net[i][2])
-      subnet.push_back(net[i]);
-  }
 }
 
 double sample_dist_from_prob(
@@ -327,6 +338,7 @@ std::vector<std::vector<int> > const_sample_from_prob(
     // Generate random distance
     d = sample_dist_from_prob(prob, nprob, x);
     c = find_bin(d, bins, nbins);
+    if (c == -1) continue;
     if (subnet[c].size() == 0) continue;
     r = rand() % subnet[c].size();
     A = rand() % 2;
@@ -345,6 +357,7 @@ std::vector<std::vector<int> > const_sample_from_prob(
     // Generate random distance
     d = sample_dist_from_prob(prob, nprob, x);
     c = find_bin(d, bins, nbins);
+    if (c == -1) continue;
     if (subnet[c].size() == 0) continue;
     r = rand() % subnet[c].size();
     A = rand() % 2;
@@ -368,8 +381,7 @@ std::vector<std::vector<int> > sample_distbase(
   srand(time(0));
   // Declare variables ----
   int c, r, A, B, t = 0, sp = 5;
-  double mind = bins[0], maxd = floor(bins[nbins - 1]);
-  double Rho = 0.0, d, p_d, luck;
+  double Rho = 0.0, d;
   // Declare network ----
   std::vector<std::vector<int> > NET(
     nodes, std::vector<int>(nodes, 0)
@@ -383,12 +395,11 @@ std::vector<std::vector<int> > sample_distbase(
   while (Rho <= rho) {
     display_progress(Rho, rho, t, sp);
     // Generate random distance
-    d = mind + ((maxd - mind) * (rand() % 1000) / 1000.0);
-    if (lb > 0) p_d = lb * exp(- lb * d);
-    else if (lb == 0) p_d = 0.5;
-    luck = rand() % 1000 / 1000.0;
-    if (p_d <= luck) continue;
+    d =  (rand() % 1000) / 1000.;
+    d = - log(1 - d) / lb ;
+    if (d > bins[nbins - 1]) continue;
     c = find_bin(d, bins, nbins);
+    if (c == -1) continue;
     if (subnet[c].size() == 0) continue;
     r = rand() % subnet[c].size();
     A = rand() % 2;
@@ -411,8 +422,7 @@ std::vector<std::vector<int> > sample_distbase_M(
   srand(time(0));
   // Declare variables ----
   int c, r, A, B, m = 0, t = 0, sp = 5;
-  double mind = bins[0], maxd = bins[nbins - 1];
-  double d, p_d, luck;
+  double d;
   // Declare network ----
   std::vector<std::vector<int> > NET(
     nrows, std::vector<int>(nrows, 0)
@@ -426,12 +436,11 @@ std::vector<std::vector<int> > sample_distbase_M(
   while (m <= M) {
     display_progress(m, M, t, sp);
     // Generate random distance
-    d = mind + ((maxd - mind) * (rand() % 1000) / 1000.0);
-    if (lb > 0) p_d = lb * exp(- lb * d);
-    else if (lb == 0) p_d = 0.5;
-    luck = rand() % 1000 / 1000.0;
-    if (p_d <= luck) continue;
+    d = (rand() % 1000) / 1000.;
+    d = - log(1 - d) / lb ;
+    if (d > bins[nbins - 1]) continue;
     c = find_bin(d, bins, nbins);
+    if (c == -1) continue;
     if (subnet[c].size() == 0) continue;
     r = rand() % subnet[c].size();
     A = rand() % 2;
@@ -454,8 +463,7 @@ std::vector<std::vector<int> > const_sample_distbase_M(
   srand(time(0));
   // Declare variables ----
   int c, r, A, B, m = 0, t = 0, sp = 5, Count = 0;
-  double mind = bins[0], maxd = bins[nbins - 1];
-  double d, p_d, luck;
+  double d;
   // Declare network ----
   std::vector<std::vector<int> > NET(
     nrows, std::vector<int>(nrows, 0)
@@ -465,16 +473,14 @@ std::vector<std::vector<int> > const_sample_distbase_M(
   get_subnets(
     net, bins, Drows, nbins, subnet
   );
-  std::cout << "Matching network number of\nedges in injected areas:\n";
+  std::cout << "Matching number of edges in injected areas:\n";
   while (m <= M) {
     display_progress(m, M, t, sp);
-    // Generate random distance
-    d = mind + ((maxd - mind) * (rand() % 1000) / 1000.0);
-    if (lb > 0) p_d = lb * exp(- lb * d);
-    else if (lb == 0) p_d = 0.5;
-    luck = rand() % 1000 / 1000.0;
-    if (p_d <= luck) continue;
+    d =  (rand() % 1000) / 1000.;
+    d = - log(1 - d) / lb ;
+    if (d > bins[nbins - 1]) continue;
     c = find_bin(d, bins, nbins);
+    if (c == -1) continue;
     if (subnet[c].size() == 0) continue;
     r = rand() % subnet[c].size();
     A = rand() % 2;
@@ -490,12 +496,11 @@ std::vector<std::vector<int> > const_sample_distbase_M(
   while (Count <= number_neurons) {
     display_progress(Count, number_neurons, t, sp);
     // Generate random distance
-    d = mind + ((maxd - mind) * (rand() % 1000) / 1000.0);
-    if (lb > 0) p_d = lb * exp(- lb * d);
-    else if (lb == 0) p_d = 0.5;
-    luck = rand() % 1000 / 1000.0;
-    if (p_d <= luck) continue;
+    d =  (rand() % 1000) / 1000.;
+    d = - log(1 - d) / lb ;
+    if (d > bins[nbins - 1]) continue;
     c = find_bin(d, bins, nbins);
+    if (c == -1) continue;
     if (subnet[c].size() == 0) continue;
     r = rand() % subnet[c].size();
     A = rand() % 2;
@@ -521,8 +526,7 @@ std::vector<std::vector<int> > const_sample_distbase(
   srand(time(0));
   // Declare variables ----
   int c, r, A, B, t = 0, sp = 5, Count = 0;
-  double mind = bins[0], maxd = floor(bins[nbins - 1]);
-  double Rho = 0.0, d, p_d, luck;
+  double Rho = 0.0, d;
   // Declare network ----
   std::vector<std::vector<int> > NET(
     nodes, std::vector<int>(nodes, 0)
@@ -536,13 +540,11 @@ std::vector<std::vector<int> > const_sample_distbase(
   std::cout << "Matching network density:\n";
   while (Rho <= rho) {
     display_progress(Rho, rho, t, sp);
-    // Generate random distance
-    d = mind + ((maxd - mind) * (rand() % 1000) / 1000.0);
-    if (lb > 0) p_d = lb * exp(- lb * d);
-    else if (lb == 0) p_d = 0.5;
-    luck = rand() % 1000 / 1000.0;
-    if (p_d <= luck) continue;
+    d =  (rand() % 1000) / 1000.;
+    d = - log(1 - d) / lb ;
+    if (d > bins[nbins - 1]) continue;
     c = find_bin(d, bins, nbins);
+    if (c == -1) continue;
     if (subnet[c].size() == 0) continue;
     r = rand() % subnet[c].size();
     A = rand() % 2;
@@ -559,12 +561,11 @@ std::vector<std::vector<int> > const_sample_distbase(
   while (Count <= nlinks) {
     display_progress(Count, nlinks, t, sp);
     // Generate random distance
-    d = mind + ((maxd - mind) * (rand() % 1000) / 1000.0);
-    if (lb > 0) p_d = lb * exp(- lb * d);
-    else if (lb == 0) p_d = 0.5;
-    luck = rand() % 1000 / 1000.0;
-    if (p_d <= luck) continue;
+    d = (rand() % 1000) / 1000.;
+    d = - log(1 - d) / lb ;
+    if (d > bins[nbins - 1]) continue;
     c = find_bin(d, bins, nbins);
+    if (c == -1) continue;
     if (subnet[c].size() == 0) continue;
     r = rand() % subnet[c].size();
     A = rand() % 2;
