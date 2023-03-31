@@ -163,7 +163,7 @@ class PLOT_S:
       ax[0, 0].text(
         x = 0.5, y = 0.5,
         s = "{:.5f}\n{:.5f}".format(
-          os_ttest.pvalue[0], osd_ttest.pvalue[0]
+          os_ttest.pvalue, osd_ttest.pvalue
         ),
         ha='center', va='center',
         transform=ax[0, 0].transAxes

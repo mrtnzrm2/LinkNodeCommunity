@@ -20,7 +20,7 @@ from crc.serial_swaps import worker_swaps
 THE_ARRAY = pd.DataFrame()
 ## distbase ----
 worker = ["distbase"]
-distbases = ["DEN", "M"]
+distbases = ["EXPMLE", "EXPTRUNC", "PARETO", "PARETOTRUNC"]
 cut = [F]
 topology = ["TARGET", "SOURCE", "MIX"]
 bias = [1e-5, 1e-2, 0.1, 0.3, 0.5]
@@ -124,10 +124,10 @@ array_swaps = pd.DataFrame(
   }
 )
 ## Merge arrays -----------------
-# THE_ARRAY = pd.concat([THE_ARRAY, array_distbase], ignore_index=True)
-THE_ARRAY = pd.concat([THE_ARRAY, array_scalefree], ignore_index=True)
-THE_ARRAY = pd.concat([THE_ARRAY, array_overlap], ignore_index=True)
-# THE_ARRAY = pd.concat([THE_ARRAY, array_swaps], ignore_index=True)
+THE_ARRAY = pd.concat([THE_ARRAY, array_distbase], ignore_index=True)
+# THE_ARRAY = pd.concat([THE_ARRAY, array_scalefree], ignore_index=True)
+# THE_ARRAY = pd.concat([THE_ARRAY, array_overlap], ignore_index=True)
+THE_ARRAY = pd.concat([THE_ARRAY, array_swaps], ignore_index=True)
 
 
 def NoGodsNoMaster(number_of_iterations, t):
@@ -219,4 +219,4 @@ if __name__ == "__main__":
   from collections import Counter
   print(Counter(THE_ARRAY.worker))
   print(THE_ARRAY.iloc[t - 1])
-  NoGodsNoMaster(number_of_iterations, t)
+  # NoGodsNoMaster(number_of_iterations, t)

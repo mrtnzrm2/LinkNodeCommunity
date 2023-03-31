@@ -37,6 +37,7 @@ class Plot_N:
   def A_vs_dis(self, A, s=1, name="weight", on=True, **kwargs):
     if on:
       print("Plot {} vs dist!!!".format(name))
+      from various.fit_tools import linear_fit
       # Get data ----
       dA = adj2df(A.copy())
       dD = adj2df(
@@ -151,29 +152,25 @@ class Plot_N:
       print("No histogram")
 
   def projection_probability(
-    self, C, bins=20, on=True, **kwargs
+    self, C, model ,bins=20, on=True, **kwargs
   ):
     if on:
       print("Plot neuron-distance freq!!!")
       # Distance range ----
-      _, x, y = range_and_probs_from_DC(
-        self.D, C, self.nodes, bins
-      )
       from pandas import DataFrame
+      from various.fit_tools import fitters
+      _, x, y = range_and_probs_from_DC(self.D, C, self.nodes, bins)
       y = np.exp(y)
-      _, x_range_model, _, _, model = predicted_D_frequency(
-        self.D, C, self.nodes, bins, **kwargs
-      )
-      y_pred = 0
-      y_pred = model.predict(
+      _, _, _, _, est = fitters[model](self.D, C, self.nodes, bins, **kwargs)
+      y_pred = est.predict(
         x.reshape(-1, 1)
       )
       y_pred = np.exp(y_pred)
       data = DataFrame(
         {
           "dist" : np.round(x, 1).astype(str),
-          "prob" : y,
-          "pred" : y_pred
+          "prob" : y.ravel(),
+          "pred" : y_pred.ravel()
         }
       )
       data = data.loc[
@@ -200,7 +197,7 @@ class Plot_N:
       )
       # Plot prediction ----
       ## Plot pred ----
-      label="linear model"
+      label="model"
       sns.lineplot(
         data=data,
         linewidth=2,
@@ -210,14 +207,14 @@ class Plot_N:
         label=label,
         ax=ax
       )
-      ax.text(
-          0.5, 1.05,
-          s="linear coeff: {:.5f}".format(
-            model.coef_[0]
-          ),
-          ha='center', va='center',
-          transform=ax.transAxes
-      )
+      # ax.text(
+      #     0.5, 1.05,
+      #     s="linear coeff: {:.5f}".format(
+      #       model.coef_[0]
+      #     ),
+      #     ha='center', va='center',
+      #     transform=ax.transAxes
+      # )
       ax.set_yscale('log')
       ax.legend()
       # Aesthetics ----
@@ -262,14 +259,14 @@ class Plot_N:
       else:
         plt.savefig(
           os.path.join(
-            plot_path, "bin_{}.png".format(bins)
+            plot_path, "bin_{}_{}.png".format(bins, model)
           ),
           dpi=200
         )
     else:
       print("No histogram")
 
-  def histogram_weight(self, A, feature="", on=True):
+  def histogram_weight(self, A, label="", on=True):
     if on:
       print("Plot weight histogram!!!")
       # Transform FLN to DataFrame ----
@@ -304,7 +301,7 @@ class Plot_N:
       # Save plot ----
       plt.savefig(
         os.path.join(
-          plot_path, "weight_histo.png"
+          plot_path, f"weight_histo{label}.png"
         ),
         dpi=300
       )

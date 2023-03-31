@@ -45,70 +45,6 @@ def minus_one_Dc(dA):
     if Dc <= 0:
       dA["id"].loc[dA["id"] == id] = -1
 
-# def gp_fit(x, y, **kwargs):
-#   from sklearn.gaussian_process import GaussianProcessRegressor
-#   from sklearn.gaussian_process.kernels import RBF, WhiteKernel, DotProduct
-#   kernel = RBF(2) + WhiteKernel()
-#   gpr = GaussianProcessRegressor(
-#     kernel=kernel, random_state=0
-#   ).fit(x.reshape(-1, 1), y)
-#   print("> Running gaussian regression")
-#   return gpr
-
-# def piecewise_poly_fit(x, y, th=50, **kwargs):
-#   # Regression ----
-#   from sklearn.pipeline import make_pipeline
-#   from sklearn.preprocessing import PolynomialFeatures, StandardScaler
-#   from sklearn.linear_model import ARDRegression
-#   ## Linear part ----
-#   x_1 = x[x <= th]
-#   y_1 = y[x <= th]
-#   poly_1 = make_pipeline(
-#       PolynomialFeatures(degree=1, include_bias=True),
-#       StandardScaler(),
-#       ARDRegression(),
-#   ).fit(
-#     x_1.reshape(-1, 1), y_1
-#   )
-#   ### Cubic part ----
-#   x_2 = x[x > th]
-#   y_2 = y[x > th]
-#   poly_2 = make_pipeline(
-#       PolynomialFeatures(degree=3, include_bias=True),
-#       StandardScaler(),
-#       ARDRegression(),
-#   ).fit(
-#     x_2.reshape(-1, 1), y_2
-#   )
-#   return poly_1, poly_2
-
-# def poly_fit(x, y, deg=1, **kwargs):
-#   # Regression ----
-#   from sklearn.pipeline import make_pipeline
-#   from sklearn.preprocessing import PolynomialFeatures, StandardScaler
-#   from sklearn.linear_model import ARDRegression
-#   ard_poly = make_pipeline(
-#       PolynomialFeatures(degree=deg, include_bias=True),
-#       StandardScaler(),
-#       ARDRegression(),
-#   ).fit(
-#     x.reshape(-1, 1), y
-#   )
-#   print("> Polynomial coefficients' means:")
-#   print(ard_poly[2].coef_)
-#   return ard_poly
-
-def linear_fit(x, y):
-  # Regression ----
-  # x = (x - np.mean(x)) / np.std(x)
-  from sklearn.linear_model import LinearRegression
-  line_poly = LinearRegression(fit_intercept=True).fit(
-    x.reshape(-1, 1), y
-  )
-  print("> Linear coefficients' means:")
-  print(line_poly.coef_)
-  return line_poly
-
 def range_and_probs_from_DC(D, C, nodes, bins):
   D_ = D[:, :nodes]
   # Treat distances ----
@@ -123,25 +59,18 @@ def range_and_probs_from_DC(D, C, nodes, bins):
     for j in np.arange(C.shape[1]):
       d = D[i, j]
       for k in np.arange(d_range.shape[0] - 1):
-        if d_range[k] <= d and d_range[k + 1] > d:
-          counts[k] += C[i, j]
-          break
+        if k <= d_range.shape[0] - 3:
+          if d_range[k] <= d and d_range[k + 1] > d:
+            counts[k] += C[i, j]
+            break
+        else:
+          if d_range[k] <= d and d_range[k + 1] + 0.1 > d:
+            counts[k] += C[i, j]
+            break
   # Prepare x and y ----
   y = np.log(counts /(np.sum(counts) * 2 * delta))
   x = d_range[:-1] + delta
   return d_range, x, y
-
-def predicted_D_frequency(D, C, nodes, bins, npoints=100, **kwargs):
-  d_range, x, y = range_and_probs_from_DC(D, C, nodes, bins)
-  x = x[y > -np.Inf]
-  y = y[y > -np.Inf]
-  ## Get prob ----
-  pred = linear_fit(x, y)
-  x = np.linspace(
-    np.min(D[D > 0]),np.max(D), npoints
-  ).reshape(-1, 1)
-  prob = pred.predict(x)
-  return d_range, x.reshape(-1), prob, np.zeros(prob.shape), pred
 
 def get_best_kr(score, H):
   k = 1

@@ -110,6 +110,12 @@ def exp_count_mapping(A, *args, **kwargs):
   AA = np.log(1 + AA)
   return AA, 0, 0
 
+def cum_exp_mapping(A, *args, **kwargs):
+  AA = A.copy().astype(float)
+  np.fill_diagonal(AA, np.nan)
+  AA = - np.log(1 - AA) / 0.07921125
+  return AA, 0, 0
+
 def trivial_mapping(A, *args, **kwargs):
   AA = A.copy().astype(float)
   np.fill_diagonal(AA, np.nan)
@@ -120,5 +126,6 @@ maps = {
   "R2" : normal_mapping,
   "R3" : entropy_mapping,
   "R4" : exp_count_mapping,
-  "trivial" : trivial_mapping
+  "trivial" : trivial_mapping,
+  "cum_exp" : cum_exp_mapping
 }

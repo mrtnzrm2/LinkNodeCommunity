@@ -2,7 +2,8 @@
 #include <vector>
 #include <stdlib.h>
 #include <math.h>
-#include<ctime> // time
+#include <ctime> // time
+#include <map>
 #include <pybind11/stl.h>
 #include <pybind11/pybind11.h>
 
@@ -236,6 +237,15 @@ void  get_subnets(
   }
 }
 
+std::vector<std::vector<double> > find_bin(double &d, std::vector<std::vector<double> >  &net) {
+  std::vector<std::vector<double> > subnet;
+  for (int i = 0; i < net.size(); i++) {
+    if (d >= net[i][2] - 1e-2 && d < net[i][2] + 1e-2)
+      subnet.push_back(net[i]);  
+  }
+  return subnet;
+}
+
 int find_bin(double &d, std::vector<double> &bins, int & nbins) {
   int c = -1;
   for (int i = 0; i < nbins - 1; i++) {
@@ -371,10 +381,153 @@ std::vector<std::vector<int> > const_sample_from_prob(
   return NET;
 }
 
+std::vector<std::vector<int> > sample_pareto(
+  std::vector<std::vector<double> > &net,
+  std::vector<double> &bins, int &nbins,
+  int &nodes, int &ncols, int &leaves,
+  double &rho, double &a, double &xm, double &xx
+) {
+  // Change random seed ----
+  srand(time(0));
+  // Declare variables ----
+  int c, r, A, B, t = 0, sp = 5;
+  double Rho = 0.0, d;
+  //
+  std::vector<std::vector<std::vector<double> > > subnet;
+  get_subnets(net, bins, leaves, nbins, subnet);
+  // Declare network ----
+  std::vector<std::vector<int> > NET(nodes, std::vector<int>(nodes, 0));
+  std::cout << "Matching network density:\n";
+  while (Rho < rho) {
+    display_progress(Rho, rho, t, sp);
+    // Generate random distance
+    d = (rand() % 1000) / 1000.;
+    // std::cout << d << "\t" <<  "HELP\n";
+    d = xm * pow(1 - d, -1/a);
+    // std::cout << d << "\tNohelper\n";
+    if (d > xx || d < xm) continue;
+    c = find_bin(d, bins, nbins);
+    if (c == -1) continue;
+    if (subnet[c].size() == 0) continue;
+    r = rand() % subnet[c].size();
+    A = rand() % 2;
+    if (A == 0) B = 1;
+    else B = 0;
+    NET[subnet[c][r][A]][subnet[c][r][B]]++;
+    network_density(NET, ncols, Rho);
+  }
+  if (Rho > rho)
+     NET[subnet[c][r][A]][subnet[c][r][B]]--;
+  std::cout << "\nDone!\n";
+  return NET;
+}
+
+std::vector<std::vector<int> > sample_pareto_trunc(
+  std::vector<std::vector<double> > &net,
+  std::vector<double> &bins, int &nbins,
+  int &nodes, int &ncols, int &leaves,
+  double &rho, double &a, double &xm, double &xx
+) {
+  // Change random seed ----
+  srand(time(0));
+  // Declare variables ----
+  int c, r, A, B, t = 0, sp = 5;
+  double Rho = 0.0, d;
+  //
+  std::vector<std::vector<std::vector<double> > > subnet;
+  get_subnets(net, bins, leaves, nbins, subnet);
+  // Declare network ----
+  std::vector<std::vector<int> > NET(nodes, std::vector<int>(nodes, 0));
+  std::cout << "Matching network density:\n";
+  while (Rho < rho) {
+    display_progress(Rho, rho, t, sp);
+    // Generate random distance
+    d = (rand() % 1000) / 1000.;
+    // std::cout << d << "\t" <<  "HELP\n";
+    d = xm * pow(1 - d * (1 - pow(xm / xx, a)), -1 / a);
+    // std::cout << d << "\tNohelper\n";
+    if (d > xx || d < xm) continue;
+    c = find_bin(d, bins, nbins);
+    if (c == -1) continue;
+    if (subnet[c].size() == 0) continue;
+    r = rand() % subnet[c].size();
+    A = rand() % 2;
+    if (A == 0) B = 1;
+    else B = 0;
+    NET[subnet[c][r][A]][subnet[c][r][B]]++;
+    network_density(NET, ncols, Rho);
+  }
+  if (Rho > rho)
+     NET[subnet[c][r][A]][subnet[c][r][B]]--;
+  std::cout << "\nDone!\n";
+  return NET;
+}
+
+std::vector<std::vector<int> > const_sample_pareto(
+  std::vector<std::vector<double> > &net,
+  std::vector<double> &bins, int &nbins,
+  int &nodes, int &leaves, int &M,
+  double &rho, double &a, double &xm, double &xx,
+  int &nrows, int &ncols
+) {
+  // Change random seed ----
+  srand(time(0));
+  // Declare variables ----
+  int c, r, A, B, t = 0, sp = 5, Count = 0;
+  double Rho = 0.0, d;
+  //
+  std::vector<std::vector<std::vector<double> > > subnet;
+  get_subnets(net, bins, leaves, nbins, subnet);
+  // Declare network ----
+  std::vector<std::vector<int> > NET(nodes, std::vector<int>(nodes, 0));
+  std::cout << "Matching network density:\n";
+  while (Rho < rho) {
+    display_progress(Rho, rho, t, sp);
+    // Generate random distance
+    d = (rand() % 1000) / 1000.;
+    d = xm * pow(1 - d, -1/a);
+    if (d > xx || d < xm) continue;
+    c = find_bin(d, bins, nbins);
+    if (c == -1) continue;
+    if (subnet[c].size() == 0) continue;
+    r = rand() % subnet[c].size();
+    A = rand() % 2;
+    if (A == 0) B = 1;
+    else B = 0;
+    NET[subnet[c][r][A]][subnet[c][r][B]]++;
+    network_density(NET, ncols, Rho);
+  }
+  if (Rho > rho)
+     NET[subnet[c][r][A]][subnet[c][r][B]]--;
+  // Filing up until reaching the same number of neurons ----
+  std::cout << "\nMatching number of neurons:\n";
+  t = 0;
+  network_count_M(NET, nrows, ncols, Count);
+  while (Count <= M) {
+    display_progress(Count, M, t, sp);
+    // Generate random distance
+    d = (rand() % 1000) / 1000.;
+    d = xm * pow(1 - d, -1/a);
+    if (d > xx || d < xm) continue;
+    c = find_bin(d, bins, nbins);
+    if (c == -1) continue;
+    if (subnet[c].size() == 0) continue;
+    r = rand() % subnet[c].size();
+    A = rand() % 2;
+    if (A == 0) B = 1;
+    else B = 0;
+    if (NET[subnet[c][r][A]][subnet[c][r][B]] == 0) continue;
+    NET[subnet[c][r][A]][subnet[c][r][B]]++;
+    if (subnet[c][r][A] < nrows && subnet[c][r][B] < ncols) Count++;
+  }
+  std::cout << "\nDone!\n";
+  return NET;
+}
+
 std::vector<std::vector<int> > sample_distbase(
   std::vector<std::vector<double> > &net,
   std::vector<double> &bins, int &nbins,
-  int &nodes, int &leaves,
+  int &nodes, int &ncols, int &leaves,
   double &rho, double &lb
 ) {
   // Change random seed ----
@@ -392,7 +545,7 @@ std::vector<std::vector<int> > sample_distbase(
     net, bins, leaves, nbins, subnet
   );
   std::cout << "Matching network density:\n";
-  while (Rho <= rho) {
+  while (Rho < rho) {
     display_progress(Rho, rho, t, sp);
     // Generate random distance
     d =  (rand() % 1000) / 1000.;
@@ -406,8 +559,53 @@ std::vector<std::vector<int> > sample_distbase(
     if (A == 0) B = 1;
     else B = 0;
     NET[subnet[c][r][A]][subnet[c][r][B]]++;
-    network_density(NET, nodes, Rho);
+    network_density(NET, ncols, Rho);
   }
+  if (Rho > rho)
+     NET[subnet[c][r][A]][subnet[c][r][B]]--;
+  std::cout << "\nDone!\n";
+  return NET;
+}
+
+std::vector<std::vector<int> > sample_distbase_trunc(
+  std::vector<std::vector<double> > &net,
+  std::vector<double> &bins, int &nbins,
+  int &nodes, int &ncols, int &leaves,
+  double &rho, double &lb, double &xmin, double &xmax
+) {
+  // Change random seed ----
+  srand(time(0));
+  // Declare variables ----
+  int c, r, A, B, t = 0, sp = 5;
+  double Rho = 0.0, d;
+  // Declare network ----
+  std::vector<std::vector<int> > NET(
+    nodes, std::vector<int>(nodes, 0)
+  );
+  // Categorize distances ----
+  std::vector<std::vector<std::vector<double> > > subnet;
+  get_subnets(
+    net, bins, leaves, nbins, subnet
+  );
+  std::cout << "Matching network density:\n";
+  while (Rho < rho) {
+    display_progress(Rho, rho, t, sp);
+    // Generate random distance
+    d =  (rand() % 1000) / 1000.;
+    d = xmin - log(1. - d * (1. - exp(-lb * (xmax - xmin)))) / lb ;
+    if (d > xmax) continue;
+    c = find_bin(d, bins, nbins);
+    if (c == -1) continue;
+    if (subnet[c].size() == 0) continue;
+    r = rand() % subnet[c].size();
+    A = rand() % 2;
+    if (A == 0) B = 1;
+    else B = 0;
+    NET[subnet[c][r][A]][subnet[c][r][B]]++;
+    network_density(NET, ncols, Rho);
+  }
+  if (Rho > rho)
+     NET[subnet[c][r][A]][subnet[c][r][B]]--;
   std::cout << "\nDone!\n";
   return NET;
 }
@@ -519,7 +717,7 @@ std::vector<std::vector<int> > const_sample_distbase_M(
 std::vector<std::vector<int> > const_sample_distbase(
   std::vector<std::vector<double> > &net,
   std::vector<double> &bins, int &nbins,
-  int &nodes, int &leaves, int &nlinks,
+  int &nodes, int &ncols, int &leaves, int &nlinks,
   double &rho, double &lb
 ) {
   // Change random seed ----
@@ -538,7 +736,7 @@ std::vector<std::vector<int> > const_sample_distbase(
   );
   // Start getting right density ----
   std::cout << "Matching network density:\n";
-  while (Rho <= rho) {
+  while (Rho < rho) {
     display_progress(Rho, rho, t, sp);
     d =  (rand() % 1000) / 1000.;
     d = - log(1 - d) / lb ;
@@ -551,8 +749,10 @@ std::vector<std::vector<int> > const_sample_distbase(
     if (A == 0) B = 1;
     else B = 0;
     NET[subnet[c][r][A]][subnet[c][r][B]]++;
-    network_density(NET, nodes, Rho);
+    network_density(NET, ncols, Rho);
   }
+  if (Rho > rho)
+     NET[subnet[c][r][A]][subnet[c][r][B]]--;
   std::cout << "\nDone!\n";
   // Start matching count number ----
   std::cout << "\nMatching count quantity:\n";
@@ -574,7 +774,7 @@ std::vector<std::vector<int> > const_sample_distbase(
     if (NET[subnet[c][r][A]][subnet[c][r][B]] == 0)
       continue;
     NET[subnet[c][r][A]][subnet[c][r][B]]++;
-    network_count(NET, nodes, Count);
+    network_count_M(NET, nodes, ncols, Count);
   }
   std::cout << "\nDone!\n";
   return NET;
@@ -650,8 +850,32 @@ PYBIND11_MODULE(rand_network, m) {
   );
 
   m.def(
+    "sample_pareto",
+    &sample_pareto,
+    py::return_value_policy::reference_internal
+  );
+
+  m.def(
+    "sample_pareto_trunc",
+    &sample_pareto_trunc,
+    py::return_value_policy::reference_internal
+  );
+
+  m.def(
+    "const_sample_pareto",
+    &const_sample_pareto,
+    py::return_value_policy::reference_internal
+  );
+
+  m.def(
     "sample_distbase",
     &sample_distbase,
+    py::return_value_policy::reference_internal
+  );
+
+  m.def(
+    "sample_distbase_trunc",
+    &sample_distbase_trunc,
     py::return_value_policy::reference_internal
   );
 

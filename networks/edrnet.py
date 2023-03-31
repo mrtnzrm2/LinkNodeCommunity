@@ -45,7 +45,7 @@ class EDR:
     # Parameters ----
     self.nodes = nodes
     ## Define mu-score parameters ----
-    self.Alpha = np.array([6])
+    self.Alpha = np.array([6, 20])
     beta1 = np.linspace(0.01, 0.2, 4)
     beta2 = np.linspace(0.2, 0.4, 2)[1:]
     self.Beta = np.hstack((beta1, beta2))
@@ -59,6 +59,11 @@ class EDR:
   def den(self, A):
     m = np.sum(A[:self.nodes, :self.nodes] > 0)
     return m / (self.nodes * (self.nodes - 1))
+  
+  def Den(self, A):
+    n = A.shape[0]
+    m = np.sum(A > 0)
+    return m / (n * (n - 1))
 
   def count(self, A):
     return np.sum(A)

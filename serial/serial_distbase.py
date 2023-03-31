@@ -19,24 +19,26 @@ from networks.structure import MAC
 from networks.distbase import DISTBASE
 from various.data_transformations import maps
 from various.network_tools import *
+from various.fit_tools import fitters
+
 # Declare global variables NET ----
 MAXI = 100
 linkage = "single"
 nlog10 = T
 lookup = F
-prob = F
+prob = T
 cut = F
 run = T
-structure = "LN"
-distance = "tracto16"
+structure = "FLN"
+distance = "MAP3D"
 nature = "original"
 mode = "ALPHA"
 topology = "MIX"
-mapping = "R4"
-index  = "simple"
+mapping = "R2"
+index  = "jacw"
 imputation_method = ""
-opt_score = ["_maxmu", "_X"]
-save_data = F
+opt_score = ["_maxmu", "_X", "_D"]
+save_data = T
 # Statistic test ----
 alternative = "less"
 # Declare global variables DISTBASE ----
@@ -44,30 +46,30 @@ total_nodes = 106
 __inj__ = 57
 __nodes__ = 57
 __version__ = 220830
-__model__ = "CONSTM"
+__model__ = "EXPMLE"
 __bin__ = 12
-bias = float(0)
-# Print summary ----
-print("For NET parameters:")
-print(
-  "linkage: {}\nmode: {}\nscore: {}\nnlog: {}\nlookup : {}".format(
-    linkage, mode, opt_score, nlog10, lookup
-  )
-)
-print("For imputation parameters:")
-print(
-  "nature: {}\nmodel: {}".format(
-    nature, imputation_method
-  )
-)
-print("Random network and statistical paramteres:")
-print(
-  "distbase: {}\nnodes: {}\ninj: {}\nalternative: {}".format(
-    __model__, str(__nodes__),str(__inj__), alternative
-  )
-)
+bias = float(0.3)
 # Start main ----
 if __name__ == "__main__":
+  # Print summary ----
+  print("For NET parameters:")
+  print(
+    "linkage: {}\nmode: {}\nscore: {}\nnlog: {}\nlookup : {}".format(
+      linkage, mode, opt_score, nlog10, lookup
+    )
+  )
+  print("For imputation parameters:")
+  print(
+    "nature: {}\nmodel: {}".format(
+      nature, imputation_method
+    )
+  )
+  print("Random network and statistical paramteres:")
+  print(
+    "distbase: {}\nnodes: {}\ninj: {}\nalternative: {}".format(
+      __model__, str(__nodes__),str(__inj__), alternative
+    )
+  )
   print("Load MAC data ----")
   # Create macaque class ----
   NET = MAC(
@@ -83,6 +85,8 @@ if __name__ == "__main__":
     mapping=mapping,
     cut=cut, b=bias
   )
+  _, _, _, _, est = fitters[__model__](NET.D, NET.C, NET.nodes, __bin__)
+  lb = est.coef_[0]
   # Load hierarhical analysis ----
   NET_H = read_class(
     NET.pickle_path,
@@ -109,7 +113,7 @@ if __name__ == "__main__":
         nlog10=nlog10, lookup=lookup, cut=cut,
         topology=topology, distance=distance,
         index=index, mapping=mapping,
-        lb=0.07921125, b=bias
+        lb=lb, b=bias
       )
       RAND.create_pickle_path()
       # Create distance matrix ----
@@ -195,7 +199,7 @@ if __name__ == "__main__":
   print("Statistical analysis")
   plot_s = PLOT_S(data)
   plot_s.plot_measurements_Entropy(on=T)
-  plot_s.plot_measurements_Entropy_noodle(on=T)
+  plot_s.plot_measurements_Entropy_noodle(on=F)
   plot_s.plot_stats(alternative=alternative, on=T)
   plot_s.plot_measurements_D(on=T)
   plot_s.plot_measurements_X(on=T)

@@ -17,6 +17,7 @@ from networks.structure import MAC
 from networks.distbase import DISTBASE
 from various.data_transformations import maps
 from various.network_tools import *
+from various.fit_tools import fitters
 
 def worker_distbase(
   number_of_iterations : int, number_of_inj : int,
@@ -32,7 +33,7 @@ def worker_distbase(
   distance = "MAP3D"
   mode = "ALPHA"
   imputation_method = ""
-  opt_score = ["_maxmu", "_X"]  
+  opt_score = ["_maxmu", "_X", "_D"]  
   # Statistic test ----
   alternative = "less"
   # Declare global variables DISTBASE ----
@@ -77,6 +78,8 @@ def worker_distbase(
     index=index, mapping=mapping,
     cut=cut, b=bias
   )
+  _, _, _, _, est = fitters[__model__](NET.D, NET.C, NET.nodes, __bin__)
+  lb = est.coef_[0]
   # Load hierarhical analysis ----
   NET_H = read_class(
     NET.pickle_path,
@@ -102,7 +105,7 @@ def worker_distbase(
         nlog10=nlog10, lookup=lookup, cut=cut,
         topology=topology, distance=distance,
         mapping=mapping, index=index, b=bias,
-        lb=0.07921125
+        lb=lb
       )
     # Create distance matrix ----
     D = RAND.get_distance_matrix(NET.struct_labels)

@@ -70,12 +70,14 @@ class DISTBASE(EDR):
     self.overlap = np.array(["UNKNOWN"] * self.nodes)
     # dict sample_dist ----
     self.distbase_dict = {
-      "DEN" : self.random_net,
+      "EXPMLE" : self.random_net,
+      "EXPTRUNC" : self.random_exp_trunc,
+      "PARETO" : self.random_pareto,
+      "PARETOTRUNC" : self.random_pareto_trunc,
       "CONSTDEN" : self.random_const_net,
       "M" : self.random_net_M,
       "CONSTM": self.random_net_const_M,
-      "PROB" : self.random_prob,
-      "CONSTPROB": self.random_const_prob
+      "CONSTPARETO" : self.random_const_pareto
     }
 
   def create_plot_path(self):
@@ -140,6 +142,133 @@ class DISTBASE(EDR):
     # Create range boundaries ----
     b = np.linspace(wmin, wmax, self.bin)
     return b
+  
+  def random_pareto(self, D, *args, run=True, **kwargs):
+    path = os.path.join(
+      self.csv_path, "Count.csv"
+    )
+    if run:
+      if not os.path.exists(path):
+        # Prepare data ----
+        dD = adj2df(D.copy())
+        dD = dD.loc[
+          dD["source"] < dD["target"]
+        ]
+        # Get bin ranges ----
+        bin_ranges = self.binnarize(D)
+        # dD = dD.sort_values(by="weight", ascending=True)
+        dD = dD.to_numpy()
+        # Initiate samplenet ----
+        from rand_network import sample_pareto
+        NET = sample_pareto(
+          dD, bin_ranges, self.bin,
+          D.shape[0], args[0].shape[1], dD.shape[0], self.rho,
+          self.lb, np.nanmin(D[D > 0])-1e-8, np.nanmax(D)
+        )
+        NET = np.array(NET)
+        print("NET density: {:.5f}".format(self.den(NET)))
+        print("NET Density: {:.5f}".format(self.Den(NET)))
+        if "on_save_csv" in kwargs.keys():
+          if kwargs["on_save_csv"]:
+            np.savetxt(
+              path, NET, delimiter=","
+            )
+      else:
+        NET = np.genfromtxt(path, delimiter=",")
+        print(
+          "NET density: {:.5f}".format(self.den(NET))
+        )
+    else:
+      NET = np.genfromtxt(path, delimiter=",")
+      print(
+        "NET density: {:.5f}".format(self.den(NET))
+      )
+    return NET
+  
+  def random_pareto_trunc(self, D, *args, run=True, **kwargs):
+    path = os.path.join(
+      self.csv_path, "Count.csv"
+    )
+    if run:
+      if not os.path.exists(path):
+        # Prepare data ----
+        dD = adj2df(D.copy())
+        dD = dD.loc[
+          dD["source"] < dD["target"]
+        ]
+        # Get bin ranges ----
+        bin_ranges = self.binnarize(D)
+        # dD = dD.sort_values(by="weight", ascending=True)
+        dD = dD.to_numpy()
+        # Initiate samplenet ----
+        from rand_network import sample_pareto_trunc
+        NET = sample_pareto_trunc(
+          dD, bin_ranges, self.bin,
+          D.shape[0], args[0].shape[1], dD.shape[0], self.rho,
+          self.lb, np.min(D[D > 0]), np.nanmax(D)
+        )
+        NET = np.array(NET)
+        print("NET density: {:.5f}".format(self.den(NET)))
+        print("NET Density: {:.5f}".format(self.Den(NET)))
+        if "on_save_csv" in kwargs.keys():
+          if kwargs["on_save_csv"]:
+            np.savetxt(
+              path, NET, delimiter=","
+            )
+      else:
+        NET = np.genfromtxt(path, delimiter=",")
+        print(
+          "NET density: {:.5f}".format(self.den(NET))
+        )
+    else:
+      NET = np.genfromtxt(path, delimiter=",")
+      print(
+        "NET density: {:.5f}".format(self.den(NET))
+      )
+    return NET
+  
+  def random_const_pareto(self, D, *args, run=True, **kwargs):
+    path = os.path.join(
+      self.csv_path, "Count.csv"
+    )
+    if run:
+      if not os.path.exists(path):
+        # Prepare data ----
+        dD = adj2df(D.copy())
+        dD = dD.loc[
+          dD["source"] < dD["target"]
+        ]
+        # Get bin ranges ----
+        bin_ranges = self.binnarize(D)
+        # dD = dD.sort_values(by="weight", ascending=True)
+        dD = dD.to_numpy()
+        # Number of neurons ----
+        counter = np.sum(args[0]).astype(int)
+        # Initiate samplenet ----
+        from rand_network import const_sample_pareto
+        NET = const_sample_pareto(
+          dD, bin_ranges, self.bin,
+          D.shape[0], dD.shape[0], counter, self.rho,
+          self.lb, np.nanmin(D[D > 0])-1e-8, np.nanmax(D),
+          args[0].shape[0], args[0].shape[1]
+        )
+        NET = np.array(NET)
+        print("NET density: {:.5f}".format(self.den(NET)))
+        print("NET Density: {:.5f}".format(self.Den(NET)))
+        print("NET count M: {}".format(self.count_M(NET)))
+        if "on_save_csv" in kwargs.keys():
+          if kwargs["on_save_csv"]:
+            np.savetxt(path, NET, delimiter=",")
+      else:
+        NET = np.genfromtxt(path, delimiter=",")
+        print("NET density: {:.5f}".format(self.den(NET)))
+        print("NET count M: {}".format(self.count_M(NET)))
+    else:
+      NET = np.genfromtxt(path, delimiter=",")
+      print("NET density: {:.5f}".format(self.den(NET)))
+      print("NET Density: {:.5f}".format(self.Den(NET)))
+      print("NET count M: {}".format(self.count_M(NET)))
+    return NET
 
   def random_net(self, D, *args, run=True, **kwargs):
     path = os.path.join(
@@ -159,29 +288,56 @@ class DISTBASE(EDR):
         from rand_network import sample_distbase
         NET = sample_distbase(
           dD, bin_ranges, self.bin,
-          D.shape[0], dD.shape[0], self.rho,
+          D.shape[0], args[0].shape[1], dD.shape[0],  self.rho,
           self.lb
         )
         NET = np.array(NET)
-        print("NET density: {:.5f}".format(
-            self.den(NET)
-          )
-        )
+        print("NET density: {:.5f}".format(self.den(NET)))
+        print("NET Density: {:.5f}".format(self.Den(NET)))
         if "on_save_csv" in kwargs.keys():
           if kwargs["on_save_csv"]:
-            np.savetxt(
-              path, NET, delimiter=","
-            )
+            np.savetxt(path, NET, delimiter=",")
       else:
         NET = np.genfromtxt(path, delimiter=",")
-        print(
-          "NET density: {:.5f}".format(self.den(NET))
-        )
+        print("NET density: {:.5f}".format(self.den(NET)))
     else:
       NET = np.genfromtxt(path, delimiter=",")
-      print(
-        "NET density: {:.5f}".format(self.den(NET))
-      )
+      print("NET density: {:.5f}".format(self.den(NET)))
+    return NET
+  
+  def random_exp_trunc(self, D, *args, run=True, **kwargs):
+    path = os.path.join(
+      self.csv_path, "Count.csv"
+    )
+    if run:
+      if not os.path.exists(path):
+        # Prepare data ----
+        dD = adj2df(D.copy())
+        dD = dD.loc[
+          dD["source"] < dD["target"]
+        ]
+        # Get bin ranges ----
+        bin_ranges = self.binnarize(D)
+        dD = dD.to_numpy()
+        # Initiate samplenet ----
+        from rand_network import sample_distbase_trunc
+        NET = sample_distbase_trunc(
+          dD, bin_ranges, self.bin,
+          D.shape[0], args[0].shape[1], dD.shape[0],  self.rho,
+          self.lb, np.min(D[D>0]), np.max(D)
+        )
+        NET = np.array(NET)
+        print("NET density: {:.5f}".format(self.den(NET)))
+        print("NET Density: {:.5f}".format(self.Den(NET)))
+        if "on_save_csv" in kwargs.keys():
+          if kwargs["on_save_csv"]:
+            np.savetxt(path, NET, delimiter=",")
+      else:
+        NET = np.genfromtxt(path, delimiter=",")
+        print("NET density: {:.5f}".format(self.den(NET)))
+    else:
+      NET = np.genfromtxt(path, delimiter=",")
+      print("NET density: {:.5f}".format(self.den(NET)))
     return NET
 
   def random_net_M(self, D, *args, run=True, **kwargs):
@@ -211,37 +367,19 @@ class DISTBASE(EDR):
           self.lb
         )
         NET = np.array(NET)
-        print("NET EC density: {:.5f}".format(
-            self.den(NET)
-          )
-        )
-        print("NET M: {}".format(
-            self.links_M(NET)
-          )
-        )
+        print("NET EC density: {:.5f}".format(self.den(NET)))
+        print("NET M: {}".format(self.links_M(NET)))
         if "on_save_csv" in kwargs.keys():
           if kwargs["on_save_csv"]:
-            np.savetxt(
-              path, NET, delimiter=","
-            )
+            np.savetxt(path, NET, delimiter=",")
       else:
         NET = np.genfromtxt(path, delimiter=",")
-        print(
-          "NET density: {:.5f}".format(self.den(NET))
-        )
-        print("NET M: {}".format(
-            self.links_M(NET)
-          )
-        )
+        print("NET density: {:.5f}".format(self.den(NET)))
+        print("NET M: {}".format(self.links_M(NET)))
     else:
       NET = np.genfromtxt(path, delimiter=",")
-      print(
-        "NET density: {:.5f}".format(self.den(NET))
-      )
-      print("NET M: {}".format(
-          self.links_M(NET)
-        )
-      )
+      print("NET density: {:.5f}".format(self.den(NET)))
+      print("NET M: {}".format(self.links_M(NET)))
     return NET
 
   def random_net_const_M(self, D, *args, run=True, **kwargs):
@@ -273,45 +411,24 @@ class DISTBASE(EDR):
           counter, self.lb
         )
         NET = np.array(NET)
-        print("NET density: {:.5f}".format(
-            self.den(NET)
-          )
-        )
-        print("NET M: {}".format(
-            self.links_M(NET)
-          )
-        )
-        print("NET count M: {}".format(
-            self.count_M(NET)
-          )
-        )
+        print("NET density: {:.5f}".format(self.den(NET)))
+        print("NET Density: {:.5f}".format(self.Den(NET)))
+        print("NET M: {}".format(self.links_M(NET)))
+        print("NET count M: {}".format(self.count_M(NET)))
         if "on_save_csv" in kwargs.keys():
           if kwargs["on_save_csv"]:
-            np.savetxt(
-              path, NET, delimiter=","
-            )
+            np.savetxt(path, NET, delimiter=",")
       else:
         NET = np.genfromtxt(path, delimiter=",")
-        print(
-          "NET density: {:.5f}".format(self.den(NET))
-        )
-        print("NET M: {}".format(
-            self.links_M(NET)
-          )
-        )
-        print("NET count M: {}".format(
-            self.count_M(NET)
-          )
-        )
+        print("NET density: {:.5f}".format(self.den(NET)))
+        print("NET Density: {:.5f}".format(self.Den(NET)))
+        print("NET M: {}".format(self.links_M(NET)))
+        print("NET count M: {}".format(self.count_M(NET)))
     else:
       NET = np.genfromtxt(path, delimiter=",")
-      print(
-        "NET density: {:.5f}".format(self.den(NET))
-      )
-      print("NET M: {}".format(
-          self.links_M(NET)
-        )
-      )
+      print("NET density: {:.5f}".format(self.den(NET)))
+      print("NET Density: {:.5f}".format(self.Den(NET)))
+      print("NET M: {}".format(self.links_M(NET)))
     return NET
 
   def random_const_net(self, D, *args, run=True, **kwargs):
@@ -332,126 +449,8 @@ class DISTBASE(EDR):
         from rand_network import const_sample_distbase
         NET = const_sample_distbase(
           dD, bin_ranges, self.bin,
-          D.shape[0], dD.shape[0], self.counter,
+          D.shape[0], args[0].shape[1], dD.shape[0], self.counter,
           self.rho, self.lb
-        )
-        NET = np.array(NET)
-        print("NET density: {:.5f}".format(
-            self.den(NET)
-          )
-        )
-        print("NET count: {}".format(
-            self.count(NET)
-          )
-        )
-        # np.savetxt(
-        #   path, NET, delimiter=","
-        # )
-      else:
-        NET = np.genfromtxt(path, delimiter=",")
-        print(
-          "NET density: {:.5f}".format(self.den(NET))
-        )
-        print("NET count: {}".format(
-            self.count(NET)
-          )
-        )
-    else:
-      NET = np.genfromtxt(path, delimiter=",")
-      print(
-        "NET density: {:.5f}".format(self.den(NET))
-      )
-      print("NET count: {}".format(
-          self.count(NET)
-        )
-      )
-    return NET
-
-  def random_prob(self, D, *args, save=True, **kwargs):
-    path = os.path.join(
-      self.csv_path, "Count.csv"
-    )
-    if save:
-      if not os.path.exists(path):
-        print("** Create network using p(d) **")
-        # Get probabilities ----
-        npoints = 100
-        d_range, x, prob, _, _ = predicted_D_frequency(
-          D, args[0], self.nodes, self.bin,
-          npoints=npoints, **kwargs
-        )
-        prob = np.exp(prob)
-        prob = prob / np.sum(prob)
-        # Transform distance matrix ----
-        dD = adj2df(D.copy())
-        dD = dD.loc[dD["source"] < dD["target"]].to_numpy()
-        # Measure density ----
-        rho = self.den(args[0])
-        # Initiate samplenet ----
-        from rand_network import sample_from_prob
-        NET = sample_from_prob(
-          dD, d_range, self.bin,
-          prob, npoints, x, D.shape[0], dD.shape[0],
-          rho
-        )
-        NET = np.array(NET)
-        print("NET density: {:.5f}".format(
-            self.den(NET)
-          )
-        )
-        print("NET count: {}".format(
-            self.count(NET)
-          )
-        )
-        # np.savetxt(
-        #   path, NET, delimiter=","
-        # )
-      else:
-        NET = np.genfromtxt(path, delimiter=",")
-        print(
-          "NET density: {:.5f}".format(self.den(NET))
-        )
-        print("NET count: {}".format(
-            self.count(NET)
-          )
-        )
-    else:
-      NET = np.genfromtxt(path, delimiter=",")
-      print(
-        "NET density: {:.5f}".format(self.den(NET))
-      )
-      print("NET count: {}".format(
-          self.count(NET)
-        )
-      )
-    return NET
-
-  def random_const_prob(self, D, *args, run=True, **kwargs):
-    path = os.path.join(
-      self.csv_path, "Count.csv"
-    )
-    if run:
-      if not os.path.exists(path):
-        print("** Create network using p(d)**")
-        # Get probabilities ----
-        npoints = 100
-        d_range, x, prob, _, _ = predicted_D_frequency(
-          D, args[0], self.nodes, self.bin,
-          npoints=npoints, **kwargs
-        )
-        prob = np.power(10, prob)
-        prob = prob / np.sum(prob)
-        # Transform distance matrix ----
-        dD = adj2df(D.copy())
-        dD = dD.loc[dD["source"] < dD["target"]].to_numpy()
-        # Measure density ----
-        rho = self.den(args[0][:self.nodes, :self.nodes])
-        # Initiate samplenet ----
-        from rand_network import const_sample_from_prob
-        NET = const_sample_from_prob(
-          dD, d_range, self.bin, self.counter,
-          prob, npoints, x, D.shape[0], dD.shape[0],
-          rho
         )
         NET = np.array(NET)
         print("NET density: {:.5f}".format(

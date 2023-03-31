@@ -32,7 +32,7 @@ def worker_swaps(
   distance = "MAP3D"
   nature = "original"
   imputation_method = ""
-  opt_score = ["_maxmu", "_X"]
+  opt_score = ["_maxmu", "_X", "_D"]
   # Declare global variables DISTBASE ----
   __inj__ = number_of_inj
   __nodes__ = number_of_nodes
