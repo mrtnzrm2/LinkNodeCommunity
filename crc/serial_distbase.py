@@ -23,7 +23,7 @@ def worker_distbase(
   number_of_iterations : int, number_of_inj : int,
   number_of_nodes : int, total_number_nodes : int, data_version, distbase : str,
   nlog10 : bool, lookup : bool, prob : bool, cut : bool, run : bool,
-  topology : str, mapping : str, index : str, bias : float
+  topology : str, mapping : str, index : str, bias : float, bins : int
 ):
   # Declare global variables NET ----
   MAXI = number_of_iterations
@@ -41,7 +41,7 @@ def worker_distbase(
   __nodes__ = number_of_nodes
   __version__ = data_version
   __model__ = distbase
-  __bin__ = 12
+  __bin__ = bins
   # Print summary ----
   print(f"Number of iterations: {MAXI}")
   print("For NET parameters:")

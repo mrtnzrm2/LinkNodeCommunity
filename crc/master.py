@@ -24,8 +24,9 @@ distbases = ["EXPMLE", "EXPTRUNC", "PARETO", "PARETOTRUNC"]
 cut = [F]
 topology = ["TARGET", "SOURCE", "MIX"]
 bias = [1e-5, 1e-2, 0.1, 0.3, 0.5]
+bins = [12, 50]
 list_of_lists = itertools.product(
-  *[distbases, cut, topology, bias]
+  *[distbases, cut, topology, bias, bins]
 )
 list_of_lists = np.array(list(list_of_lists))
 array_distbase = pd.DataFrame(
@@ -34,7 +35,8 @@ array_distbase = pd.DataFrame(
     "distbase" : list_of_lists[:, 0].astype(str),
     "cut" : list_of_lists[:, 1],
     "topology" : list_of_lists[:, 2].astype(str),
-    "bias" : list_of_lists[:, 3].astype(float) 
+    "bias" : list_of_lists[:, 3].astype(float),
+    "bins" : list_of_lists[:, 4].astype(int)
   }
 )
 ## scalefree -----------------
@@ -151,7 +153,7 @@ def NoGodsNoMaster(number_of_iterations, t):
       number_of_iterations, number_of_inj, number_of_nodes,
       total_number_nodes, version, array.loc["distbase"],
       nlog10, lookup, prob, cut, run, array.loc["topology"],
-      mapping, index, array.loc["bias"]
+      mapping, index, array.loc["bias"], array.loc["bins"]
     )
   elif array.loc["worker"] == "scalefree":
     nlog10 = F
