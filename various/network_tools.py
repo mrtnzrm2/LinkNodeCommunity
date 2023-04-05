@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 pd.options.mode.chained_assignment = None
 from os.path import join, exists, isfile
-from os import remove
+from os import remove, stat
 import pickle as pk
 from various.omega import Omega
 
@@ -538,7 +538,7 @@ def read_class(pickle_path, class_name="duck", **kwargs):
   )
   C = 0
   print(path)
-  if isfile(path):
+  if isfile(path) and stat(path).st_size > 100:
     with open(path, "rb") as f:
       C =  pk.load(f)
   else: print(f"\nFile {path} does not exist\n")

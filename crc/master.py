@@ -42,14 +42,14 @@ array_distbase = pd.DataFrame(
 ## scalefree -----------------
 worker = ["scalefree"]
 cut = [F]
-number_of_nodes = [100]
+number_of_nodes = [1000]
 topology = ["SOURCE", "MIX"]
 indices = ["jacp",  "bsim"]
 kav = [4]
 mut = [0.1, 0.3, 0.5]
 muw = [0.3]
-nmin = [5]
-nmax = [10]
+nmin = [10, 50]
+nmax = [20, 100]
 list_of_lists = itertools.product(
   *[cut, topology, indices, kav, mut, muw, number_of_nodes, nmin, nmax]
 )

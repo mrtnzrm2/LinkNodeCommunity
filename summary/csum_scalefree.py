@@ -10,10 +10,10 @@ F = False
 ## Standard libs ----
 import itertools
 import seaborn as sns
+sns.set_theme()
 import matplotlib.pyplot as plt
 from pathlib import Path
 ## Personal libs ----
-from networks_serial.scalehrh import SCALEHRH
 from various.network_tools import *
 
 def draw_heatmap(*args, **kwargs):
@@ -22,18 +22,18 @@ def draw_heatmap(*args, **kwargs):
   sns.heatmap(d, **kwargs)
 
 # Declare iter variables ----
-topologies = ["TARGET", "SOURCE", "MIX"]
-indices = ["jacw", "jacp", "cos", "bsim"]
-KAV = [7, 15]
+number_of_nodes = [1000]
+topologies = ["SOURCE", "MIX"]
+indices = ["jacp",  "bsim"]
 MUT = [0.1, 0.3, 0.5]
-MUW = [0.1, 0.5]
+NMIN = [10, 50]
+NMAX = [20, 100]
 list_of_lists = itertools.product(
-  *[topologies, indices, KAV, MUT, MUW]
+  *[number_of_nodes, topologies, indices, MUT, NMIN, NMAX]
 )
 list_of_lists = np.array(list(list_of_lists))
 # Constant parameters ---
-MAXI = 503
-__nodes__ = 128
+MAXI = 25
 linkage = "single"
 nlog10 = F
 lookup = F
@@ -52,33 +52,36 @@ opt_score = ["_maxmu", "_X", "_D"]
 if __name__ == "__main__":
   # Extract data ----
   THE_DF = pd.DataFrame()
-  for topology, index, kav, mut, muw in list_of_lists:
+  for __nodes__, topology, index, mut, nmin, nmax in list_of_lists:
+    nmin = int(nmin)
+    nmax = int(nmax)
+    mut = float(mut)
+    if nmax < nmin: continue
     # WDN paramters ----
     par = {
       "-N" : "{}".format(str(__nodes__)),
-      "-k" : f"{kav}.0",
-      "-maxk" : "30",
+      "-k" : "10.0",
+      "-maxk" : "50",
       "-mut" : f"{mut}",
-      "-muw" : f"{muw}",
-      "-beta" : "2.5",
+      "-muw" : "0.3",
+      "-beta" : "3",
       "-t1" : "2",
       "-t2" : "1",
-      "-nmin" : "2",
-      "-nmax" : "10"
+      "-nmin" : f"{nmin}",
+      "-nmax" : f"{nmax}"
     }
     data = read_class(
-      "../pickle/RAN/scalefree/-N_{}/-k_{}/-maxk_{}/-mut_{}/-muw_{}/-beta_{}/-t1_{}/-t2_{}/-nmin_{}/-nmax_{}/{}/{}{}{}{}/{}/{}".format(
+      "../pickle/RAN/scalefree/-N_{}/-k_{}/-maxk_{}/-mut_{}/-muw_{}/-beta_{}/-t1_{}/-t2_{}/-nmin_{}/-nmax_{}/{}/{}/{}/{}".format(
         str(__nodes__),
         par["-k"], par["-maxk"],
         par["-mut"], par["-muw"],
         par["-beta"], par["-t1"], par["-t2"],
-        par["-nmin"], par["-nmax"], MAXI,
-        linkage.upper(), l10, lup, _cut,
-        __mode__, f"{topology}_{index}_{mapping}"
+        par["-nmin"], par["-nmax"], MAXI-1,
+        __mode__, __mode__, f"{topology}_{index}_{mapping}"
       ),
       "series_{}".format(MAXI)
     )
-    if not isinstance(data, SCALEHRH): continue
+    if isinstance(data, int): continue
     # print(data.data.shape[0])
     THE_DF = pd.concat(
       [
@@ -86,78 +89,36 @@ if __name__ == "__main__":
         pd.DataFrame(
           {
             "NMI" : data.data.NMI.to_numpy().astype(float),
-            # "OMEGA" : data.data.values.loc[data.data.sim == "OMEGA"].to_numpy().astype(float), 
-            "score" : data.data.c,
+            "score" : [f"{index}{s}" for s in data.data.c],
             "topology": [f"{topology}"] * data.data.shape[0],
-            "index" : [index] * data.data.shape[0],
-            "kav" : [int(kav)] * data.data.shape[0],
-            "mut" : [float(mut)] * data.data.shape[0],
-            "muw" : [float(muw)] * data.data.shape[0]
+            "mut" : [mut] * data.data.shape[0],
+            "size" : [f"{nmin}_{nmax}"] * data.data.shape[0]
           }
         )
       ], ignore_index=T
     )
   # Comparing feature, index, & score for given kav, mut, and muw
-  KAV = [7, 15]
-  MUT = [0.1, 0.3, 0.5]
-  MUW = [0.1, 0.5]
-  list_of_lists = itertools.product(
-    *[KAV, MUT, MUW]
-  )
-  list_of_lists = np.array(list(list_of_lists))
-  for kav, mut, muw in list_of_lists:
-    print(kav, mut, muw)
+  for tp in topologies:
+    print(tp)
     # Prepare path ----
-    par = {
-      "-N" : "{}".format(str(__nodes__)),
-      "-k" : f"{kav}",
-      "-maxk" : "30",
-      "-mut" : f"{mut}",
-      "-muw" : f"{muw}",
-      "-beta" : "2.5",
-      "-t1" : "2",
-      "-t2" : "1",
-      "-nmin" : "2",
-      "-nmax" : "10"
-    }
-    IM_ROOT =  "../plots/RAN/scalefree/-N_{}/-k_{}/-maxk_{}/-mut_{}/-muw_{}/-beta_{}/-t1_{}/-t2_{}/-nmin_{}/-nmax_{}/{}/{}{}{}{}/{}".format(
-        str(__nodes__),
-        par["-k"], par["-maxk"],
-        par["-mut"], par["-muw"],
-        par["-beta"], par["-t1"], par["-t2"],
-        par["-nmin"], par["-nmax"], MAXI,
-        linkage.upper(), l10, lup, _cut,
-        __mode__
-      )
+    IM_ROOT =  "../plots/RAN/scalefree/-N_{}/-k_10.0/-maxk_50/{}/{}{}{}{}".format(
+      str(__nodes__), MAXI, linkage.upper(), l10, lup, _cut
+    )
     # Prepare data ----
-    data = THE_DF.loc[
-      (THE_DF.kav == int(kav)) &
-      (THE_DF.mut == float(mut)) &
-      (THE_DF.muw == float(muw))
-    ]
+    data = THE_DF.loc[(THE_DF.topology == tp)]
     data.NMI.loc[np.isnan(data.NMI)] = 0
-    x = data.groupby(["topology", "index", "score"]).agg({"NMI": ["mean"]}).reset_index()
-    x.columns = ["topology", "index", "score", "NMI"]
-    g = sns.FacetGrid(
-      data=x,
-      col="score"
+    sns.catplot(
+      data=data,
+      x="NMI",
+      y="score",
+      col="size",
+      hue="mut",
+      kind="box"
     )
-    g.map_dataframe(
-      draw_heatmap,
-      "topology",
-      "index",
-      "NMI",
-      vmin=0, vmax=1,
-      square=T,
-      cbar=T,
-      cmap=sns.color_palette("viridis")
-    )
-    for axes in g.axes.flat:
-      _ = axes.set_xticklabels(axes.get_xticklabels(), rotation=90)
-    plt.tight_layout()
+    Path(IM_ROOT).mkdir(exist_ok=True, parents=True)
     plt.savefig(
       os.path.join(
-        IM_ROOT, "NMI_facet_score.png"
+        IM_ROOT, f"NMI_{tp}.png"
       ),
       dpi = 300
     )

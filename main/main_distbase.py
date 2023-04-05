@@ -16,8 +16,9 @@ from various.data_transformations import maps
 from networks.distbase import DISTBASE
 from networks.structure import MAC
 from various.network_tools import *
+from various.fit_tools import fitters
 # Declare global variables ----
-__iter__ = 1
+__iter__ = 2
 linkage = "single"
 nlog10 = T
 lookup = F
@@ -34,13 +35,11 @@ imputation_method = ""
 opt_score = ["_maxmu", "_X"]
 save_datas = T
 # Declare global variables DISTBASE ----
-__model__ = "EXPTRUNC"
+__model__ = "PARETO"
 total_nodes = 106
 __inj__ = 57
 __nodes__ = 57
 __bin__ = 12
-lb = 0.10691
-## PARETO: 1.0013     EXPMLE: 0.096939     EXPTRUNC: 0.10691  PARETOTRUNC: 1.07077    Linear: 0.079211
 __version__ = 220830
 bias = float(0.3)
 ## Very specific!!! Be careful ----
@@ -68,6 +67,8 @@ if __name__ == "__main__":
     mapping=mapping,
     cut=cut, b=bias
   )
+  _, _, _, _, est = fitters[__model__](REF.D, REF.C, REF.nodes, __bin__)
+  lb = est.coef_[0]
   # Create EDR network ----
   NET = DISTBASE(
     __inj__, total_nodes,

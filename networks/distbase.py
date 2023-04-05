@@ -74,6 +74,8 @@ class DISTBASE(EDR):
       "EXPTRUNC" : self.random_exp_trunc,
       "PARETO" : self.random_pareto,
       "PARETOTRUNC" : self.random_pareto_trunc,
+      "LINEAR" : self.random_net,
+      "LINEARTRUNC" : self.random_exp_trunc,
       "CONSTDEN" : self.random_const_net,
       "M" : self.random_net_M,
       "CONSTM": self.random_net_const_M,

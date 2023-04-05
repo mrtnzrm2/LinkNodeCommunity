@@ -45,7 +45,7 @@ class EDR:
     # Parameters ----
     self.nodes = nodes
     ## Define mu-score parameters ----
-    self.Alpha = np.array([6, 20])
+    self.Alpha = np.array([6])
     beta1 = np.linspace(0.01, 0.2, 4)
     beta2 = np.linspace(0.2, 0.4, 2)[1:]
     self.Beta = np.hstack((beta1, beta2))

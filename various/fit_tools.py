@@ -458,6 +458,41 @@ def fit_exp_STAN(D, C, nodes, bins, npoints=100, **kwargs):
   ##
   return [], x.reshape(-1), prob, np.zeros(prob.shape), pred
 
+def fit_linear_trunc(D, C, nodes, *args, npoints=100, **kwargs):
+  import matplotlib.pyplot as plt
+  import seaborn as sns
+  import statsmodels.api as sm
+  _, x, y = range_and_probs_from_DC(D, C, nodes, args[0])
+  ## Statistical inference ----
+  X = x.reshape(-1, 1)
+  X = sm.add_constant(X)  
+  lb = sm.OLS(y, X).fit()
+  c = lb.params[0]
+  lb = -lb.params[1]
+  xmin = np.min(D[D>0])
+  xmax = np.max(D)
+  print("\nlambda:\t", lb, "\tb:\t", c)
+  pred = wrap_fit_exp_trunc(lb, xmin, xmax)
+  CC = C.copy()
+  CC[:nodes, :nodes] = CC[:nodes, :nodes] + CC[:nodes, :nodes].T
+  # CC = CC[:nodes, :nodes]
+  CC = adj2df(CC)
+  CC = CC.loc[CC.source > CC.target]
+  zeros = CC.weight == 0
+  # DD = D[:nodes, :nodes]
+  DD = D[:, :nodes]
+  DD = adj2df(DD)
+  DD = DD.loc[DD.source > DD.target]
+  DD = DD.weight.loc[~zeros].to_numpy().ravel()
+  CC = CC.weight.loc[~zeros].to_numpy().ravel()
+  order = np.argsort(DD)
+  DD = DD[order]
+  CC = CC[order]
+  print("llhood", pred.log_likelihood(DD, CC))
+  x = np.linspace(np.min(D[D>0]), np.max(D), npoints).reshape(-1, 1)
+  prob = pred.predict(x)
+  return [], x.reshape(-1), prob, np.zeros(prob.shape), pred
+
 def fit_linear(D, C, nodes, *args, npoints=100, **kwargs):
   import matplotlib.pyplot as plt
   import seaborn as sns
@@ -465,13 +500,29 @@ def fit_linear(D, C, nodes, *args, npoints=100, **kwargs):
   _, x, y = range_and_probs_from_DC(D, C, nodes, args[0])
   ## Statistical inference ----
   X = x.reshape(-1, 1)
-  # X = sm.add_constant(X)  
+  X = sm.add_constant(X)  
   lb = sm.OLS(y, X).fit()
   c = lb.params[0]
-  lb = -lb.params[0]
+  lb = -lb.params[1]
   print("\nlambda:\t", lb, "\tb:\t", c)
-  x = np.linspace(np.min(D[D>0]), np.max(D), npoints).reshape(-1, 1)
   pred = wrap_fit_exp(lb)
+  CC = C.copy()
+  CC[:nodes, :nodes] = CC[:nodes, :nodes] + CC[:nodes, :nodes].T
+  # CC = CC[:nodes, :nodes]
+  CC = adj2df(CC)
+  CC = CC.loc[CC.source > CC.target]
+  zeros = CC.weight == 0
+  # DD = D[:nodes, :nodes]
+  DD = D[:, :nodes]
+  DD = adj2df(DD)
+  DD = DD.loc[DD.source > DD.target]
+  DD = DD.weight.loc[~zeros].to_numpy().ravel()
+  CC = CC.weight.loc[~zeros].to_numpy().ravel()
+  order = np.argsort(DD)
+  DD = DD[order]
+  CC = CC[order]
+  print("llhood", pred.log_likelihood(DD, CC))
+  x = np.linspace(np.min(D[D>0]), np.max(D), npoints).reshape(-1, 1)
   prob = pred.predict(x)
   return [], x.reshape(-1), prob, np.zeros(prob.shape), pred
 
@@ -480,5 +531,6 @@ fitters = {
   "EXPTRUNC" : fit_exp_trunc_MLE,
   "PARETO" : fit_pareto_MLE,
   "PARETOTRUNC" : fit_pareto_trunc_MLE,
-  "LINEAR" : fit_linear
+  "LINEAR" : fit_linear,
+  "LINEARTRUNC" : fit_linear_trunc
 }

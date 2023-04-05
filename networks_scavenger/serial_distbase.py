@@ -15,28 +15,29 @@ from plotting_modules.plotting_o_serial import PLOT_OS
 from various.network_tools import read_class
 # Declare iter variables ----
 topologies = ["TARGET", "SOURCE", "MIX"]
-distbases = ["M", "DEN"]
-bias = [1e-5, 1e-2, 0.1, 0.3, 0.5]
+distbases = ["EXPMLE", "EXPTRUNC"]
+bias = [0]
+bins = [12]
 list_of_lists = itertools.product(
-  *[topologies, distbases, bias]
+  *[topologies, distbases, bias, bins]
 )
 list_of_lists = np.array(list(list_of_lists))
 # Declare global variables NET ----
-MAXI = 506
+MAXI = 500
 linkage = "single"
 nlog10 = T
 lookup = F
 prob = T
 cut = F
 run = T
-structure = "FLN"
-distance = "MAP3D"
+structure = "LN"
+distance = "tracto16"
 nature = "original"
 mode = "ALPHA"
-mapping = "R2"
-index  = "jacw"
+mapping = "R4"
+index  = "simple"
 imputation_method = ""
-opt_score = ["_maxmu", "_X"]
+opt_score = ["_maxmu", "_X", "_D"]
 # Statistic test ----
 alternative = "less"
 # Declare global variables DISTBASE ----
@@ -44,9 +45,9 @@ total_nodes = 106
 __inj__ = 57
 __nodes__ = 57
 __version__ = 220830
-__bin__ = 12
 if __name__ == "__main__":
-  for topology, __model__, bias in list_of_lists:
+  for topology, __model__, bias, _bin_ in list_of_lists:
+    _bin_ = int(_bin_)
     bias = float(bias)
     # Print summary ----
     print("For NET parameters:")
@@ -79,7 +80,7 @@ if __name__ == "__main__":
           structure,
           distance,
           __model__,
-          str(__bin__),
+          str(_bin_),
           f"{linkage.upper()}_{total_nodes}_{__nodes__}{l10}{lup}{_cut}",
           mode,
           f"{topology}_{index}_{mapping}",
@@ -87,6 +88,7 @@ if __name__ == "__main__":
         ),
         "series_{}".format(MAXI)
       )
+    if isinstance(data, int): continue
     # Plotting ----
     print("Statistical analysis")
     plot_s = PLOT_S(data)

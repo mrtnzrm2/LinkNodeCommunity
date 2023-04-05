@@ -72,6 +72,7 @@ class PLOT_S:
       # Create figure ----
       if c:
         subdata["score"] = [s.replace("_", "") for s in subdata["score"]]
+        subdata = subdata.loc[subdata.score != "D"] ####
         g = sns.FacetGrid(
           data=subdata,
           col="sim",
@@ -160,14 +161,14 @@ class PLOT_S:
         ha='center', va='bottom',
         transform=ax[0, 0].transAxes
       )
-      ax[0, 0].text(
-        x = 0.5, y = 0.5,
-        s = "{:.5f}\n{:.5f}".format(
-          os_ttest.pvalue, osd_ttest.pvalue
-        ),
-        ha='center', va='center',
-        transform=ax[0, 0].transAxes
-      )
+      # ax[0, 0].text(
+      #   x = 0.5, y = 0.5,
+      #   s = "{:.5f}\n{:.5f}".format(
+      #     os_ttest.pvalue, osd_ttest.pvalue
+      #   ),
+      #   ha='center', va='center',
+      #   transform=ax[0, 0].transAxes
+      # )
       # Vertical line ----
       ax[0, 0].axvline(mu_0, color="red")
       # Get R-squared ----

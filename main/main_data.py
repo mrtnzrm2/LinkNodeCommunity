@@ -19,19 +19,19 @@ from various.network_tools import *
 linkage = "single"
 nlog10 = T
 lookup = F
-prob = T
+prob = F
 cut = F
-structure = "FLN"
+structure = "LN"
 mode = "ALPHA"
-distance = "MAP3D"
+distance = "tracto16"
 nature = "original"
 imputation_method = ""
-topology = "MIX"
-mapping = "R2"
-index  = "jacw"
-bias = float(0.3)
+topology = "TARGET"
+mapping = "R4"
+index  = "simple"
+bias = float(0)
 opt_score = ["_maxmu", "_X", "_D"]
-save_data = F
+save_data = T
 version = 220830
 __nodes__ = 57
 __inj__ = 57
@@ -58,7 +58,7 @@ if __name__ == "__main__":
   NET.create_plot_directory()
   # Transform data for analysis ----
   R, lookup, _ = maps[mapping](
-    NET.A, nlog10, lookup, prob, b=bias
+    NET.C, nlog10, lookup, prob, b=bias
   )
   # Compute Hierarchy ----
   print("Compute Hierarchy")
@@ -66,7 +66,7 @@ if __name__ == "__main__":
   if save_data:
     ## Hierarchy object!! ----
     H = Hierarchy(
-      NET, NET.A, R, NET.D,
+      NET, NET.C, R, NET.D,
       __nodes__, linkage, mode, lookup=lookup
     )
     ## Compute features ----
@@ -100,50 +100,51 @@ if __name__ == "__main__":
   ]
   # # Picasso ----
   plot_h = Plot_H(NET, H)
-  HS.zdict2newick(HS.tree, weighted=F, on=F)
-  # plot_h.plot_newick_R(HS.newick, weighted=F, on=F)
-  HS.zdict2newick(HS.tree, weighted=T, on=F)
-  # plot_h.plot_newick_R(HS.newick, weighted=T, on=F)
-  plot_h.plot_measurements_Entropy(on=F)
-  plot_h.plot_measurements_D(on=F)
-  plot_h.plot_measurements_mu(on=F)
-  plot_h.plot_measurements_X(on=F)
+  HS.zdict2newick(HS.tree, weighted=F, on=T)
+  plot_h.plot_newick_R(HS.newick, weighted=F, on=T)
+  HS.zdict2newick(HS.tree, weighted=T, on=T)
+  plot_h.plot_newick_R(HS.newick, weighted=T, on=T)
+  plot_h.plot_measurements_Entropy(on=T)
+  plot_h.plot_measurements_D(on=T)
+  plot_h.plot_measurements_mu(on=T)
+  plot_h.plot_measurements_X(on=T)
   plot_n = Plot_N(NET, H)
-  plot_n.A_vs_dis(R, s=5, on=F, reg=T)
+  plot_n.A_vs_dis(R, s=5, on=T, reg=T)
   plot_n.projection_probability(
-    NET.C, "EXPTRUNC" , bins=12, on=T 
+    NET.C, "LINEAR" , bins=12, on=F
   )
   plot_n.histogram_weight(R, on=F)
+  plot_n.histogram_weight(np.log(1 + NET.C), on=F, label="LN")
   plot_n.histogram_dist(on=F)
-  plot_n.plot_akis(NET.D, s=5, on=F)
-  # for score in opt_score:
-  #   print(f"Find node partition using {score}")
-  #   # Get best K and R ----
-  #   K, R = get_best_kr(score, H)
-  #   r = R[K == np.min(K)][0]
-  #   k = K[K == np.min(K)][0]
-  #   H.set_kr(k, r, score=score)
-  #   print("Best K: {}\nBest R: {}\t Score: {}".format(k, r, score))
-  #   rlabels = get_labels_from_Z(H.Z, r)
-  #   # Overlap ----
-  #   NET.overlap, NET.data_nocs = H.get_ocn_discovery(k, rlabels)
-  #   H.set_overlap_labels(NET.overlap, score)
-  #   print(NET.overlap)
-  #   print("\n\tAreas with predicted overlapping communities:\n",  NET.data_nocs, "\n")
-  #   cover = omega_index_format(rlabels,  NET.data_nocs, NET.struct_labels[:NET.nodes])
-  #   H.set_cover(cover, score)
-  #   # Plot H ----
-  #   plot_h.core_dendrogram([r], on=T) #
-  #   plot_h.lcmap_pure([k], labels = rlabels, on=F)
-  #   plot_h.heatmap_pure(r, on=T, labels = rlabels) #
-  #   plot_h.heatmap_dendro(r, on=F)
-  #   plot_h.lcmap_dendro([k], on=T) #
-  #   plot_h.flatmap_dendro(
-  #     NET, [k], [r], on=T, EC=T #
-  #   )
-  # save_class(
-  #   H, NET.pickle_path,
-  #   "hanalysis"
-  # )
+  plot_n.plot_akis(NET.D, s=5, on=T)
+  for score in opt_score:
+    print(f"Find node partition using {score}")
+    # Get best K and R ----
+    K, R = get_best_kr(score, H)
+    r = R[K == np.min(K)][0]
+    k = K[K == np.min(K)][0]
+    H.set_kr(k, r, score=score)
+    print("Best K: {}\nBest R: {}\t Score: {}".format(k, r, score))
+    rlabels = get_labels_from_Z(H.Z, r)
+    # Overlap ----
+    NET.overlap, NET.data_nocs = H.get_ocn_discovery(k, rlabels)
+    H.set_overlap_labels(NET.overlap, score)
+    print(NET.overlap)
+    print("\n\tAreas with predicted overlapping communities:\n",  NET.data_nocs, "\n")
+    cover = omega_index_format(rlabels,  NET.data_nocs, NET.struct_labels[:NET.nodes])
+    H.set_cover(cover, score)
+    # Plot H ----
+    plot_h.core_dendrogram([r], on=T) #
+    plot_h.lcmap_pure([k], labels = rlabels, on=F)
+    plot_h.heatmap_pure(r, on=T, labels = rlabels) #
+    plot_h.heatmap_dendro(r, on=F)
+    plot_h.lcmap_dendro([k], on=T) #
+    plot_h.flatmap_dendro(
+      NET, [k], [r], on=T, EC=T #
+    )
+  save_class(
+    H, NET.pickle_path,
+    "hanalysis"
+  )
   print("End!")
   # #@@ Todo:

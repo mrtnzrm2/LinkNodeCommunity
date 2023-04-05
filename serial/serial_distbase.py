@@ -46,7 +46,7 @@ total_nodes = 106
 __inj__ = 57
 __nodes__ = 57
 __version__ = 220830
-__model__ = "PARETOTRUNC"
+__model__ = "LINEAR"
 __bin__ = 12
 bias = float(0.3)
 # Start main ----

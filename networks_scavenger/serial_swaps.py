@@ -21,7 +21,7 @@ list_of_lists = itertools.product(
 )
 list_of_lists = np.array(list(list_of_lists))
 # Declare global variables NET ----
-MAXI = 506
+MAXI = 500
 linkage = "single"
 nlog10 = T
 lookup = F
@@ -87,6 +87,7 @@ if __name__ == "__main__":
       ),
       "series_{}".format(MAXI)
     )
+    if isinstance(data, int): continue
     # Plotting ----
     print("Statistical analysis")
     plot_s = PLOT_S(data)
