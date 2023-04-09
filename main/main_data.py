@@ -26,9 +26,9 @@ mode = "ALPHA"
 distance = "tracto16"
 nature = "original"
 imputation_method = ""
-topology = "TARGET"
+topology = "MIX"
 mapping = "R4"
-index  = "simple"
+index  = "jacw"
 bias = float(0)
 opt_score = ["_maxmu", "_X", "_D"]
 save_data = T
@@ -115,6 +115,8 @@ if __name__ == "__main__":
   )
   plot_n.histogram_weight(R, on=F)
   plot_n.histogram_weight(np.log(1 + NET.C), on=F, label="LN")
+  plot_n.histogram_weight(H.source_sim_matrix, on=T, label="SS")
+  plot_n.histogram_weight(H.target_sim_matrix, on=T, label="TS")
   plot_n.histogram_dist(on=F)
   plot_n.plot_akis(NET.D, s=5, on=T)
   for score in opt_score:

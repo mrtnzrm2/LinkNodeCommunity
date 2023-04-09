@@ -15,6 +15,8 @@ from various.data_transformations import maps
 from networks.structure import MAC
 from various.network_tools import *
 
+def simple(x, y):
+  return -np.mean(np.abs(x-y))
 
 def model_network(D, C, nodes, bins):
   import statsmodels.api as sm
@@ -86,12 +88,12 @@ nlog10 = T
 lookup = F
 prob = T
 cut = F
-structure = "FLN"
-distance = "MAP3D"
+structure = "LN"
+distance = "tracto16"
 nature = "original"
 __mode__ = "ALPHA"
 topology = "MIX"
-mapping = "R2"
+mapping = "R4"
 index  = "jacw"
 imputation_method = ""
 opt_score = ["_maxmu", "_X"]
@@ -130,23 +132,83 @@ if __name__ == "__main__":
     mapping=mapping,
     cut=cut, b=bias
   )
-  D = REF.D
-  p = lambda a, xm, x: xm * np.power(1 - x, -1/a)
+  RFLN, lookup, _ = maps[mapping](
+    REF.C, nlog10, lookup, prob, b=bias
+  )
+  np.fill_diagonal(RFLN, 0)
+  SIMT = np.zeros((__nodes__, __nodes__))
+  for i in np.arange(__nodes__):
+    for j in np.arange(i, __nodes__):
+      SIMT[i, j] = simple(RFLN[:, i], RFLN[:, j])
+      SIMT[j, i] = SIMT[i, j]
+  SIMS = np.zeros((__nodes__, __nodes__))
+  for i in np.arange(__nodes__):
+    for j in np.arange(i, __nodes__):
+      SIMS[i, j] = simple(RFLN[i, :], RFLN[j, :])
+      SIMS[j, i] = SIMS[i, j]
+  SIMT = adj2df(SIMT)
+  SIMT = SIMT.loc[SIMT.source > SIMT.target].weight.to_numpy()
+  SIMS = adj2df(SIMS)
+  SIMS = SIMS.loc[SIMS.source > SIMS.target].weight.to_numpy()
+  D = adj2df(REF.D[:__nodes__, :__nodes__])
+  D = D.loc[D.source > D.target].weight.to_numpy()
   data = pd.DataFrame(
-    {
-     "dist" : p(1.00095, np.nanmin(D[D>0])-1e-8, np.random.rand(100000,))
+    { 
+      "dist" : list(D) + list(D),
+      "simple" : np.hstack([SIMT, SIMS]),
+      "dir" : ["tar"] * len(SIMT) + ["src"] * len(SIMS)
     }
   )
-  data = data.loc[data.dist < np.nanmax(D)]
-  _, ax= plt.subplots(1, 1)
-  sns.histplot(
+  _, ax = plt.subplots(1, 1)
+  # sns.histplot(
+  #   data=data,
+  #   x="simple",
+  #   hue="dir",
+  #   stat = "density",
+  #   common_norm=False,
+  #   ax=ax
+  # )
+  sns.scatterplot(
     data=data,
     x="dist",
-    stat="density",
+    y="simple",
+    hue="dir",
+    alpha=0.6,
     ax=ax
   )
-  ax.set_yscale("log")
+  # DD = lb * D
+  # p = -np.log(2) + 1 * (DD - 1) - np.log(1 *(DD + 1) + 1) + 2 * np.log(DD + 1)
+  # data2 = pd.DataFrame(
+  #   {
+  #     "dist" : D,
+  #     "simple": -p
+  #   }
+  # )
+  # sns.lineplot(
+  #   data=data2,
+  #   x="dist",
+  #   y="simple",
+  #   ax=ax
+  # )
   plt.show()
+  # pred_sim = 
+  # D = REF.D
+  # p = lambda a, xm, x: xm * np.power(1 - x, -1/a)
+  # data = pd.DataFrame(
+  #   {
+  #    "dist" : p(1.00095, np.nanmin(D[D>0])-1e-8, np.random.rand(100000,))
+  #   }
+  # )
+  # data = data.loc[data.dist < np.nanmax(D)]
+  # _, ax= plt.subplots(1, 1)
+  # sns.histplot(
+  #   data=data,
+  #   x="dist",
+  #   stat="density",
+  #   ax=ax
+  # )
+  # ax.set_yscale("log")
+  # plt.show()
   # model_network(D, REF.C, __nodes__, 12)
   # # Transform data for analysis ----
   # RFLN, lookup, _ = maps[mapping](

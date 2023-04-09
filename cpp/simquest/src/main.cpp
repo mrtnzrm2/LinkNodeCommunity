@@ -184,7 +184,6 @@ double simquest::simple(
 	double maximus=0.;
 	for (int i=0; i < N; i++)
 		maximus -= abs(u[i] - v[i]); 
-
 	return maximus / N;
 }
 
@@ -192,10 +191,12 @@ double simquest::simple2(
 	std::vector<double> &u, std::vector<double> &v
 ) {
 	int N = u.size();
-	double maximus=0.;
-	for (int i=0; i < N; i++)
-		maximus -= pow(u[i] - v[i], 2.); 
-
+	double maximus=0., wu, wv;
+	for (int i=0; i < N; i++) { 
+		wu = exp (u[i]);
+		wv = exp(v[i]);
+		maximus -= (wu*log(wu/(wu+wv)) +  wv*log(wv/(wu+wv)))/(wu+wv) / 2; 
+	}
 	return maximus / N;
 }
 
