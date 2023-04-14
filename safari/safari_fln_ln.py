@@ -57,12 +57,58 @@ if __name__ == "__main__":
     b = bias
   )
   # Transform data for analysis ----
-  RFLN, lookup, _ = maps["R1"](
-    NET.A, T, F, T, b=0.3
-  )
+  # RFLN, lookup, _ = maps["R4"](
+  #   NET.A, T, F, T, b=0.3
+  # )
   RLN, lookup, _ = maps["R4"](
     NET.C, T, F, F, b=0
   )
+
+  # A = []
+  # for i in np.arange(RLN.shape[1]):
+  #   for j in np.arange(i + 1, RLN.shape[1]):
+  #     A = A + list(-np.abs(RLN[:, i] -  RLN[:, j])) + list(-np.abs(RLN[i, :] - RLN[j, :]))
+  # A = np.array(A)
+  # A = -A[A < 0]
+
+  # data = pd.DataFrame(
+  #   {
+  #     "weight" : A
+  #   }
+  # )
+  # from scipy.stats import weibull_min
+  # from scipy.stats import gumbel_r
+  # loc_gumbel, scale_gumbel = gumbel_r.fit(data.weight)
+  # print(loc_gumbel, scale_gumbel)
+  # shape_wei, loc_wei, scale_wei = weibull_min.fit(data.weight)
+  # print(shape_wei, loc_wei, scale_wei)
+  # x = np.linspace(np.min(A), np.max(A), 100)
+  # data_pred = pd.DataFrame(
+  #   {
+  #     "weight" : list(x) +list(x),
+  #     "Density" : list(gumbel_r.pdf(x, loc=loc_gumbel, scale=scale_gumbel)) + 
+  #       list(weibull_min.pdf(x, shape_wei, loc=loc_wei, scale=scale_wei)),
+  #     "PDF" : ["Gumbel"] * 100 + ["Weibull"] * 100 
+  #   }
+  # )
+  # # print(x)
+  # _, ax = plt.subplots(1, 1)
+  # sns.histplot(
+  #   data=data,
+  #   x="weight",
+  #   stat="density",
+  #   color="green",
+  #   ax=ax
+  # )
+  # sns.lineplot(
+  #   data=data_pred,
+  #   x="weight",
+  #   y="Density",
+  #   hue="PDF",
+  #   ax=ax
+  # )
+  # ax.set_xlabel(r"$\log(\frac{X_{max}}{X_{min}})$")
+  # plt.show()
   ######
   # FLN = adj2df(NET.A[:, :4])
   # FLN.source = NET.struct_labels[FLN.source]

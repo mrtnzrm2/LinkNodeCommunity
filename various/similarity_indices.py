@@ -1,6 +1,6 @@
 import numpy as np
 
-def jacp(u, v, n : int, lup, *args):
+def jacp(u, v, n : int, *args):
   if n > 0:
     U = np.tile(u, (n, 1))
     U = U / u[:, None]
@@ -9,6 +9,28 @@ def jacp(u, v, n : int, lup, *args):
     V = V / v[:, None]
     V[np.isnan(V)] = np.Inf
     return np.sum(1 / np.sum(np.maximum(U, V), axis=1))
+  else: return np.nan
+
+def jacp_smooth(u, v, n : int, *args):
+  if n > 0:
+    p = 0
+    for i in np.arange(n):
+      q = np.sum(np.log(1 + np.maximum(np.exp(u - u[i]), np.exp(v - v[i]))))
+      p += np.log(2) / q
+    return p
+  else: return np.nan
+
+def adj_jacp_smooth(u, v, n : int, *args):
+  if n > 0:
+    perm1 = np.random.permutation(n)
+    perm2 = np.random.permutation(n)
+    U = np.tile(u, (n, 1))
+    U = np.exp(U - u[:, None])
+    U[np.isnan(U)] = np.Inf
+    V = np.tile(v, (n, 1))
+    V = np.exp(V - v[:, None])
+    V[np.isnan(V)] = np.Inf
+    return np.sum(np.log(2) / np.sum(np.log(1 + np.maximum(U, V)), axis=1)) - np.sum(np.log(2) / np.sum(np.log(1 + np.maximum(U[perm1], V[perm2])), axis=1))
   else: return np.nan
 
 def jacw_ferenc(u, v, n : int, lup, *args):

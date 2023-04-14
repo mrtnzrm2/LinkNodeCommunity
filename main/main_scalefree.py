@@ -8,6 +8,7 @@ T = True
 F = False
 #Import libraries ----
 from modules.hierarmerge import Hierarchy
+from modules.hierarentropy import Hierarchical_Entropy
 from plotting_modules.plotting_H import Plot_H
 from plotting_modules.plotting_N import Plot_N
 from networks.scalefree import SCALEFREE
@@ -16,7 +17,7 @@ from numpy import zeros
 from various.network_tools import *
 
 __iter__ = 0
-__nodes__ = 1000
+__nodes__ = 200
 linkage = "single"
 nlog10 = F
 lookup = F
@@ -32,15 +33,15 @@ save_data = T
 # WDN paramters ----
 par = {
   "-N" : "{}".format(str(__nodes__)),
-  "-k" : "10",
-  "-maxk" : "50",
+  "-k" : "7",
+  "-maxk" : "10",
   "-mut" : "0.2",
   "-muw" : "0.2",
   "-beta" : "2.5",
   "-t1" : "2",
   "-t2" : "1",
-  "-nmin" : "50",
-  "-nmax" : "100"
+  "-nmin" : "5",
+  "-nmax" : "15"
 }
 if __name__ == "__main__":
   # Create EDR network ----
@@ -57,8 +58,8 @@ if __name__ == "__main__":
   )
   NET.create_plot_path()
   NET.create_pickle_path()
-  NET.set_alpha([6, 50, 100])
-  NET.set_beta([0.1, 0.25, 0.5])
+  NET.set_alpha([6])
+  NET.set_beta([0.1])
   # Create network ----
   print("Create random graph")
   NET.random_WDN_cpp(run=run, on_save_pickle=T)
@@ -75,11 +76,21 @@ if __name__ == "__main__":
     )
     ## Compute features ----
     H.BH_features_parallel()
+     ## Compute link entropy ----
+    H.link_entropy_cpp("short", cut=cut)
     ## Compute lq arbre de merde ----
     H.la_abre_a_merde_cpp(H.BH[0])
     # Set labels to network ----
     L = colregion(NET)
     H.set_colregion(L)
+    HS = Hierarchical_Entropy(H.Z, H.nodes, list(range(H.nodes)))
+    HS.Z2dict("short")
+    node_entropy = HS.S(HS.tree)
+    node_entropy_H = HS.S_height(HS.tree)
+    H.entropy = [
+      node_entropy, node_entropy_H,
+      H.link_entropy, H.link_entropy_H
+    ]
     save_class(
       H, NET.pickle_path,
       "hanalysis_{}".format(H.subfolder),

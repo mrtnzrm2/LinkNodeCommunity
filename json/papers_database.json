@@ -198,10 +198,227 @@
       }
     },
     {
-      "title" : "Wiring Optimization in Cortical Circuits",
+      "title" : "Circuit complexity and axon wiring economy of cortical interneurons",
       "phrases" : {
         "Introduction" : [
-          
+          "The mammalian cortex consists of two basic neuron types: excitatory principal cells and inhibitory interneurons.",
+          "This article considers how wiring of interneurons affects their contribution to network performance and suggests that connectivity is a useful approach for examining how complex functions (e.g. oscillations) emerge from elementary features (e.g. inhibition) [8].",
+          "By contrast, cortical structures have evolved in a manner that most closely resembles a relatively sparsely connected network of few principal cell types and many classes of GABAergic interneurons.",
+          "One hypothesis is that the diversity of interneurons in the mammalian cortex [1–7] reflects a compromise between computational needs and wiring economy [10,18].",
+          "if p(i,j ) decreases with d(i,j ) as a power law, p(i,j ) , d(i,j )2a, then there is a significant (although small) probability for connections across long distances, especially if the exponent a is small so that p(i,j ) falls off slowly with d(i,j ), and a small world becomes realizable.",
+          "Examples of how interneurons implement novel functions in the brain include sculpting stimulus selectivity of cortical neurons in sensory and memory systems [20,21] or generating coherent oscillations at different frequencies [22].",
+          "Given the hypothesis that diversity reflects a compromise between computational needs and wiring economy, we need to discover the rules that can describe how interneuron diversity and connectivity result in economical computational complexity."
+        ],
+        "Scalable interneuronal clocks: connectivity is of the essence" : [
+          "Complex brains have developed specialized mechanisms for keeping time: inhibitory interneuron networks",
+          "Oscillatory timing can transform unconnected principal cell groups into temporal coalitions, providing maximal flexibility and economic use of their spikes [24].",
+          "Therefore, long-range network synchrony can be achieved with a small fraction of the local connectivity being replaced by long-range connections yet keeping the total wire length at a minimum (Figure 3d).",
+          "These simulations support the hypothesis that an effective design for network synchronization with a minimal wire-cost can be achieved by the division of labor between a larger population of local and a small subpopulation of long-range interneurons. This architecture is of a class called ‘smallworld’ networks",
+          "However, cortical networks support multiple, coupled oscillations at various temporal scales [22] and numerous other functions [2], which require more interneuron types and economic wiring."
+        ],
+        "Functional diversity of interneurons increases computational power at a low wiring cost" :[
+          "As already discussed, integrating functionally novel types of neurons into networks increases their computational diversity [12,13].",
+          "In terms of their connectivity to the principal cells [2,5,13,44], three major groups of cortical interneurons are recognized: (i) interneurons controlling principal cell output (by perisomatic inhibition), (ii) interneurons controlling the principal cell input (by dendritic inhibition) and (iii) long-range interneurons coordinating interneuron assemblies.",
+          "The hierarchy of interneuron organization shares some important features with systems characterized by smallworld architecture [14] and/or the power law [13]",
+          "According to this hypothesis, the most numerous interneurons belong to the perisomatic control group, followed by the specific (single) and less-specific (multiple) dendritic control groups, and the least numerous cells are the long-range interneurons",
+          "The slope of this hypothesized relationship should vary with network size. With increasing brain size, the number of interneurons with local connections increases more rapidly than neurons with more extensive spatial coverage.",
+          "Accordingly, the ratio of interneurons with local and distant connections (i.e. the slope of the power law function in Figure 5) should be much larger in the rodent neocortex than in the rodent hippocampus, and orders of magnitude larger in the human brain than in the rodent cortex, for achieving the same magnitude of global synchrony",
+          "Support for the postulated hierarchical organization of interneurons comes from functional observations in the intact hippocampus."
+        ],
+        "Concluding remarks" : [
+          "This review has considered whether, and how, the diversity of cortical interneurons reflects optimization between computational performance of the cortex and its axonal wiring costs.",
+          "The number of neurons in the divisions shows an inverse relationship with spatial coverage, a relationship that suggests some mathematic ally definable organization. The connectivity-based classi fication is supported by the distinct physiological patterns of class members in the intact brain.",
+          "It is unlikely that static models, such as small-world or scalefree graphs, can faithfully describe the neuronal networks with evolutionary goals. Nevertheless, they illustrate the important point that costly distant connections can be minimized by appropriate clustering architecture."
+        ]
+      }
+    },
+    {
+      "title" : "Information Processing in the Primate Visual System: An Integrated Systems Perspective",
+      "phrases" : {
+        "Introduction" : [
+          "The results of these ongoing analyses must be appropriately routed to brain regions involved in perception, motor control, and planning.",
+          "The neurobiological approach provides a detailed anatomical and physiological description of the visual system and suggests a number of key principles, including modular design, hierarchical organization, and the presence of distinct but intertwined processing streams",
+          "It emphasizes the need for computationally sound models that are grounded in basic principles of signal processing and respect both the power and the limitations of the underlying neural circui"
+        ],
+        "Anatomical Overview" : [
+          "The major retinal output goes via the lateral geniculate nucleus (LGN) to the striate cortex (area VI) and from there to a mosaic of extrastriate cortical visual areas shown in various colors in Fig. 1. Thirty-two distinct cortical areas associated with visual processing have been described on the basis of anatomical, physiological, and behavioral information (1, 2).",
+          "To date, 305 pathways interconnecting the 32 cortical visual areas have been identified with modern pathwaytracing techniques (1). This constitutes nearly one-third of the number there would be if the network were fully interconnected. Hierarchical relations between areas have been assessed by the use of information about the cortical layers in which pathways originate and terminate (1, 4)",
+          "ystematic application of these criteria leads to a hierarchy containing ten levels of cortical visual processing plus several additional stages of subcortical processing (Fig. 2). The visual hierarchy is extensively linked to centers associated with motor control, other sensory modalities, and cognitive processing (1, 5),",
+          "ms. Two major processing streams originate within the retina. About 80% of retinal ganglion cells are parvocellular (P) cells projecting to the P layers of the LGN, whereas 10% are magnocellular (M) ganglion cells projecting to the M layers of the LGN (8).",
+          "n VI and V2, these are reorganized into a tripartite arrangement (7), the so-called P-B, P-I, and M streams (6",
+          "In V1 the compartments are patchy and specific to particular cortical layers, whereas in V2 they form stripes parallel to the surface and extending through all layers (7,",
+          "Additional areas associated with the M stream include V3, MT, MST, and some posterior parietal areas",
+          "The P-B and P-I streams include separate subregions of V4, and this segregation may persist into inferotemporal (IT) areas (5, 10). Despite the specificity of connections within each stream, substantial cross talk occurs at many levels, as demonstrated anatomically (1, 6) and physiologically (11)."
+        ],
+        "Information processing strategies" : {
+          "Information bottlenecks and scale invariance" :[
+            "Within this anatomical framework, it is important to understand how visual information is represented by individual neurons, how it is transformed and discarded at successive levels, how it is distributed among different processing streams, and how it contributes to the performance of specific visual tasks",
+          "Information bottlenecks and scale invariance. Physical images on the retina contain far more information than can be efficiently handled by the brain. An initial stage of data reduction occurs in the retina, where the nonuniform distribution of -IO ganglion cells leads to a variable resolution representation that is approximately scaleinvariant (12, 13)",
+          "To illustrate the significance of scale invariance, imagine looking at a colleague's face across a table and fixating on the tip of her nose. Resolution is very high at the fixation point (-104 pixels per degree squared) but declines sharply at progressively more peripheral locations. If the friend moves closer (whil, SUPERINTERESTING, FIND PAPER)"
+          ],
+          "Filters, not feature detectors" : [
+            "Transmitting the difference between a central value and the local mean luminance is an effective data reduction step; for natural images it increases the statistical independence of activity in neighboring cells (that is, decreases their correlation).,",
+          "The primary role of P cells is to encode information about luminance contrast. They respond to low and moderate temporal frequencies (mainly 1 to 20 Hz) over the full range of spatial frequencies visible at a given eccentricity (14, 15)",
+          "M cells are optimized for higher temporal frequencies (mainly 5 to 40 Hz), but they provide only about one-third the spatial resolution because of their lower sampling density",
+          "Thus, the P and M systems cover partially overlapping regions of the spatiotemporal information space illustrated at the bottom of Fig. 3 (12, 14-16",
+          "17). Like the P system, the M system also conveys a second type of information: many M cells have nonlinearities that encode the presence of fine-grained details, without representing precise spatial relations (that is, phase information) (14, 15, 18).",
+          "A unifying descriptive framework (on the basis of cat and monkey studies) is that cortical receptive fields are oriented in both spatial (x-y) and space-time (x-t) coordinates",
+          "Spatial orientation gives rise to conventional orientation selectivity for elongated stimuli and to sharpened spatial frequency tuning, whereas spatiotemporal orientation gives rise to velocity tuning (19).",
+          "imple cells act as quasilinear filters (20) and are analogous to the filters in wavelet representations, whose sensitivity profiles are restricted in both space and spatial frequency. Wavelet representations have become popular in image processing because they provide a statistically independent and complete visual reprsentation (21).",
+          "Complex cells have pronounced spatial nonlinearities and provide a measure of image power within a restricted range of orientations, spatial and temporal frequencies, and space (22).",
+          "Like the subpopulation of nonlinear M cells in the retina, complex cells convey information about the statistics of images (for example, texture and 'motion energy'), while discarding information about spatial details. This may help, for example, in distinguishing the roughness of a rocky terrain without the need for pebble-by-pebble scrutiny; such strategies have important applications in image processing (2",
+          "This perspective differs from the notion promoted by 'feature detector' advocates (24) that early cortical processing is mainly devoted to the explicit detection of features such as edges or zero-crossings of intensity derivatives. These are essentially logical, all-or-none decisions that are better postponed to later stages of analysis (25)."
+          ],
+          "Information divergence and convergence" : [
+            "Two basic tasks of vision are object recognition (what it is) and the determination of spatial relationships among objects in a dynamic three-dimensional world (where it is, and where it is going)",
+          "Corresponding to this functional distinction is an anatomical dichotomy: object recognition is selectively impaired by lesions of IT areas, whereas judgments of spatial relations are impaired by lesions of area 7a and other posterior parietal areas (26).",
+          "However, ordinary visual tasks typically involve the coordinated use of several types of information. In this respect, it is reasonable that each processing stream is associated with two or more types of selectivity, rather than just one type (Fig. 3, middle row) (6, 7).",
+          "Each stream has a distinctive constellation of selectivities, and at higher levels each stream contains cells that also have more complex receptive field nronerties sunrestive of intermediate staves of cortical nrocessing (2, 27).",
+          "The specific characteristics of the M stream make it well suited for various tasks requiring motion information, but motion is not the only type of information it represents. The P-B stream is suited for tasks needing spectral information and the P-I stream for tasks needing detailed spatial information, but other types of information are multiplexed into these streams as well.",
+          "To take advantage of the full spatiotemporal frequency spectrum transmitted by the optic nerve, higher levels of the visual system need access to information from both the P and the M systems during the performance of many tasks. The anatomical cross talk described above provides a neural substrate for this convergence, and results from selective lesion studies indeed indicate that either the P or the M system alone can mediate a wide range of tasks (for example, depth perception, speed, and direction discrimination) as long as stimuli are presented in the appropriate spatiotemporal range (16, 28)."
+          ],
+          "Dynamics aspects of information flow" : [
+            "The recognition of complex patterns is too computationally demanding to be carried out at maximal resolution across the entire visual field",
+            "However, the problem is manageable because pattern recognition occurs mainly within a restricted window of attention that can be rapidly shifted in position and changed in spatial scale",
+            "Several lines of psychophysical evidence suggest that the window of attention has an effective spatial resolution about 20 to 30 sampling elements across, independent of shifts in position and scale (29).",
+            "Because this is only -1% of the capacity of the optic nerve, it represents a major additional bottleneck in information flow.",
+            "he model we prefer (12, 31) is based on selective gating of neural inputs that is coordinated across a series of processing stages, including areas Vl, V2, and V4, as well as IT. This model accounts for the preservation of information about detailed spatial relations within the window of attention, which we consider crucial to any comprehensive model of attention. It makes specific predictions about dynamic effects of attention on receptive field properties, which are supported by physiological recordings from V4 and IT of alert monkeys (32)"
+          ],
+          "Modularity and computational flexibility" : [
+            "In considering how this principle might be reflected in the design of the brain, numerous engineering issues and trade-offs arise, just as in computer design (34).",
+            "i) Creating separate modules for different subtasks allows neural architecture to be optimized for particular types of computation. It also allows different types of information to be represented explicitly, in ways that can simplify later stages of analysis. However, it is important to avoid overly specialized modules that lack flexibility, are rarely used, or are inordinately complex to construct.",
+            "Replicating the same module many times over, as exemplified by the internal structure of Vl (35), allows stereotyped computations to be carried out massively in parallel. However, high-level tasks such as pattern recognition, which are computationally expensive and require large amounts of stored data, should not be duplicated unnecessarily.",
+            "n principle, having both types of modularity offers great computational flexibility. However, to capitalize, it is critical to maintain coordinated and efficient routing of information between modules",
+            "In a highly modular system, many important subtasks may involve functions (for example, controlling information flow) that are peculiar to the specific architecture of the system. These may appear obscure or arcane when analyzed only in terms of the inputs and outputs of the whole system. This suggests a need for caution in interpreting cortical function as a one-to-one mapping between individual visual areas or streams and the perceptions of color, form, or motion (7, 36).",
+            "nstead, we emphasize a task-oriented perspective, keyed on understanding how overall tasks are broken into subtasks and on elucidating the computational strategies needed for their implementation (6)."
+          ],
+          "Conclusion" : [
+            "The computations carried out within any given cortical area are anatomically constrained by its inputs and its intrinsic synaptic circuitr",
+            "There may be a fundamental distinction between ascending pathways in the hierarchy, whose circuitry dictates the basic classes of analysis carried out within an area, and the modulatory influences exerted by feedback pathways from higher centers and perhaps by the pulvin",
+            ". These modulatory influences may allow for several types of computational flexibility: adjusting the exact nature of the transformation carried out within an area; regulating the inputs on which the computation is made (input gating); or switching the targets to which the results are transmitted (output gating).",
+            "ortex. Collectively, they may allow the brain to reorganize its computational structure adaptively, on a rapid (-100 ms) time scale, for optimal utilization of the incoming data and of the available neural resources",
+            ". Translating this general hypothesis into specific, neurobiologically plausible models and into critical experimental tests will be a challenge for the futur"
+          ]
+        }
+      }
+    },
+    {
+      "title" : "‘Hierarchy’ in the organization of brain networks",
+      "phrases" : {
+        "The example of the visual cortical hierarchy" : [
+          "A classic interpretation of ‘hierarchy’ that represents to many systems neuroscientists a fundamental version of the concept is the primate visual cortical hierarchy (VCH).",
+          "the complexity of the wiring of the cerebral cortex, combined with a comforting approach for restoring order.",
+          "it is frequently expected that response properties change systematically as one moves to higher-level areas within the scheme. In particular, receptive fields should become larger and the topographic (retinotopic) organization less pronounced, so that neurons at higher levels of the scheme respond to more global and complex image features, such as faces and complex motion features.",
+          "cortical layers are classified as ‘backward’ [7] (figure 1c). The classification can be further extended and refined; specifically, by including categories for ‘lateral’ projections (which originate from upper and deep cortical layers in a more equal proportion and terminate in the target areas in a column-like fashion across all layers) [2].",
+          "In fact, many (hundreds of thousands) different schemes can be built that all fulfill these constraints optimally, with a minimum number of (six) constraint violations [6,9].",
+          "It is nonetheless interesting that this sorting of laminarspecific projections can be achieved nearly perfectly, with a very small number of violations, on the direction of the more than 300 projections. In addition, most of these violations may be plausibly resolved [6].",
+          "The functional implications of this high-order scheme are not obvious, even if ignoring the principal indeterminacy of the sorting process.",
+          "Specifically, it was found that the VCH scheme does not align well with functional properties of the visual system such as stimulus processing latencies, which are much more simultaneous than expected, in particular in the dorsal part of the visual system [14,15], or the presumed increasing complexity of functional responses of areas on different levels of the VCH [16–18].",
+          "These findings were summed up by Zeki [19, p. 243] in the conclusion that ‘... perceptual hierarchy cannot be predicted from the anatomical hierarchy’ (i.e. the VCH), echoing the statement of Silvanto [20, p. 17] that ‘... anatomical hierarchy does not imply functional hierarchy’.",
+          "Recent results also indicate that some of the pathways of visual information flow are not hierarchical, so that the anatomical hierarchy cannot be taken as a strict flowchart of visual information either."
+        ],
+        "The plan of the present paper" : [
+          "and finally the interpretation of ‘hierarchy’ as an ordering of scales of connectivity, as in the case of multilevel modular networks."
+        ],
+        "Hierarchy as a topological projection sequence" : [
+          "In this perspective, primate visual cortical areas are ordered by the number of steps by which they can be reached from sensory (specifically, visual) input, taking the shortest path via direct structural connections (cf. figure 2)",
+          "Simply, this perspective only considers the direct area-to-area connections, but not their laminar patterns. Directionality in this kind of hierarchy arises from defining a start and end point, such as sensory input or motor output. If primate visual cortical areas are ordered by this sequential connectional topology, rather than by their direction as inferred from laminar patterns, two very different arrangements emerge (figure 3).",
+          "Conspicuously, the arrangement by the number of connection steps from the retina results in a much more compressed scheme than the VCH. Intuitively, as the scheme takes into account the number of processing steps, it should correlate more closely with functional properties of the visual system, such as onset latencies, than the VCH.",
+          "ndeed, computational modelling by populations of integrate-and-fire neurons has demonstrated that empirical onset latencies in the primate visual system can be reproduced nearly perfectly on the basis of the connectional topology of the cortical network, without attributing special roles to ‘forward’ and ‘backward’ projections [22].",
+          "Thus, while the arrangement of the VCH does not help to predict stimulus processing latencies, the topological scheme does. It also appears to align better than the VCH with features such as the complexity of visual representations in different cortical areas, for instance, V2 and V4, which are more similar in their response properties than expected based on the clear separation of these areas in the VCH [16].",
+          "The notion of a sequential organization of brain networks is potentially rooted in the image of the sensory-motor arc, the intuitive incremental processing sequence of sensory inputs eventually resulting in motor actions.",
+          "However, several known aspects of brain network organization also appear incompatible with a clearly sequential arrangement. First, nodes in brain networks are very widely connected, ruling out a strict serial and sequential chain of signalling in which each node only possesses two connections (i.e. input and output). Moreover, these connections are not just formed with next (spatial or topological) neighbours. Second, shortest paths across brain networks are known to be quite short (e.g. [27]) also indicating the presence of shortcuts across networks, which increase the diversity of processing and reduce the sequential organization.",
+          "For the formal analysis, the connections need to be embedded in some layout, for instance, simply along a one-dimensional axis. Then the nodes are rearranged until the cost is minimal, which can be achieved through an optimization approach.",
+          "The minimal cost of the sequential layout of the actual data should also be compared to the layout cost for a network of the same size and density, but different topology, in order to place the organization of the networks on a relative scale.",
+          "This finding means that visual cortical projections in the primate indeed possess a semi-sequential organization, even if they are not arranged in a strictly sequential way. The sequential arrangement (figure 4b) largely resembles the intuitively assumed sequence of the processing of sensory signals in the primate visual system, from primary and adjacent extrastriate areas on the left to dorsal stream and ventral stream areas towards the right. (This interpretation ignores outliers with few documented connections, such as areas VOT and V4t, which are moved to the periphery of the arrangement owing to the sequence optimization process.)"
+        ],
+        "Hierarchy as a gradient of features" : [
+          "Another, frequently employed sense of hierarchy is that of a gradient of structural or functional features, that is, an orderly spatial progression of parameters which are changing systematically acrossthecorticalsheet.Anexampleisshowninfigure5a, where different macroscopic structural features, such as neuron density, and microscopic features, such as characterizations of layer 3 pyramidal neurons in terms of their size and spine parameters, are shown in the same cortical flat map (adapted from Markov et al. [31]).",
+          "The figure confirms what has been known for a long time (e.g. [32]), that features such as cortical thickness or the neuron density of cortical areas are not distributed uniformly or randomly across the cortical sheet, but are found in systematic variations along spatially organized gradients.",
+          "In particular, classic neuroanatomical studies by von Economo and Koskinas demonstrated that cortical areas can be categorized into distinct, ordinal cytoarchitectonic types [32,33]. Moreover, the cytoarchitectonic and myeloarchitectonic inhomogeneity that is observed in the cerebral cortex forms spatially ordered changes, that is, gradients",
+          "Moreover, laminar patterns of projection origins are related to differences in architectonic differentiation. Connections between areas of distinct differentiation show a skewed unilaminar projection pattern, with projections originating predominantly in the infragranular or supragranular layers depending on the direction of the projection (agranular to eulaminate projections and eulaminate to agranular projections, respectively), while connections between areas of similar architectonic differentiation show a bilaminar projection origin pattern (connections between middle panels), where the dominating laminar compartment again depends on the connected areas’ relative differentiation.",
+          "n summary, there are concurrent changes of macro- and microstructural cellular and connectional features across the cortical sheet, forming spatially ordered gradients, confirming and expanding observations from classic neuroanatomy studies (gradation principle of Sanides [29]). Figure adapted from [30].",
+          "Importantly, recent observations [35–40], conjointly with classic studies [29,41], indicate that the spatially ordered changes of cortical features are concerted; that is, changes in multiple features, for instance, myeloarchitecture, cell density, spine density, and intrinsic connectivity, occur simultaneously along the same axis across the cortex.",
+          "For instance, in the case of the structural features displayed in figure 5a,overall neuron density of primate cortical areas is anti-correlated with microscopic cellular features, such as the soma cross section of layer III pyramidal cells as well as their spine density and spine count.",
+          "Indeed, recent work on cat and monkey cortex indicates that cytoarchitecture-based predictive models of laminar origin of connections consistently outperform other predictive models based on features, such as rostro-caudal distance [39,46,47]. Thus, cytoarchitectonic gradients of the cortex, as fundamentally characterized by neuron density, constitute the central axis around which shifts of the laminar origin of connections manifest [40].",
+          "Thus, hierarchies based on the laminar origin of connections and hierarchies in the sense of spatially ordered features of cortical organization naturally align.",
+          "In summary, a plethora of findings from classic and more recent studies imply that variations of cortical features on multiple levels of cortical organization, such as the genetic, cytological and connectional level, manifest as concerted changes along spatial axes [48]. Such concerted changes are aligned along a common spatial dimension spanning from less to more differentiated parts of the cortex, on average corresponding to a gradient from ‘limbic’ (agranular and dysgranular) cortices to primary, eulaminate cortices (e.g. primary visual cortex); thus, defining a natural axis of variation of cortical organization.",
+          "Evidently, the systematic variations of cortical structure and function have ramifications for function. For instance, spine density gradients entail different levels of excitability of the neuronal populations. Indeed, a computational model embodying such density heterogeneity reveals different receptive time windows that correspond to the natural axis of the primate cerebral cortex [49] in line with empirical evidence [50].",
+          "In addition, the natural axis of the concerted changes across the cortex entails a sensory to transmodal functional gradient, as classic organizational schemes [3] and more recent observations [51] indicate. Thus, instead of using ‘hierarchy’ to denote the spatially ordered, concerted variation of cortical features, a more neurobiologically concrete term, rooted in a large body of classic and recent studies in different mammalian species, would be a natural gradient or fundamental axis of the cerebral cortex."
+        ],
+        "Hierarchy as a progression of scales" : [
+          "In the context of brain networks, where ‘nodes’ abstractly represent neural elements ranging from neurons to whole cortical areas or subcortical nuclei and ‘edges’ represent the structural or functional interactions of these elements [52], such scaling means that smaller network units are contained or encapsulated within larger ones. Several other features may scale in association with this encapsulation of network elements, such as spatial scales or time scales, or a variety of concrete functional features.",
+          "Concentration of connections within modules allows locally sustained activity, while at the same time preventing global over-excitation of the networks, owing to the low density of inter-modular connections [53]. More generally, hierarchical modularity may be a natural way to balance network segregation and integration.",
+          "An influential concept in network neuroscience has been that an optimal balance between these aspects reflects the complexity of network organization [57], maximizing the richness—measured by the entropy—of potential functional interactions.",
+          "he hierarchical, multi-scale organization combines connectional sparsity at the global network level with network integration through connectivity that scales naturally from the local to the global level. Computational studies demonstrate that, both, increasing the number of modules or hierarchical levels increases the stability of self-sustained network activity [58].",
+          "Simulations with excitable networks demonstrate that activity tends to die out quickly in small and dense networks, as nodes cannot recover their excitability before the next wave of activity arrives. By contrast, networks with a longer average cycle length, which may outlast inhibitory and refractory periods of the nodes and give them time to recover, might be better able to sustain activity patterns.",
+          "Criticality, the positioning of a dynamical system at the boundary between order and irregular chaotic dynamic behaviour (or disorder) has for a long time been considered an advantageous configuration of biological systems.",
+          "Critical points are linked to high adaptability, because small changes in an external control parameter can trigger large rearrangements in the internal system state. There is experimental evidence for such phenomena in the brain [61,62] and, intuitively, the normal working brain should be near the critical transition, because it operates between the extremes of complete order, in a silent brain, and the complete disorder of wildly propagating, unstructured activity.",
+          "Criticality in the brain is particularly intriguing, because it can enhance the informationprocessing capabilities of neuronal networks and optimize the dynamic range as well as the input sensitivity of brain networks [63].",
+          "In summary, the interpretation of ‘hierarchy’ as a scaling of structural and functional properties of the brain appears as a very powerful and general concept that needs to be more fully explored. Several further aspects of the brain show hierarchical scaling, such as the spatial encapsulation of smaller neural elements (e.g. ion channels, spines) in larger ones (i.e. neurons), the hierarchy of time scales and rhythms of the brain [67] as well as the level of access or control of brain networks (local versus global access, cf. figure 6). Finally, such a scaling may also concern the representational level, that is, the chosen ‘aperture’ (scope or focus) of empirical investigations or the complexity of models of neural properties, as in the gradual transition from detailed biophysical models to more abstract representations of neural properties in neural point models or neural masses [68]."
+        ],
+        "Hierarchy as a sorting of laminar projection patterns" : [
+          "The difference is that cortical types are well-defined biological entities with a direct structural and functional interpretation (in terms of neuron density, spine count, branching of intrinsic connections, neurotransmitter receptor profiles, excitability, and so on), whereas the levels of the VCH are constructs derived indirectly from an (indeterminate) sorting process with no such clear interpretation.",
+          "This conclusion does not contradict the fact that the VCH may be correlated with structural or functional features such as excitability of cortical areas [49]; however, a explanation for these features should not be sought in the VCH, but the underlying structural gradients of the cortex.",
+          "More generally, as the basic presence or absence of connections is also linked to the architectonic similarity of primate cortical areas [30,40,43,69], there exists a natural relationship between the architectonic gradients of the cortex described in §3 and the sequential organization of cortical connections outlined in §2 above."
+        ],
+        "Conclusion" : [
+          "As particularly demonstrated for the example of the non-human primate cortical visual system, these diverse ‘hierarchy’ concepts lead to different interpretations of the empirical data, with diverging functional implications.",
+          "In summary, further meanings of the term ‘hierarchy’ may expand and enrich the existing list and we hope that this endeavour will further enhance the conceptual clarity that is needed for proper dissemination of ideas, results, models and theories among neuroscientists."
+        ]
+      }
+    },
+    {
+      "title" : "Current concepts in neuroanatomical tracing",
+      "phrases" : {
+        "Dierent tracers for dierent purposes" : [ 
+          "In particular, in vivo labelling with Øuorescent dyes allows not only the deÆnition of neuronal populations according to their anatomical connections, but also makes them readily accessible to a wide range of additional approaches.",
+          "Multiple-labelling strategies using dierent Øuorescent dyes in vivo or in Æxed tissues to study divergent or convergent projections."
+        ],
+        "Historical perspective" : [
+          "With regard to the direction of transport, it is possible to distinguish between the anterograde and retrograde transportation of tracer material.",
+          "In terms of neuroanatomical tools, retrograde axonal transport allows identiÆcation of the cells of origin of aerent nerve Æbres to a particular target zone, while anterograde axonal transport enables the projection target(s) of individual or groups of cells to be charted within the central nervous system (CNS)",
+          "For retrograde transport, the tracer material is applied to a Æbre tract or a terminal Æeld of innervation, becomes incorporated into the cell axons (usually by a process of endocytosis), and is then carried back to the parent cell body",
+          "For anterograde transport, the uptake mechanisms involve the cell soma and/or its dendrites, and the tracer material is transported along the axonal microtubular system to the cell's synaptic terminals."
+        ],
+        "Retrograde tract tracing" : [
+          "Destruction of a target region of the brain leads to retrograde degeneration of the axons projecting to that region and, ultimately, to chromatolysis of the cells of origin of the pathway under study.",
+          "Since degenerating Æbres can be visualised with silver impregnation techniques, the course of the Æbre tract can be charted from the lesion site along its length back to the cells of origin (Nauta and Gygax, 1954).",
+          "major breakthrough has undoubtedly been the discovery that the plant enzyme horseradish peroxidase (HRP) is taken up by axons and transferred back to cell somata by active retrograde transport. The enzyme reaction may then be used to stain the cell body and its major dendrites",
+          "Subsequently, many new substances have been found that are useful for retrograde tracing. Of particular importance are Øuorescent dyes of various colours, which can be combined in the same experiment for multiple retrograde labelling",
+          "Such developments have been motivated partly by whether or not the axon of a parent neurone can branch to more than one target. As a result, a range of dierent substances are available for double (and multiple) retrograde labelling studies, including modiÆcations of various HRP techniques"
+        ],
+        "Anterograde tract tracing" : [
+          "The tracer material is carried actively within the nerve Æbres, but the transported substance moves from the cell body towards the axon terminals.",
+          "The advantages of using tritiated amino acids are that they are readily incorporated into newly synthesised peptides, are transported across the synaptic cleft, and have a small molecular weight.",
+          "The disadvantages include their hydrophilic properties, which limit their diusion within the extracellular space, resulting in a restricted selectivity for certain cells or projections."
+        ],
+        "General aspects of neuroanatomical tracing" : [
+          "Three basic methods are used to deliver tracer material into the target tissue: pressure injection, iontophoretic injection and the mechanical insertion of dye crystals.",
+          "or by means of a hydraulic system. The latter is often preferable because it enables the injection volume to be controlled accurately.",
+          "racer molecules usually carry an electrical charge and can therefore be ejected from the pipette by an applied electrical current. Current is applied through a micropipette containing the tracer solution (typically, at a concentration of about 1±10%). With appropriate electrode tip diameters, this technique can be used for both intracellular and extracellular applications.",
+          "The insertion of crystalline dyes is feasible when the target tissue is normally readily accessible. As the labelling eÅciency is very high and placement of the crystals can be carried out under microscopic control, this is the method of choice for focal applications of carbocyanine dyes such as DiI and 4-4-didecylaminostyrylN-methyl-pyridinium iodide (DiAsp)",
+          "By contrast, propidium iodide (PI) and FB are more readily taken up via intact terminals than through disrupted axons. Such retrograde markers do not easily enter axons en passage and are therefore better suited for studies seeking to identify the origin of neurones terminating at the application site.",
+          "Active uptake is one of the advantages of the lectins (Gerfen and Sawchenko, 1984). These plant-derived tracers bind to the sugar moieties of membrane-bound glycoproteins and glycolipids. Since receptor-mediated internalisation is very eÅcient, lower concentrations of tracer (between 1 and 5%) suÅce. For instance, WGA±HRP is internalised at a much higher rate than HRP alone."
+        ],
+        "Passive incorporation" : [
+          "Substances that diuse passively into neurones enter because of the local concentration gradient. They must therefore be present at higher concentrations at the application site (20±50%).",
+          "Water-soluble tracers like HRP or FB reach the cytoplasm via the active transport of endosomes. Dyes that occur as weak bases diffuse through the membranes of intracellular vesicles.",
+          "The incorporation of lipids into membranes is eÅcient so that Øuorescent dyes are generally given in low concentrations of 1±5%"
+        ],
+        "Active transport in vesicles" : [
+          "There are two ways in which tracers are distributed within the neurones: active transport in vesicles and lateral diusion within the plane of the membrane. Active vesicular transport seems to be the only eÅcient transfer mechanism for longer distances in vivo.",
+          "By means of pH-trapping or the ingestion of labelled membrane fragments, the tracer accumulates in vesicles, and these are actively carried along the cytoskeleton of axons and dendrites. Fast axonal transport can reach velocities in the order of 2 cm/day",
+          "Retrogradely transported HRP, CTB and Øuorescent markers that remain in vesicles produce a granular appearance in the cell soma, and consequently do not display the morphology of neuronal processes very well. Some hydrophilic substances, like FB, are more uniformly distributed within the cytoplasm",
+          "Depending upon the distance to be covered by the tracer and the importance one places on tissue quality, tracing in Æxed tissues may be performed under refrigeration, at room temperature (RT), or at higher temperatures (e.g., 378C)."
+        ],
+        "Detection of the signal: Fluorescent tracers" : [
+          "Fluorescent tracers are directly visible. This is a major advantage because labelled cells can be studied in the living tissue in vivo or in vitro, and it is feasible to perform additional experiments on the same tissue, for instance electrophysiology or the observation of growth processes in culture. However, a relative disadvantage is that Øuorescent dyes are frequently not preserved in cryostat or paraÅn sections. This can be overcome by using a vibratome or tissue chopper.",
+          "There is now a large number of Øuorescent tracers available with dierent absorption spectra, thus permitting simultaneous labelling with multiple markers. These advantages of Øuorescent dyes are oset by a few drawbacks. A strong Øuorescence signal may obscure the details of smaller processes. Photobleaching, or fading of the signal after light exposure during examination, poses a problem to the application of any Øuorescent marker."
+        ],
+        "Fast blue" : [
+          "FB is applied by pressure injection of a 3% aqueous solution. It is taken up by axon terminals rather than by injured axons. Retrograde tracing leads to uniform labelling of the cell soma without much staining of dendrites. The blue Øuorescence requires excitation in the ultraviolet range (360 nm) and is subject to high phototoxicity at longer illumination times.",
+          ""
         ]
       }
     }

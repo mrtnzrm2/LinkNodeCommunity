@@ -18,30 +18,30 @@ from networks.structure import MAC
 from various.network_tools import *
 from various.fit_tools import fitters
 # Declare global variables ----
-__iter__ = 2
+__iter__ = 3
 linkage = "single"
 nlog10 = T
 lookup = F
 prob = T
 cut = F
-structure = "FLN"
-distance = "MAP3D"
+structure = "LN"
+distance = "tracto16"
 nature = "original"
 __mode__ = "ALPHA"
 topology = "MIX"
-mapping = "R2"
-index  = "jacw"
+mapping = "R4"
+index  = "simple"
 imputation_method = ""
 opt_score = ["_maxmu", "_X"]
 save_datas = T
 # Declare global variables DISTBASE ----
-__model__ = "PARETO"
+__model__ = "EXPMLE"
 total_nodes = 106
 __inj__ = 57
 __nodes__ = 57
 __bin__ = 12
 __version__ = 220830
-bias = float(0.3)
+bias = float(0)
 ## Very specific!!! Be careful ----
 if nature == "original":
   __ex_name__ = f"{total_nodes}_{__inj__}"
@@ -94,7 +94,7 @@ if __name__ == "__main__":
   G = column_normalize(Gn)
   # Transform data for analysis ----
   R, lookup, _ = maps[mapping](
-    G, nlog10, lookup, prob, b=bias
+    Gn, nlog10, lookup, prob, b=bias
   )
   # Compute Hierarchy ----
   print("Compute Hierarchy")
@@ -102,7 +102,7 @@ if __name__ == "__main__":
   if save_datas:
     ## Hierarchy object!! ----
     H = Hierarchy(
-      NET, G[:, :NET.nodes], R[:, :NET.nodes], D,
+      NET, Gn[:, :NET.nodes], R[:, :NET.nodes], D,
       __nodes__, linkage, __mode__,
       lookup=lookup
     )

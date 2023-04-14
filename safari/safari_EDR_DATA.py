@@ -14,6 +14,7 @@ sns.set_theme()
 from various.data_transformations import maps
 from networks.structure import MAC
 from various.network_tools import *
+from various.similarity_indices import jacp_smooth, jacp
 
 def simple(x, y):
   return -np.mean(np.abs(x-y))
@@ -94,7 +95,7 @@ nature = "original"
 __mode__ = "ALPHA"
 topology = "MIX"
 mapping = "R4"
-index  = "jacw"
+index  = "simple"
 imputation_method = ""
 opt_score = ["_maxmu", "_X"]
 save_datas = T
@@ -106,7 +107,7 @@ __nodes__ = 57
 __bin__ = 12
 lb = 0.07921125
 __version__ = 220830
-bias = float(0.3)
+bias = float(0)
 ## Very specific!!! Be careful ----
 if nature == "original":
   __ex_name__ = f"{total_nodes}_{__inj__}"
@@ -138,14 +139,25 @@ if __name__ == "__main__":
   np.fill_diagonal(RFLN, 0)
   SIMT = np.zeros((__nodes__, __nodes__))
   for i in np.arange(__nodes__):
-    for j in np.arange(i, __nodes__):
-      SIMT[i, j] = simple(RFLN[:, i], RFLN[:, j])
+    for j in np.arange(i+1, __nodes__):
+      u = RFLN[:, i]
+      u[i] = np.mean(u[u>0])
+      v = RFLN[:, j]
+      v[j] = np.mean(v[v>0])
+      SIMT[i, j] = jacp_smooth(u, v, RFLN.shape[0], False)
       SIMT[j, i] = SIMT[i, j]
+      if SIMT[i, j] > 1: print(u, "\n\n", v)
   SIMS = np.zeros((__nodes__, __nodes__))
   for i in np.arange(__nodes__):
-    for j in np.arange(i, __nodes__):
-      SIMS[i, j] = simple(RFLN[i, :], RFLN[j, :])
+    for j in np.arange(i+1, __nodes__):
+      u = RFLN[i, :]
+      u[i] = np.mean(u[u>0])
+      v = RFLN[j, :]
+      v[j] = np.mean(v[v>0])
+      SIMS[i, j] = jacp_smooth(u, v, RFLN.shape[1], False)
       SIMS[j, i] = SIMS[i, j]
+      if SIMS[i, j] > 1: print(u, "\n\n", v)
+
   SIMT = adj2df(SIMT)
   SIMT = SIMT.loc[SIMT.source > SIMT.target].weight.to_numpy()
   SIMS = adj2df(SIMS)
@@ -191,6 +203,10 @@ if __name__ == "__main__":
   #   ax=ax
   # )
   plt.show()
+
+  # a = np.array([1, 0, 0, 3])
+  # b = np.array([0, 3, 4, 0])
+  # print(jacp(a, b, 4))
   # pred_sim = 
   # D = REF.D
   # p = lambda a, xm, x: xm * np.power(1 - x, -1/a)

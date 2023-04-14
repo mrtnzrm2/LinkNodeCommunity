@@ -27,8 +27,8 @@ distance = "tracto16"
 nature = "original"
 imputation_method = ""
 topology = "MIX"
-mapping = "R4"
-index  = "jacw"
+mapping = "R5"
+index  = "jacp"
 bias = float(0)
 opt_score = ["_maxmu", "_X", "_D"]
 save_data = T
@@ -139,7 +139,7 @@ if __name__ == "__main__":
     plot_h.core_dendrogram([r], on=T) #
     plot_h.lcmap_pure([k], labels = rlabels, on=F)
     plot_h.heatmap_pure(r, on=T, labels = rlabels) #
-    plot_h.heatmap_dendro(r, on=F)
+    plot_h.heatmap_dendro(r, on=T)
     plot_h.lcmap_dendro([k], on=T) #
     plot_h.flatmap_dendro(
       NET, [k], [r], on=T, EC=T #

@@ -31,9 +31,11 @@ class Hierarchy(Sim):
     self.similarity_by_feature_cpp()
     # Compute distance matrix ----
     self.dist_mat = self.linksim_matrix
+    ###
     # self.dist_mat[self.dist_mat != 0] -= np.max(self.dist_mat[self.dist_mat != 0]) + 0.01
+    ##@
     self.dist_mat[self.dist_mat == 0] = np.nan
-    self.dist_mat = 1 - self.dist_mat
+    self.dist_mat = np.nanmax(self.dist_mat) - self.dist_mat
     self.dist_mat[np.isnan(self.dist_mat)] = np.nanmax(self.dist_mat) + 1
     # Compute hierarchy ----
     self.H = self.get_hierarchy()

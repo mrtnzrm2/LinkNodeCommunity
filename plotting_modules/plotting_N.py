@@ -547,3 +547,46 @@ class Plot_N:
         dpi=300
       )
     else: print("No histoscatter") 
+
+  def plot_network_kk(self, H : Hierarchy, partition, ang=0, score="", cmap_name="hls", on=True):
+    if on:
+      print("Printing network space")
+      new_partition = skim_partition(partition)
+      unique_clusters_id = np.unique(new_partition)
+      keff = len(unique_clusters_id)
+      save_colors = sns.color_palette(cmap_name, keff - 1)
+      cmap_heatmap = [[]] * keff
+      cmap_heatmap[0] = [199/ 255.0, 0, 57/ 255.0]
+      cmap_heatmap[1:] = save_colors
+      color_nodes = [[]] * H.nodes
+      for i, r in enumerate(new_partition):
+        if r >= 0:
+          color_nodes[i] = cmap_heatmap[r+1]
+        else: color_nodes[i] = cmap_heatmap[0]
+      G = nx.Graph(H.A)
+      pos = nx.kamada_kawai_layout(G)
+      ang = ang * np.pi/ 180
+      rot = np.array([[np.cos(ang), np.sin(ang)],[-np.sin(ang), np.cos(ang)]])
+      pos = {k : np.matmul(rot, pos[k]) for k in pos.keys()}
+      nx.draw_networkx_nodes(G, pos, node_color=color_nodes)
+      nx.draw_networkx_edges(G, pos=pos)
+      nx.draw_networkx_labels(G, pos=pos)
+      # Arrange path ----
+      plot_path = os.path.join(
+        self.path, "Network"
+      )
+      # Crate path ----
+      Path(
+        plot_path
+      ).mkdir(exist_ok=True, parents=True)
+      # Save plot ----
+      plt.savefig(
+        os.path.join(
+          plot_path, f"kk{score}.png"
+        ),
+        dpi=300
+      )
+
+
+
+

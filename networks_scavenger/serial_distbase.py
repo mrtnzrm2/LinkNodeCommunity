@@ -35,7 +35,7 @@ distance = "tracto16"
 nature = "original"
 mode = "ALPHA"
 mapping = "R4"
-index  = "simple"
+index  = "simple2"
 imputation_method = ""
 opt_score = ["_maxmu", "_X", "_D"]
 # Statistic test ----

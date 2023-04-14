@@ -191,13 +191,21 @@ double simquest::simple2(
 	std::vector<double> &u, std::vector<double> &v
 ) {
 	int N = u.size();
-	double maximus=0., wu, wv;
-	for (int i=0; i < N; i++) { 
-		wu = exp (u[i]);
-		wv = exp(v[i]);
-		maximus -= (wu*log(wu/(wu+wv)) +  wv*log(wv/(wu+wv)))/(wu+wv) / 2; 
+	double JACP = 0.;
+	double p;
+	for (int i=0; i < N; i++){
+		p = 0;
+		for (int j=0; j < N; j++){
+			p += std::log(1 + std::max(std::exp(u[j]-u[i]), std::exp(v[j]-v[i])));
+		}
+		if (p != 0) JACP += std::log(2.) / p;
+		else std::cout << "Vectors in jaccardp  are both zero\n";
 	}
-	return maximus / N;
+	if (JACP > 1) {
+		JACP = 1 - 1e-8;
+		std::cout << "\n\tSimilarity greater than one.\n";
+	}
+	return JACP;
 }
 
 double simquest::bin_similarity(

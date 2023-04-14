@@ -12,6 +12,7 @@ import seaborn as sns
 sns.set_theme()
 # Personal libs ----
 from networks.toy import TOY
+from modules.hierarentropy import Hierarchical_Entropy
 from modules.hierarmerge import Hierarchy
 from modules.colregion import colregion
 from plotting_modules.plotting_H import Plot_H
@@ -128,30 +129,43 @@ if __name__ == "__main__":
     NET, toy.A, toy.A, np.zeros(toy.A.shape),
     toy.nodes, linkage, mode
   )
-  ## Compute topologys ----
-  H.BH_features_cpp()
+  # Compute quality functions ----
+  H.BH_features_parallel()
+  ## Compute link entropy ----
+  H.link_entropy_cpp("short", cut=cut)
   ## Compute la arbre de merde ----
   H.la_abre_a_merde_cpp(H.BH[0])
-  # Set labels to network ----
+  ## Set labels to network ----
   L = colregion(NET, labels=NET.labels)
   L.get_regions()
   H.set_colregion(L)
+  # Entropy ----
+  HS = Hierarchical_Entropy(H.Z, H.nodes, list(range(H.nodes)))
+  HS.Z2dict("short")
+  node_entropy = HS.S(HS.tree)
+  node_entropy_H = HS.S_height(HS.tree)
+  H.entropy = [
+    node_entropy, node_entropy_H,
+    H.link_entropy, H.link_entropy_H
+  ]
   # Plot H ----
   plot_h = Plot_H(NET, H)
-  plot_h.plot_measurements_D(on=T)
-  for score in opt_score:
-    k, r = get_best_kr(score, H)
-    rlabels = get_labels_from_Z(H.Z, r)
-    _, nocs_membership = H.get_ocn_discovery(k, rlabels)
-    print(nocs_membership)
-    plot_h.lcmap_pure(
-      [k], cmap_name="husl", labels = rlabels,
-      font_size=7, on=T
-    )
-    plot_h.lcmap_dendro(
-      [k], cmap_name="husl",
-      font_size=7, score="_"+score, on=T
-    )
-    plot_h.core_dendrogram(
-      [r], score="_"+score, cmap_name="husl", on=T
-    )
+  HS.zdict2newick(HS.tree, weighted=F, on=T)
+  plot_h.plot_newick_R(HS.newick, weighted=F, on=T)
+  # plot_h.plot_measurements_D(on=T)
+  # for score in opt_score:
+  #   k, r = get_best_kr(score, H)
+  #   rlabels = get_labels_from_Z(H.Z, r)
+  #   _, nocs_membership = H.get_ocn_discovery(k, rlabels)
+  #   print(nocs_membership)
+  #   plot_h.lcmap_pure(
+  #     [k], cmap_name="husl", labels = rlabels,
+  #     font_size=7, on=T
+  #   )
+  #   plot_h.lcmap_dendro(
+  #     [k], cmap_name="husl",
+  #     font_size=7, score="_"+score, on=T
+  #   )
+  #   plot_h.core_dendrogram(
+  #     [r], score="_"+score, cmap_name="husl", on=T
+  #   )
