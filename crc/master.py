@@ -15,6 +15,8 @@ from crc.serial_distbase import worker_distbase
 from crc.serial_overlap import worker_overlap
 from crc.serial_scalefree import worker_scalefree
 from crc.serial_swaps import worker_swaps
+from crc.serial_ER import worker_ER
+from crc.serial_HRG import worker_HRG
 
 #Create THE_ARRAY ----
 THE_ARRAY = pd.DataFrame()
@@ -129,11 +131,40 @@ array_swaps = pd.DataFrame(
     "mode" : list_of_lists[:, 3]
   }
 )
+## ER -----------------
+worker = ["ER"]
+topology = ["MIX"]
+index = ["jacp", "bsim"]
+list_of_lists = itertools.product(*[topology, index])
+list_of_lists = np.array(list(list_of_lists))
+array_ER = pd.DataFrame(
+  {
+    "worker" : worker * list_of_lists.shape[0],
+    "topology" : list_of_lists[:, 0].astype(str),
+    "index" : list_of_lists[:, 1].astype(str)
+  }
+)
+## HRG -----------------
+worker = ["HRG"]
+topology = ["MIX"]
+index = ["jacp", "bsim"]
+list_of_lists = itertools.product(*[topology, index])
+list_of_lists = np.array(list(list_of_lists))
+array_HRG = pd.DataFrame(
+  {
+    "worker" : worker * list_of_lists.shape[0],
+    "topology" : list_of_lists[:, 0].astype(str),
+    "index" : list_of_lists[:, 1].astype(str)
+  }
+)
+
 ## Merge arrays -----------------
 # THE_ARRAY = pd.concat([THE_ARRAY, array_distbase], ignore_index=True)
 # THE_ARRAY = pd.concat([THE_ARRAY, array_scalefree], ignore_index=True)
 # THE_ARRAY = pd.concat([THE_ARRAY, array_overlap], ignore_index=True)
-THE_ARRAY = pd.concat([THE_ARRAY, array_swaps], ignore_index=True)
+# THE_ARRAY = pd.concat([THE_ARRAY, array_swaps], ignore_index=True)
+THE_ARRAY = pd.concat([THE_ARRAY, array_ER], ignore_index=True)
+THE_ARRAY = pd.concat([THE_ARRAY, array_HRG], ignore_index=True)
 
 
 def NoGodsNoMaster(number_of_iterations, t):
@@ -216,6 +247,34 @@ def NoGodsNoMaster(number_of_iterations, t):
       version, nlog10, lookup, prob, cut,
       run, array.loc["topology"], mapping, index, array.loc["bias"],
       array.loc["mode"]
+    )
+  elif array.loc["worker"] == "ER":
+    nlog10 = F
+    lookup = F
+    prob = F
+    cut = F
+    number_of_nodes = 128
+    mapping = "trivial"
+    bias = float(0)
+    mode = "ALPHA"
+    worker_ER(
+      number_of_iterations, number_of_nodes, nlog10,
+      lookup, prob, cut, array.loc["topology"],
+      mapping, array.loc["index"], bias, mode
+    )
+  elif array.loc["worker"] == "HRG":
+    nlog10 = F
+    lookup = F
+    prob = F
+    cut = F
+    number_of_nodes = 640
+    mapping = "trivial"
+    bias = float(0)
+    mode = "ALPHA"
+    worker_HRG(
+      number_of_iterations, number_of_nodes, nlog10,
+      lookup, prob, cut, array.loc["topology"],
+      mapping, array.loc["index"], bias, mode
     )
   else:
     raise ValueError("Worker does not exists!!!")

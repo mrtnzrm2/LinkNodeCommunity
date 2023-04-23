@@ -8,6 +8,7 @@ T = True
 F = False
 # Import libraries ----
 from modules.hierarmerge import Hierarchy
+from modules.hierarentropy import Hierarchical_Entropy
 from networks_serial.scalehrh import SCALEHRH
 from networks.scalefree import SCALEFREE
 from various.network_tools import *
@@ -86,10 +87,24 @@ def worker_scalefree(
     )
     ## Compute features ----
     RAND_H.BH_features_parallel()
+    ## Compute link entropy ----
+    RAND_H.link_entropy_cpp("short", cut=cut)
     ## Compute lq arbre de merde ----
     RAND_H.la_abre_a_merde_cpp(RAND_H.BH[0])
     # Save stats ----
     data.set_data_measurements(RAND_H, i)
+   # Entropy ----
+    HS = Hierarchical_Entropy(
+      RAND_H.Z, RAND_H.nodes, RAND_H.colregion.labels[:RAND_H.nodes]
+    )
+    HS.Z2dict("short")
+    HS.zdict2newick(HS.tree, weighted=F, on=F)
+    HS.zdict2newick(HS.tree, weighted=T, on=F)
+    node_entropy = HS.S(HS.tree)
+    node_entropy_H = HS.S_height(HS.tree)
+    data.update_entropy(
+      [node_entropy, node_entropy_H, RAND_H.link_entropy, RAND_H.link_entropy_H],  
+    )
     rlabels = zeros(1)
     for score in opt_score:
       print("Score: {}".format(score))

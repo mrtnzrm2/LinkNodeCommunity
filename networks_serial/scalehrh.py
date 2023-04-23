@@ -13,6 +13,40 @@ class SCALEHRH:
     self.data = pd.DataFrame()
     self.stats = pd.DataFrame()
     self.data_measures = pd.DataFrame()
+    self.node_entropy = pd.DataFrame()
+    self.link_entropy = pd.DataFrame()
+
+  def update_entropy(self, s):
+    dim = s[0].shape[1]
+    self.node_entropy = pd.concat(
+      [
+        self.node_entropy,
+        pd.DataFrame(
+          {
+            "S" : np.hstack([s[0].ravel(), s[1].ravel()]),
+            "c" : ["node_hierarchy"] * 2 * dim  + ["node_hierarch_H"] * 2 * dim,
+            "dir" : ["H"] * dim + ["V"] * dim + ["H"] * dim + ["V"] * dim,
+            "level" : np.tile(np.arange(dim, 0, -1), 4),
+            "iter" : [(self.iter+1)] * dim + [-(self.iter+1)] * dim + [(self.iter+1)] * dim + [-(self.iter+1)] * dim
+          } 
+        )
+      ], ignore_index=True
+    )
+    dim = s[2].shape[1]
+    self.link_entropy = pd.concat(
+      [
+        self.link_entropy,
+        pd.DataFrame(
+          {
+            "S" : np.hstack([s[2].ravel(), s[3].ravel()]),
+            "c" : ["link_hierarchy"] * 2 * dim  + ["link_hierarch_H"] * 2 * dim,
+            "dir" : ["H"] * dim + ["V"] * dim + ["H"] * dim + ["V"] * dim,
+            "level" : np.tile(np.arange(dim, 0, -1), 4),
+            "iter" : [(self.iter+1)] * dim + [-(self.iter+1)] * dim + [(self.iter+1)] * dim + [-(self.iter+1)] * dim
+          }
+        )
+      ], ignore_index=True
+    )
 
   def set_data_measurements(self, HH : Hierarchy, iter):
     H = get_H_from_BH_with_maxmu(HH)[

@@ -1157,7 +1157,7 @@ class Plot_H:
         dFLN["id"] =  cut_tree(
           self.H,
           n_clusters = k
-        ).reshape(-1)
+        ).ravel()
         ##
         dFLN["source_label"] = labels[dFLN.source]
         dFLN["target_label"] = labels[dFLN.target]

@@ -14,22 +14,33 @@ from networks.toy import TOY
 from modules.hierarmerge import Hierarchy
 from modules.colregion import colregion
 from plotting_modules.plotting_H import Plot_H
-from various.network_tools import get_best_kr_equivalence, get_labels_from_Z
+from various.network_tools import get_best_kr, get_labels_from_Z
+from various.data_transformations import maps
 
 class HRG:
-  def __init__(self, N : int, seed=-1) -> None:
+  def __init__(self, N : int, group_sizes=[160, 40, 10], rho=1, kav=16, seed=-1) -> None:
     self.nodes = N
+    self.rho = rho
+    self.kav = kav
+    self.group_sizes = np.array(group_sizes)
+    self.lmax = len(group_sizes)
     self.A = np.zeros((N, N))
     self.labels = np.arange(N, dtype=int).astype(str)
     self.generate_membership_list()
     self.fill_adjacency_matrix(seed=seed)
 
+  def get_p(self):
+    p = np.zeros(len(self.group_sizes) + 1)
+    p[0] = np.power(self.rho, self.lmax) / np.power(1 + self.rho, self.lmax) * (self.kav / (self.group_sizes[0] * self.lmax))
+    for x, Sx in enumerate(self.group_sizes):
+      x += 1
+      p[x] = np.power(self.rho, self.lmax - x) / np.power(1 + self.rho, self.lmax - x + 1) * (self.kav / (Sx - 1))
+    return p
+
   def fill_adjacency_matrix(self, seed=-1):
     if seed > 0:
       np.random.seed(seed)
-    p = np.array([
-      2/360, 2/159, 4/39, 8/9
-    ])
+    p = self.get_p()
     for i in np.arange(self.nodes):
       for j in np.arange(self.nodes):
         if i == j: continue
@@ -43,10 +54,9 @@ class HRG:
         if np.random.rand() < p[kk]: self.A[i, j] = 1      
 
   def generate_membership_list(self):
-    group_sizes = np.array([160, 40, 10])
-    memberships_options = np.arange(4)
-    self.node_memberships = np.zeros((self.nodes, len(group_sizes)))
-    for i, size in enumerate(group_sizes):
+    memberships_options = np.arange(self.lmax + 1)
+    self.node_memberships = np.zeros((self.nodes, len(self.group_sizes)))
+    for i, size in enumerate(self.group_sizes):
       mem = np.repeat(memberships_options, size)
       if len(mem) < self.nodes:
         mem = np.tile(mem, int(self.nodes / len(mem)))
@@ -61,7 +71,7 @@ cut = T
 mode = "ALPHA"
 topology = "MIX"
 mapping="trivial"
-index = "jacp"
+index = "bsim"
 opt_score = ["_maxmu", "_X", "_D"]
 
 properties = {
@@ -77,17 +87,23 @@ properties = {
 }
 
 if __name__ == "__main__":
-  N = 640
-  hrg = HRG(N, seed=12345)
+  # Define parameters HRG
+  N = 160
+  group_sizes = [40, 20, 5]
+  kav = 7
+  #
+  hrg = HRG(N, group_sizes=group_sizes, kav=kav, seed=12345)
   perm = np.random.permutation(np.arange(N))
   hrg.A = hrg.A[perm, :][:, perm]
-  labels_dict = dict()
-  for i in np.arange(N):
-    labels_dict[i] = hrg.labels[i]
+  labels_dict = {i: hrg.labels[i] for i in np.arange(N)}
   # Create TOY ---
   NET = TOY(hrg.A, linkage, **properties)
+  NET.set_alpha([6, 15, 30])
   NET.create_plot_directory()
   NET.set_labels(hrg.labels)
+  R, lookup, _ = maps[mapping](
+    NET.A, nlog10, lookup, prob, b=0
+  )
   H = Hierarchy(
     NET, hrg.A, hrg.A, np.zeros(hrg.A.shape),
     N, linkage, mode
@@ -106,7 +122,9 @@ if __name__ == "__main__":
   plot_h.plot_measurements_X(on=T)
   plot_h.plot_measurements_mu(on=T)
   for j, score in enumerate(opt_score):
-    k, r = get_best_kr_equivalence(score, H)
+    K, R = get_best_kr(score, H)
+    r = R[K == np.min(K)][0]
+    k = K[K == np.min(K)][0]
     rlabels = get_labels_from_Z(H.Z, r)
     NET.overlap, NET.data_nocs = H.get_ocn_discovery(k, rlabels)
     H.set_overlap_labels(NET.overlap, score)
