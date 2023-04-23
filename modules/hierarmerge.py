@@ -32,8 +32,8 @@ class Hierarchy(Sim):
     # Compute distance matrix ----
     self.dist_mat = self.linksim_matrix
     ###
-    # self.dist_mat[self.dist_mat != 0] -= np.max(self.dist_mat[self.dist_mat != 0]) + 0.01
-    ##@
+    self.dist_mat[self.dist_mat != 0] -= np.nanmax(self.dist_mat[self.dist_mat != 0]) + 0.01
+    ##
     self.dist_mat[self.dist_mat == 0] = np.nan
     self.dist_mat = np.nanmax(self.dist_mat) - self.dist_mat
     self.dist_mat[np.isnan(self.dist_mat)] = np.nanmax(self.dist_mat) + 1

@@ -18,7 +18,7 @@ from networks.structure import MAC
 from various.network_tools import *
 from various.fit_tools import fitters
 # Declare global variables ----
-__iter__ = 3
+__iter__ = 4
 linkage = "single"
 nlog10 = T
 lookup = F
@@ -30,7 +30,7 @@ nature = "original"
 __mode__ = "ALPHA"
 topology = "MIX"
 mapping = "R4"
-index  = "simple"
+index  = "simple2"
 imputation_method = ""
 opt_score = ["_maxmu", "_X"]
 save_datas = T

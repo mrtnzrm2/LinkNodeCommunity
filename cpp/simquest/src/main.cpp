@@ -127,13 +127,13 @@ std::vector<std::vector<double> > simquest::calculate_linksim_matrix(
 				col_id = id_matrix[i][k];
 				if (k == j || col_id == 0) continue;
 				link_similarity_matrix[row_id-1][col_id-1] = target_matrix[j][k];
-				link_similarity_matrix[col_id-1][row_id-1] = link_similarity_matrix[row_id][col_id];
+				link_similarity_matrix[col_id-1][row_id-1] = link_similarity_matrix[row_id-1][col_id-1];
 			}
 			for (int k=i; k < N; k++) {
 				col_id = id_matrix[k][j];
 				if (k == i || col_id == 0) continue;
 				link_similarity_matrix[row_id-1][col_id-1] = source_matrix[i][k];
-				link_similarity_matrix[col_id-1][row_id-1] = link_similarity_matrix[row_id][col_id];
+				link_similarity_matrix[col_id-1][row_id-1] = link_similarity_matrix[row_id-1][col_id-1];
 			}
 		}
 	}
@@ -196,15 +196,15 @@ double simquest::simple2(
 	for (int i=0; i < N; i++){
 		p = 0;
 		for (int j=0; j < N; j++){
-			p += std::log(1 + std::max(std::exp(u[j]-u[i]), std::exp(v[j]-v[i])));
+			p += std::log(1 + std::max((1 + u[j]) / (1 + u[i]), (1 + v[j]) / (1 + v[i])));
 		}
 		if (p != 0) JACP += std::log(2.) / p;
 		else std::cout << "Vectors in jaccardp  are both zero\n";
 	}
-	if (JACP > 1) {
-		JACP = 1 - 1e-8;
-		std::cout << "\n\tSimilarity greater than one.\n";
-	}
+	// if (JACP > 1) {
+	// 	JACP = 1 - 1e-8;
+	// 	std::cout << "\n\tSimilarity greater than one.\n";
+	// }
 	return JACP;
 }
 

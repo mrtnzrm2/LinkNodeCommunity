@@ -16,6 +16,7 @@ from various.network_tools import read_class
 # Declare iter variables ----
 topologies = ["TARGET", "SOURCE", "MIX"]
 bias = [0]
+mode = ["ALPHA", "BETA"]
 list_of_lists = itertools.product(
   *[topologies, bias]
 )
@@ -31,9 +32,8 @@ run = T
 structure = "LN"
 distance = "tracto16"
 nature = "original"
-mapping = "R4"
+mapping = "trivial"
 index = "simple2"
-mode = "ALPHA"
 imputation_method = ""
 opt_score = ["_maxmu", "_X"]
 # Declare global variables DISTBASE ----
@@ -47,8 +47,8 @@ alternative = "less"
 # Print summary ----
 print("For NET parameters:")
 print(
-  "linkage: {}\nmode: {}\nscore: {}\nnlog: {}\n lookup: {}".format(
-    linkage, mode, opt_score, nlog10, lookup
+  "linkage: {}\nscore: {}\nnlog: {}\n lookup: {}".format(
+    linkage, opt_score, nlog10, lookup
   )
 )
 print("For imputation parameters:")
@@ -65,7 +65,7 @@ print(
 )
 # Start main ----
 if __name__ == "__main__":
-  for topology, bias in list_of_lists:
+  for topology, bias, mode in list_of_lists:
     bias = float(bias)
     l10 = ""
     lup = ""

@@ -22,17 +22,17 @@ def worker_swaps(
   number_of_iterations : int, number_of_inj : int,
   number_of_nodes : int, data_version,
   nlog10 : bool, lookup : bool, prob : bool, cut : bool, run : bool,
-  topology : str, mapping : str, index : str, bias : float
+  topology : str, mapping : str, index : str, bias : float, mode : str
 ):
   # Declare global variables NET ----
   MAXI = number_of_iterations
   linkage = "single"
-  mode = "ALPHA"
-  structure = "FLN"
-  distance = "MAP3D"
+  mode = mode
+  structure = "LN"
+  distance = "tracto16"
   nature = "original"
   imputation_method = ""
-  opt_score = ["_maxmu", "_X", "_D"]
+  opt_score = ["_maxmu", "_X"]
   # Declare global variables DISTBASE ----
   __inj__ = number_of_inj
   __nodes__ = number_of_nodes
@@ -115,16 +115,17 @@ def worker_swaps(
     RAND.random_one_k(run=run, on_save_csv=F)   #****
     # Transform data for analysis ----
     R, lookup, _ = maps[mapping](
-      RAND.A, nlog10, lookup, prob, b=bias
+      RAND.C, nlog10, lookup, prob, b=bias
     )
     # Compute RAND Hierarchy ----
     print("Compute Hierarchy")
     RAND_H = Hierarchy(
-      RAND, RAND.A[:, :__nodes__], R[:, :__nodes__], RAND.D,
+      RAND, RAND.C[:, :__nodes__], R[:, :__nodes__], RAND.D,
       __nodes__, linkage, mode, lookup=lookup
     )
     ## Compute features ----
     RAND_H.BH_features_parallel()
+    print(RAND_H.BH[0])
     ## Compute link entropy ----
     RAND_H.link_entropy_cpp("short", cut=cut)
     ## Compute lq arbre de merde ----

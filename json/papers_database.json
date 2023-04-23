@@ -421,6 +421,42 @@
           ""
         ]
       }
+    },
+    {
+      "title" : "The economy of brain network organization",
+      "phrases" : {
+        "Introduction" : [
+          "Like an airline network, the topological formation of the Internet is strongly constrained by its physical properties, including the greater wiring cost of longer-distance links (cables) between nodes.",
+          "However, some of the adaptive behaviours of a brain network — such as its capacity for information processing and its robustness to adverse perturbation — are probably related to topological properties that would not have emerged if cost minimization was the only factor to drive brain organization.",
+          "For example, if a parsimonious principle of cost control was the only criterion for brain network selection, we would not expect to see high global efficiency of information transfer between processing nodes (neurons or brain regions) located far apart from each other in anatomical space",
+          "These considerations suggest that brain networks may be selected to negotiate a tradeoff between competitive criteria of minimizing wiring cost and maximizing adaptive value19,21, a trade-off that underpins the economy of brain network organization.",
+          "Similarly, we could say that the brain is a successful producer if its adaptive value to the organism exceeds its biological costs.",
+          "Furthermore, we propose that evolutionary or developmental selection criteria have acted as ‘customers’ in the market for adaptive behaviour that brains are supplying and, as a result, brain networks are selected — like profitable businesses — to optimize a trade-off between",
+          "Which quantifiable aspects of brain organization are important for cost control?",
+        ],
+        "Brain networks are expensive" : [
+          "White-matter volume grows faster than grey-matter volume as a function of increasing brain and body size, and this seems to be driven by increases in axonal diameter and in the number of synapses per neuron35.",
+          "The differentrates of increase in grey- and white-matter volume with increasing cerebral cortex size observed in primates implies that the fraction of grey-matter neurons that send myelinated axons into the white matter slowly reduces with brain size, thus resulting in increasingly sparse long-range connections among grey-matter neurons in larger brains36,37.",
+          "Similarly, at a macroscopic scale, a shorter distance between two brain regions is a strong predictor of the presence42 and the density of connecting axonal projections between these two regions43, indicating that the probability distribution of connection distances is skewed towards short distances that will be relatively parsimonious in terms of wiring cost44.",
+          "However, it is also clear that brain networks are not absolutely minimized for wiring cost48. Various countervailing factors prevent strict cost minimization of brain networks. At least in cellular systems, volume exclusion is a factor that exacts a cost premium: as neuronal elements are packed into a finite volume, some axonal projections must be perturbed from the minimal-cost straight line and some cell bodies must be displaced from their optimal spatial locations38.",
+          "Another plausible factor that might compete with wiring-cost minimization is the functional or behavioural properties of the network, which are assumed to be related to its connectivity or topology",
+          "In  another example, the strength of synchronized oscillations in neuronal networks is enhanced when the wiring cost of the networks is increased above minimum by the inclusion of long-distance axonal projections, which mediate topological short-cuts between spatially remote oscillators37.",
+          "Graph theoretical models of neuronal morphology that incorporated a competition (or a trade-off) between wiring cost minimization and path length minimization generated remarkably realistic simulations of diverse neuronal types and their laminar packing patterns in cortex26. We will return to this theme of a trade-off between wiring cost and network topology as we articulate an economic model of brain network organization.",
+          "The metabolic (or energetic) cost of the brain follows an allometric scaling relationship with brain volume: anatomically bigger brains are metabolically more expensive.",
+          "Much of the brain’s massive metabolic cost is attributable to the active maintenance of electrochemical gradients across neuronal membranes, which is required to support signalling and coordination of neuronal activity at anatomically separated sites29,49.",
+          "The metabolic costs of the brain increase in proportion to the total surface area of the neuronal membrane that must be biochemically maintained in readiness for transmission of electrical signals;",
+          "Controlling the wiring cost — by minimizing the length of anatomical connections in the network — will therefore also conserve potential running costs. However, there is strong evidence that metabolic costs are controlled dynamically within the upper limit imposed by the anatomical architecture of the network. That is, brain networks are often functionally activated or configured less expensively than they could be within the anatomical constraints, so that metabolic resource is used frugally.",
+          "Some well-known examples of such control of running costs are: sparse oding strategies, by which great diversity of information representation can be achieved for low metabolic cost52; the repetition suppression of neuronal response to repeated presentation of visual stimuli53; and the habituation of limbic cortical activation to repeated emotionally valent stimulation54. Interestingly, these observations on reduced neuronal activation in response to repeated — and therefore predictable or unsurprising — stimuli suggest a possible connection between minimization of the metabolic costs of a network and minimization of prediction error in its computational performance55",
+          "Computational studies suggest that functional connections correspond more closely to underlying anatomical connections when they are measured over longer time periods58",
+        ],
+        "Brain networks are topologically complex" : [
+          "This worm brain graph was found to be neither random nor regular in pattern, having both high clustering like a regular lattice and short path-length like a random graph. The",
+          "There is now strong evidence that human brain networks generally have small-world properties of high clustering and high global efficiency20, a modular community structure68–72 and heavy-tailed degree distributions63,72 that indicate a number of highly connected nodes or hubs73",
+          "One idea that has emerged from a high-level synthesis of this spectrum of ‘network science’ is that the important topological properties shared by many different systems may reflect their formation in response to shared selection pressures7",
+          "Modules consisting of highly interconnected brain regions often reflect their spatial arrangement69, such that within-module connections tend to be shorter than between-module connections. This way, spatial modules help to conserve cost related to wiring and communication and improve the local efficiency of specialized neural computations.",
+          "Computational studies suggest additional advantages of modular organization: modular networks deal more effectively with the increased processing demands imposed by variable environments152,153, and modularity confers a degree of resilience against dynamic perturbations and small variations in structural connectivity154. Hierarchical arrangement of modules further extends these benefits over multiple spatial scales107."
+        ]
+      }
     }
   ]
 }

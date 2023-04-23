@@ -10,10 +10,10 @@ hierarchy = np.array(["link", "node"])
 data = pd.DataFrame(
   {
     "Network" : np.repeat(networks, 2),
-    "SH" : [0.2062, 0.1543, 0.2047, 0.0694, 0.2659, 0.3419, 0.3171, 0.5575, 0.4383, 0.2666, 0.4626, 0.2880, 0.5053, 0.4080],
+    "SH" : [0.2062, 0.1543, 0.2047, 0.0694, 0.2659, 0.3419, 0.3171, 0.5575, 0.4641, 0.3013, 0.4415, 0.2546, 0.5053, 0.4080],
     "hierarchy" : np.tile(hierarchy, 7)
   }
-).sort_values("SH")
+)
 
 _, ax = plt.subplots(1, 1, figsize=(8, 7.5))
 sns.barplot(

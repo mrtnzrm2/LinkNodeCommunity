@@ -14,12 +14,13 @@ from plotting_modules.plotting_serial import PLOT_S
 from plotting_modules.plotting_o_serial import PLOT_OS
 from various.network_tools import read_class
 # Declare iter variables ----
-topologies = ["TARGET", "SOURCE", "MIX"]
-distbases = ["EXPMLE", "EXPTRUNC"]
+topologies = ["MIX"]
+distbases = ["EXPMLE"]
 bias = [0]
 bins = [12]
+mode = ["ALPHA", "BETA"]
 list_of_lists = itertools.product(
-  *[topologies, distbases, bias, bins]
+  *[topologies, distbases, bias, bins, mode]
 )
 list_of_lists = np.array(list(list_of_lists))
 # Declare global variables NET ----
@@ -33,8 +34,7 @@ run = T
 structure = "LN"
 distance = "tracto16"
 nature = "original"
-mode = "ALPHA"
-mapping = "R4"
+mapping = "trivial"
 index  = "simple2"
 imputation_method = ""
 opt_score = ["_maxmu", "_X", "_D"]
@@ -46,7 +46,7 @@ __inj__ = 57
 __nodes__ = 57
 __version__ = 220830
 if __name__ == "__main__":
-  for topology, __model__, bias, _bin_ in list_of_lists:
+  for topology, __model__, bias, _bin_ , mode in list_of_lists:
     _bin_ = int(_bin_)
     bias = float(bias)
     # Print summary ----

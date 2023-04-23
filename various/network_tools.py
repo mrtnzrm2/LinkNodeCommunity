@@ -440,8 +440,7 @@ def tree_dominant_nodes(data, labels):
     ids = data["ids"].loc[data["nodes"] == nd].to_numpy()
     if -1 not in ids: continue
     x = data.loc[
-      (data["nodes"] == nd) &
-      (data["ids"] == -1),
+      (data["nodes"] == nd) & (data["ids"] == -1),
       "size"
     ].iloc[0]
     if x == max_size.iloc[i]:

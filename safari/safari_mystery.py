@@ -1,4 +1,8 @@
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set_theme()
 
 
 def jacp_smooth(u, v, n : int, *args):
@@ -21,8 +25,30 @@ def jacp(u, v, n : int, *args):
     return np.sum(1 / np.sum(np.maximum(U, V), axis=1))
   else: return np.nan
 
+x = np.linspace(-12, 0, 1000)
+jp = np.zeros(1000)
+for e, i in enumerate(x):
+  a = np.array([1, 2])
+  b = np.array([1, 2-np.exp(i)])
+  jp[e] = jacp_smooth(a, b, 2)
 
-for i in np.linspace(-12, -1, 100):
-  a = np.array([1, 12])
-  b = np.array([1, 12-np.exp(i)])
-  print(i, jacp_smooth(a, b, 2))
+data = pd.DataFrame(
+  {
+    "x" : np.exp(x),
+    "jacp_smooth" : jp 
+  }
+)
+
+print(np.max(jp))
+print(np.min(jp))
+_, ax = plt.subplots(1, 1)
+sns.lineplot(
+  data=data,
+  x="x",
+  y="jacp_smooth",
+  ax=ax
+)
+
+ax.set_xscale("log")
+
+plt.show()

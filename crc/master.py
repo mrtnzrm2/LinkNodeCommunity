@@ -20,13 +20,14 @@ from crc.serial_swaps import worker_swaps
 THE_ARRAY = pd.DataFrame()
 ## distbase ----
 worker = ["distbase"]
-distbases = ["EXPMLE", "EXPTRUNC", "PARETO", "PARETOTRUNC"]
+distbases = ["EXPMLE"]
 cut = [F]
 topology = ["TARGET", "SOURCE", "MIX"]
-bias = [1e-5, 1e-2, 0.1, 0.3, 0.5]
-bins = [12, 50]
+bias = [0]
+bins = [12]
+mode = ["ALPHA", "BETA"]
 list_of_lists = itertools.product(
-  *[distbases, cut, topology, bias, bins]
+  *[distbases, cut, topology, bias, bins, mode]
 )
 list_of_lists = np.array(list(list_of_lists))
 array_distbase = pd.DataFrame(
@@ -36,7 +37,8 @@ array_distbase = pd.DataFrame(
     "cut" : list_of_lists[:, 1],
     "topology" : list_of_lists[:, 2].astype(str),
     "bias" : list_of_lists[:, 3].astype(float),
-    "bins" : list_of_lists[:, 4].astype(int)
+    "bins" : list_of_lists[:, 4].astype(int),
+    "mode" : list_of_lists[:, 5]
   }
 )
 ## scalefree -----------------
@@ -111,10 +113,11 @@ array_overlap = array_overlap.loc[
 ## swaps -----------------
 worker = ["swaps"]
 cut = [F]
-topology = ["TARGET", "SOURCE", "MIX"]
-bias = [1e-5, 1e-2, 0.1, 0.3, 0.5]
+topology = ["MIX"]
+bias = [0]
+mode = ["ALPHA", "BETA"]
 list_of_lists = itertools.product(
-  *[cut, topology, bias]
+  *[cut, topology, bias, mode]
 )
 list_of_lists = np.array(list(list_of_lists))
 array_swaps = pd.DataFrame(
@@ -122,11 +125,12 @@ array_swaps = pd.DataFrame(
     "worker" : worker * list_of_lists.shape[0],
     "cut" : list_of_lists[:, 0],
     "topology" : list_of_lists[:, 1].astype(str),
-    "bias" : list_of_lists[:, 2].astype(float) 
+    "bias" : list_of_lists[:, 2].astype(float),
+    "mode" : list_of_lists[:, 3]
   }
 )
 ## Merge arrays -----------------
-THE_ARRAY = pd.concat([THE_ARRAY, array_distbase], ignore_index=True)
+# THE_ARRAY = pd.concat([THE_ARRAY, array_distbase], ignore_index=True)
 # THE_ARRAY = pd.concat([THE_ARRAY, array_scalefree], ignore_index=True)
 # THE_ARRAY = pd.concat([THE_ARRAY, array_overlap], ignore_index=True)
 THE_ARRAY = pd.concat([THE_ARRAY, array_swaps], ignore_index=True)
@@ -145,15 +149,16 @@ def NoGodsNoMaster(number_of_iterations, t):
     lookup = F
     prob = T
     run = T
-    mapping = "R2"
-    index = "jacw"
+    mapping = "trivial"
+    index = "simple2"
     if array.loc["cut"] == "True": cut = T
     else: cut = F
     worker_distbase(
       number_of_iterations, number_of_inj, number_of_nodes,
       total_number_nodes, version, array.loc["distbase"],
       nlog10, lookup, prob, cut, run, array.loc["topology"],
-      mapping, index, array.loc["bias"], array.loc["bins"]
+      mapping, index, float(array.loc["bias"]), int(array.loc["bins"]),
+      array.loc["mode"]
     )
   elif array.loc["worker"] == "scalefree":
     nlog10 = F
@@ -202,14 +207,15 @@ def NoGodsNoMaster(number_of_iterations, t):
     lookup = F
     prob = T
     run = T
-    mapping = "R2"
-    index = "jacw"
+    mapping = "trivial"
+    index = "simple2"
     if array.loc["cut"] == "True": cut = T
     else: cut = F
     worker_swaps(
       number_of_iterations, number_of_inj, number_of_nodes,
       version, nlog10, lookup, prob, cut,
-      run, array.loc["topology"], mapping, index, array.loc["bias"]
+      run, array.loc["topology"], mapping, index, array.loc["bias"],
+      array.loc["mode"]
     )
   else:
     raise ValueError("Worker does not exists!!!")
@@ -221,4 +227,4 @@ if __name__ == "__main__":
   from collections import Counter
   print(Counter(THE_ARRAY.worker))
   print(THE_ARRAY.iloc[t - 1])
-  # NoGodsNoMaster(number_of_iterations, t)
+  NoGodsNoMaster(number_of_iterations, t)

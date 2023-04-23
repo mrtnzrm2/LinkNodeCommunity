@@ -109,7 +109,7 @@ if __name__ == "__main__":
   # )
   # ax.set_xlabel(r"$\log(\frac{X_{max}}{X_{min}})$")
   # plt.show()
-  ######
+  # ######
   # FLN = adj2df(NET.A[:, :4])
   # FLN.source = NET.struct_labels[FLN.source]
   # FLN.target = NET.struct_labels[FLN.target]
@@ -162,41 +162,42 @@ if __name__ == "__main__":
   # ax.set_yscale("log")
   # plt.show()
   ####
-  # FLN_1 = NET.A[:, :]
-  # FLN_1 = FLN_1[FLN_1 != 0].ravel()
-  # al, be, loc, scale = beta.fit(-np.log(FLN_1))
-  # al_norm, be_norm= norm.fit(-np.log(FLN_1))
-  # flnmin = np.min(-np.log(FLN_1))
-  # flnmax = np.max(-np.log(FLN_1))
-  # x = np.linspace(loc, scale, 100)
-  # pred_beta = beta.pdf(x, al, be, loc=loc, scale=scale)
-  # pred_norm = norm.pdf(x, al_norm, be_norm)
-  # data_pred = pd.DataFrame(
-  #   {
-  #     "Density" : list(pred_beta) + list(pred_norm), "FLN" : list(x) + list(x),
-  #     "model" : ["Beta"] * len(pred_beta) + ["Normal"] * len(pred_norm)
-  #   }
-  # )
-  # data = pd.DataFrame({"FLN" : -np.log(FLN_1.ravel())})
-  # _, ax = plt.subplots(1, 1)
-  # sns.lineplot(
-  #   data=data_pred,
-  #   x="FLN",
-  #   y="Density",
-  #   hue="model",
-  #   ax=ax
-  # )
-  # sns.histplot(
-  #   data=data,
-  #   x="FLN",
-  #   stat="density",
-  #   color="green",
-  #   alpha=0.5,
-  #   ax=ax
-  # )
-  # ax.set_title(r"$\alpha_{1}:$ " + f"{al:.3f} " + r"$\alpha_{2}$: " f"{be:.3f}\t\t" + r"$\mu$: " + f"{al_norm:.3f} " + r"$\sigma$: " + f"{be_norm:.3f}")
-  # ax.set_xlabel(r"$-\log(FLN)$")
-  # plt.show()
+  FLN_1 = NET.A[:, :]
+  FLN_1 = FLN_1[FLN_1 != 0].ravel()
+  al, be, loc, scale = beta.fit(-np.log(FLN_1))
+  print(al, be, loc, scale)
+  al_norm, be_norm= norm.fit(-np.log(FLN_1))
+  flnmin = np.min(-np.log(FLN_1))
+  flnmax = np.max(-np.log(FLN_1))
+  x = np.linspace(loc, scale, 100)
+  pred_beta = beta.pdf(x, al, be, loc=loc, scale=scale)
+  pred_norm = norm.pdf(x, al_norm, be_norm)
+  data_pred = pd.DataFrame(
+    {
+      "Density" : list(pred_beta) + list(pred_norm), "FLN" : list(x) + list(x),
+      "model" : ["Beta"] * len(pred_beta) + ["Normal"] * len(pred_norm)
+    }
+  )
+  data = pd.DataFrame({"FLN" : -np.log(FLN_1.ravel())})
+  _, ax = plt.subplots(1, 1)
+  sns.lineplot(
+    data=data_pred,
+    x="FLN",
+    y="Density",
+    hue="model",
+    ax=ax
+  )
+  sns.histplot(
+    data=data,
+    x="FLN",
+    stat="density",
+    color="green",
+    alpha=0.5,
+    ax=ax
+  )
+  ax.set_title(r"$\alpha:$ " + f"{al:.3f}  " + r"$\beta$: " f"{be:.3f}\t\t" + r"$\mu$: " + f"{al_norm:.3f} " + r"$\sigma$: " + f"{be_norm:.3f}")
+  ax.set_xlabel(r"$-\log(FLN)$")
+  plt.show()
   #########
   # AREAS = adj2df(RFLN)
   # AREAS = AREAS.loc[(AREAS.weight != 0) & (~np.isnan(AREAS.weight))].target.to_numpy().astype(str)

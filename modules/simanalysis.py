@@ -35,17 +35,10 @@ class Sim:
     aki = self.R.copy().T
     for i in np.arange(self.nodes):
       if self.mode == "ALPHA":
-        aik[i, i] = np.nanmean(
-          aik[i, :][
-            aik[i, :] != self.lup
-          ]
-        )
+        aik[i, i] = np.nanmean(aik[i, :][aik[i, :] != self.lup])
       elif self.mode == "BETA":
-        aik[i, i] = np.nanmean(
-          aki[i, :][
-            aki[i, :] != self.lup
-          ]
-        )
+        aik[i, i] = np.nanmean(aki[i, :][aki[i, :] != self.lup])
+    # print(aik)
     return aik
   
   def get_aik_bin(self):
@@ -62,17 +55,10 @@ class Sim:
     aik = self.R.copy()
     for i in np.arange(self.nodes):
       if self.mode == "ALPHA":
-        aki[i, i] = np.nanmean(
-          aki[i, :][
-            aki[i, :] != self.lup
-          ]
-        )
+        aki[i, i] = np.nanmean(aki[i, :][aki[i, :] != self.lup])
       elif self.mode == "BETA":
-        aki[i, i] = np.nanmean(
-          aik[i, :][
-            aik[i, :] != self.lup
-          ]
-        )
+        aki[i, i] = np.nanmean(aik[i, :][aik[i, :] != self.lup])
+    # print(aki)
     return aki
   
   def get_aki_bin(self):
