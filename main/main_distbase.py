@@ -18,7 +18,7 @@ from networks.structure import MAC
 from various.network_tools import *
 from various.fit_tools import fitters
 # Declare global variables ----
-__iter__ = 4
+__iter__ = 1
 linkage = "single"
 nlog10 = T
 lookup = F
@@ -29,7 +29,7 @@ distance = "tracto16"
 nature = "original"
 __mode__ = "ALPHA"
 topology = "MIX"
-mapping = "R4"
+mapping = "trivial"
 index  = "simple2"
 imputation_method = ""
 opt_score = ["_maxmu", "_X"]
@@ -79,7 +79,7 @@ if __name__ == "__main__":
     mapping=mapping, index=index, version = __version__,
     lb=lb, b=bias, model=__model__
   )
-  # NET.create_plot_path()
+  NET.create_plot_path()
   # NET.create_csv_path()
   # NET.create_pickle_path()
   L = colregion(NET)
@@ -143,7 +143,9 @@ if __name__ == "__main__":
   plot_n = Plot_N(NET, H)
   plot_n.A_vs_dis(G[:, :__nodes__], on=F)
   plot_n.A_vs_dis(Gn[:, :__nodes__], name="count", on=F)
-  plot_n.histogram_weight(R, on=T)
+  GG = G.copy()
+  GG[GG == 0] = np.nan
+  plot_n.histogram_weight(-np.log(GG), on=T, label="logFLN")
   plot_n.histogram_weight(np.log(1 + Gn), on=T, label="LN")
   plot_n.histogram_dist(on=F)
   plot_n.projection_probability(
@@ -163,7 +165,7 @@ if __name__ == "__main__":
     plot_h.core_dendrogram([r], on=T)
     ## Single linkage ----
     plot_h.heatmap_dendro(r, on=T)
-    plot_h.lcmap_dendro([k], on=T)
+    plot_h.lcmap_dendro(k, r, on=T)
     plot_h.flatmap_dendro(
       NET, [k], [r], on=T, EC=T #
     )

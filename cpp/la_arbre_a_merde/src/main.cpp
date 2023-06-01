@@ -272,11 +272,7 @@ void noeud_arbre::vite() {
           node_hierarchy[ct][0] = merge_list_clone[compatible_LCs[0]].merge;
           node_hierarchy[ct][1] = merge_list_clone[compatible_LCs[1]].merge;
           node_hierarchy[ct][2] = h;
-          node_hierarchy[ct][3] = merge_list_clone[
-            compatible_LCs[0]
-          ].members.size() + merge_list_clone[
-            compatible_LCs[1]
-          ].members.size();
+          node_hierarchy[ct][3] = merge_list_clone[compatible_LCs[0]].members.size() + merge_list_clone[compatible_LCs[1]].members.size();
           // Merge new members
           std::vector<int> new_members = merge_list_clone[compatible_LCs[0]].members;
           new_members.insert(
@@ -327,9 +323,7 @@ void noeud_arbre::vite() {
             node_hierarchy[ct][0] = merge_list_clone_2[0].merge;
             node_hierarchy[ct][1] = merge_list_clone_2[1].merge;
             node_hierarchy[ct][2] = h;
-            node_hierarchy[ct][3] = merge_list_clone_2[
-              0].members.size() + merge_list_clone_2[
-            1].members.size();
+            node_hierarchy[ct][3] = merge_list_clone_2[0].members.size() + merge_list_clone_2[1].members.size();
             if (merge_list_clone_2.size() > 2) {
               // Merge new members
               std::vector<int> new_members = merge_list_clone_2[0].members;
@@ -392,11 +386,9 @@ void noeud_arbre::vite() {
       node_hierarchy[ct][0] = merge_list.back().merge;
       node_hierarchy[ct][1] = merge_list[kk].merge;
       node_hierarchy[ct][2] = node_hierarchy[ct - 1][2] * 1.05;
-      node_hierarchy[ct][3] = merge_list.back().members.size() + kk + 1;
+      node_hierarchy[ct][3] = merge_list.back().members.size() + merge_list[kk].members.size();
       merge_list.back().merge = ct + nodes;
-      merge_list.back().members.push_back(
-        merge_list[kk].members[0]
-      );
+      merge_list.back().members.push_back(merge_list[kk].members[0]);
       // eq
       eq[0] = k;
       eq[1] = nodes - ct;

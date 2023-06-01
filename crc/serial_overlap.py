@@ -102,6 +102,8 @@ def worker_overlap(
       )
       ## Compute features ----
       RAND_H.BH_features_parallel()
+      ## Compute link entropy ----
+      RAND_H.link_entropy_cpp("short", cut=cut)
       ## Compute lq arbre de merde ----
       RAND_H.la_abre_a_merde_cpp(RAND_H.BH[0])
       RAND_H.set_colregion(L)

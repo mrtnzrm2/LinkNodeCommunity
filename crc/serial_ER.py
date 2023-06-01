@@ -16,7 +16,7 @@ from modules.hierarentropy import Hierarchical_Entropy
 from various.network_tools import *
 
 def worker_ER(
-  number_of_iterations : int, number_of_nodes : int,
+  number_of_iterations : int, number_of_nodes : int, rho : float,
   nlog10 : bool, lookup : bool, prob : bool, cut : bool,
   topology : str, mapping : str, index : str, bias : float, mode : str
 ):
@@ -43,7 +43,6 @@ def worker_ER(
     "mode" : mode
   }
   MAXI = number_of_iterations
-  rho = 0.6
   N = number_of_nodes
   M = int(N * (N - 1) * rho)
   labels = np.arange(N).astype(int).astype(str)
@@ -81,5 +80,5 @@ def worker_ER(
   data.set_subfolder(H.subfolder)
   data.set_pickle_path(H, bias=bias)
   print("Save data")
-  save_class(data, data.pickle_path, f"series_{MAXI}")
+  save_class(data, data.pickle_path, f"series_{MAXI}_{rho:.2f}_{number_of_nodes}")
   print("End")

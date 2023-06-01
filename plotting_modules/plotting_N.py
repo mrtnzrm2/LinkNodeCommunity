@@ -305,6 +305,7 @@ class Plot_N:
         ),
         dpi=300
       )
+      plt.close()
     else:
       print("No histogram")
 

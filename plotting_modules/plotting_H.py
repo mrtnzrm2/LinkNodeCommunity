@@ -745,6 +745,7 @@ class Plot_H:
         ),
         dpi = 300
       )
+      plt.close()
     else:
       print("No pure logFLN heat map")
   
@@ -843,7 +844,7 @@ class Plot_H:
     if on:
       print("Visualize logFLN heatmap!!!")
       # Transform FLNs ----
-      W = self.R.copy()
+      W = np.log(1+self.R.copy())
       # print(W)
       W[~self.nonzero] = np.nan
       # Get nodes ordering ----
@@ -851,6 +852,11 @@ class Plot_H:
       den_order = np.array(
         hierarchy.dendrogram(self.Z, no_plot=True)["ivl"]
       ).astype(int)
+      memberships = hierarchy.cut_tree(self.Z, r).ravel()
+      memberships = skim_partition(memberships)[den_order]
+      C = [i+1 for i in np.arange(len(memberships)-1) if memberships[i] != memberships[i+1]]
+      D = np.where(memberships == -1)[0] + 1
+      C = list(set(C).union(set(list(D))))
       W = W[den_order, :][:, den_order]
       # Configure labels ----
       labels = self.colregion.labels
@@ -869,27 +875,29 @@ class Plot_H:
       ].to_numpy()
       # Create figure ----
       fig, ax = plt.subplots(1, 1)
-      fig.set_figwidth(22)
+      fig.set_figwidth(18)
       fig.set_figheight(15)
       sns.heatmap(
         W,
+        cmap="viridis",
         xticklabels=labels,
         yticklabels=labels,
         ax = ax
       )
+      for c in C:
+        ax.vlines(
+          c, ymin=0, ymax=self.nodes,
+          linewidth=1.5,
+          colors=["#C70039"]
+        )
+        ax.hlines(
+          c, xmin=0, xmax=self.nodes,
+          linewidth=1.5,
+          colors=["#C70039"]
+        )
       # Setting labels colors ----
-      [t.set_color(i) for i,t in
-        zip(
-          colors,
-          ax.xaxis.get_ticklabels()
-        )
-      ]
-      [t.set_color(i) for i,t in
-        zip(
-          colors,
-          ax.yaxis.get_ticklabels()
-        )
-      ]
+      [t.set_color(i) for i,t in zip(colors, ax.xaxis.get_ticklabels())]
+      [t.set_color(i) for i,t in zip(colors, ax.yaxis.get_ticklabels())]
       # Arrange path ----
       plot_path = os.path.join(
         self.path, "Heatmap_single"
@@ -897,7 +905,7 @@ class Plot_H:
       # Crate path ----
       Path(
         plot_path
-      ).mkdir(exist_ok=True, parents=True)
+    ).mkdir(exist_ok=True, parents=True)
       # Save plot ----
       plt.savefig(
         os.path.join(
@@ -905,6 +913,7 @@ class Plot_H:
         ),
         dpi = 300
       )
+      plt.close()
     else:
       print("No logFLN heat map")
 
@@ -1132,106 +1141,120 @@ class Plot_H:
     else: print("No histoscatter linkcomm")
 
   def lcmap_dendro(
-    self, K, score="", cmap_name="hls",
+    self, K, R, score="", cmap_name="hls",
     link_com_list=False, remove_labels=False, on=False, **kwargs
   ):
     if on:
       print("Visualize k LCs!!!")
       # K loop ----
-      for k in K:
-        # Arrange path ----
-        plot_path = os.path.join(
-          self.path, "Matrix_single"
+      # Arrange path ----
+      plot_path = os.path.join(
+        self.path, "Matrix_single"
+      )
+      # Crate path ----
+      Path(
+        plot_path
+      ).mkdir(exist_ok=True, parents=True)
+      # Get labels ----
+      labels = self.colregion.labels
+      regions = self.colregion.regions
+      # FLN to dataframe and filter FLN = 0 ----
+      dFLN = self.dA.copy()
+      # Add id with aesthethis ----
+      from scipy.cluster.hierarchy import cut_tree
+      dFLN["id"] =  cut_tree(
+        self.H,
+        n_clusters = K
+      ).ravel()
+      ##
+      dFLN["source_label"] = labels[dFLN.source]
+      dFLN["target_label"] = labels[dFLN.target]
+      # Print link community list ----
+      if link_com_list:
+        dFLN.sort_values(by="id").to_csv(
+          f"{plot_path}/link_community_list_{K}.csv"
         )
-        # Crate path ----
-        Path(
-          plot_path
-        ).mkdir(exist_ok=True, parents=True)
-        # Get labels ----
-        labels = self.colregion.labels
-        regions = self.colregion.regions
-        # FLN to dataframe and filter FLN = 0 ----
-        dFLN = self.dA.copy()
-        # Add id with aesthethis ----
-        from scipy.cluster.hierarchy import cut_tree
-        dFLN["id"] =  cut_tree(
-          self.H,
-          n_clusters = k
-        ).ravel()
-        ##
-        dFLN["source_label"] = labels[dFLN.source]
-        dFLN["target_label"] = labels[dFLN.target]
-        # Print link community list ----
-        if link_com_list:
-          dFLN.sort_values(by="id").to_csv(
-            f"{plot_path}/link_community_list_{k}.csv"
-          )
-        ##
-        minus_one_Dc(dFLN)
-        aesthetic_ids(dFLN)
-        keff = np.unique(dFLN.id)
-        keff = keff.shape[0]
-        # Transform dFLN to Adj ----
-        dFLN = df2adj(dFLN, var="id")
-        # Get nodes ordering ----
-        from scipy.cluster import hierarchy
-        den_order = np.array(
-          hierarchy.dendrogram(self.Z, no_plot=True)["ivl"]
-        ).astype(int)
-        dFLN = dFLN[den_order, :]
-        dFLN = dFLN[:, den_order]
-        dFLN[dFLN == 0] = np.nan
-        dFLN[dFLN > 0] = dFLN[dFLN > 0] - 1
-        # Configure labels ----
-        labels =  np.char.lower(labels[den_order].astype(str))
-        rlabels = np.array([str(r).lower() for r in regions.AREA])
-        colors = regions.COLOR.loc[match( labels, rlabels)].to_numpy()
-        # Create figure ----
-        fig, ax = plt.subplots(1, 1)
-        # Check colors with and without trees (-1) ---
-        if -1 in dFLN:
-          save_colors = sns.color_palette(cmap_name, keff - 1)
-          cmap_heatmap = [[]] * keff
-          cmap_heatmap[0] = [199/ 255.0, 0, 57/ 255.0]
-          cmap_heatmap[1:] = save_colors
-        else:
-          cmap_heatmap = sns.color_palette(cmap_name, keff)
-        if not remove_labels:
-          plot = sns.heatmap(
-            dFLN,
-            cmap=cmap_heatmap,
-            xticklabels=labels,
-            yticklabels=labels,
-            ax=ax
-          )
-          if "font_size" in kwargs.keys():
-            if kwargs["font_size"] > 0:
-              plot.set_xticklabels(
-                plot.get_xmajorticklabels(), fontsize = kwargs["font_size"]
-              )
-              plot.set_yticklabels(
-                plot.get_ymajorticklabels(), fontsize = kwargs["font_size"]
-              )
-          # Setting labels colors ----
-          [t.set_color(i) for i,t in zip(colors, ax.xaxis.get_ticklabels())]
-          [t.set_color(i) for i,t in zip(colors, ax.yaxis.get_ticklabels())]
-        else:
-          sns.heatmap(
-            dFLN,
-            cmap=cmap_heatmap,
-            xticklabels=False,
-            yticklabels=False,
-            ax=ax
-          )
-        fig.set_figwidth(18)
-        fig.set_figheight(15)
-        # Save plot ----
-        plt.savefig(
-          os.path.join(
-            plot_path, "{}{}.png".format(k, score)
-          )
+      ##
+      minus_one_Dc(dFLN)
+      aesthetic_ids(dFLN)
+      keff = np.unique(dFLN.id)
+      keff = keff.shape[0]
+      # Transform dFLN to Adj ----
+      dFLN = df2adj(dFLN, var="id")
+      # Get nodes ordering ----
+      from scipy.cluster import hierarchy
+      den_order = np.array(hierarchy.dendrogram(self.Z, no_plot=True)["ivl"]).astype(int)
+      memberships = hierarchy.cut_tree(self.Z, R).ravel()
+      memberships = skim_partition(memberships)[den_order]
+      C = [i+1 for i in np.arange(len(memberships)-1) if memberships[i] != memberships[i+1]]
+      D = np.where(memberships == -1)[0] + 1
+      C = list(set(C).union(set(list(D))))
+      #
+      dFLN = dFLN[den_order, :]
+      dFLN = dFLN[:, den_order]
+      dFLN[dFLN == 0] = np.nan
+      dFLN[dFLN > 0] = dFLN[dFLN > 0] - 1
+      # Configure labels ----
+      labels =  np.char.lower(labels[den_order].astype(str))
+      rlabels = np.array([str(r).lower() for r in regions.AREA])
+      colors = regions.COLOR.loc[match( labels, rlabels)].to_numpy()
+      # Create figure ----
+      fig, ax = plt.subplots(1, 1)
+      # Check colors with and without trees (-1) ---
+      if -1 in dFLN:
+        save_colors = sns.color_palette(cmap_name, keff - 1)
+        cmap_heatmap = [[]] * keff
+        cmap_heatmap[0] = [199/ 255.0, 0, 57/ 255.0]
+        cmap_heatmap[1:] = save_colors
+      else:
+        cmap_heatmap = sns.color_palette(cmap_name, keff)
+      if not remove_labels:
+        plot = sns.heatmap(
+          dFLN,
+          cmap=cmap_heatmap,
+          xticklabels=labels,
+          yticklabels=labels,
+          ax=ax
         )
-        plt.close()
+        if "font_size" in kwargs.keys():
+          if kwargs["font_size"] > 0:
+            plot.set_xticklabels(
+              plot.get_xmajorticklabels(), fontsize = kwargs["font_size"]
+            )
+            plot.set_yticklabels(
+              plot.get_ymajorticklabels(), fontsize = kwargs["font_size"]
+            )
+        # Setting labels colors ----
+        [t.set_color(i) for i,t in zip(colors, ax.xaxis.get_ticklabels())]
+        [t.set_color(i) for i,t in zip(colors, ax.yaxis.get_ticklabels())]
+      else:
+        sns.heatmap(
+          dFLN,
+          cmap=cmap_heatmap,
+          xticklabels=False,
+          yticklabels=False,
+          ax=ax
+        )
+      for c in C:
+        ax.vlines(
+          c, ymin=0, ymax=self.nodes,
+          linewidth=1.5,
+          colors=["black"]
+        )
+        ax.hlines(
+          c, xmin=0, xmax=self.nodes,
+          linewidth=1.5,
+          colors=["black"]
+        )
+      fig.set_figwidth(18)
+      fig.set_figheight(15)
+      # Save plot ----
+      plt.savefig(
+        os.path.join(
+          plot_path, "{}{}.png".format(K, score)
+        )
+      )
+      plt.close()
     else:
       print("No k LCs")
 

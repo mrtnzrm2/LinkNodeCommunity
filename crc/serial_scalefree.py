@@ -12,6 +12,7 @@ from modules.hierarentropy import Hierarchical_Entropy
 from networks_serial.scalehrh import SCALEHRH
 from networks.scalefree import SCALEFREE
 from various.network_tools import *
+from modules.colregion import colregion
 from numpy import zeros
 
 def worker_scalefree(
@@ -93,6 +94,9 @@ def worker_scalefree(
     RAND_H.la_abre_a_merde_cpp(RAND_H.BH[0])
     # Save stats ----
     data.set_data_measurements(RAND_H, i)
+    # Set labels to network ----
+    L = colregion(RAND)
+    RAND_H.set_colregion(L)
    # Entropy ----
     HS = Hierarchical_Entropy(
       RAND_H.Z, RAND_H.nodes, RAND_H.colregion.labels[:RAND_H.nodes]

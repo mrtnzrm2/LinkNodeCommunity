@@ -56,6 +56,31 @@
         "[35]" : "T. A. Fulton, R. C. Dynes, P. W. Anderson, The flux shuttle—A josephson junction shift register employing single flux quanta. Proc. IEEE 61, 28–35 (1973).",
         "[42]" : "W. Hioe, E. Goto, Quantum Flux Parametron: A Single Quantum Flux Superconducting Logic Device (World Scientific, 1991), vol. 2."
       }
+    },
+    {
+      "title" : "Latent generative landscapes as maps of functional diversity in protein sequence space",
+      "phrases" : {
+        "Introduction" : [
+          "These changes are constrained by fitness and selective pressures as determined by the overall structure, function, stability, and folding of protein sequences in the organism that encodes them1,2.",
+          "These constraints impose statistical signatures in the collection of evolutionarily related sequences that allow features, such as structure, function, and interactions, to be reconstructed from homologous sequence alignments using methods such as direct coupling analysis (DCA), GREMLIN, and EVcouplings3–6.",
+          "variational autoencoders (VAE) for phylogenetic clustering and predicting effects of protein mutation",
+          "In this work, we address further capabilities of the VAE, an unsupervised and generative machine learning model, to study the evolution and function of protein families.",
+          "VAEs consist of an encoder and a decoder. The encoder compresses input data (x) into a latent variable ensemble (z), where z has been constrained into a multivariate latent distribution with an approximated Gaussian prior. The decoder then takes the encoded variable z and reconstructs the input data in a Bayesian framework",
+          "The embedding of data into the lower-dimension latent manifold creates a continuous latent space that can be sampled to generate new data based on the approximated posterior distribution learned by the encoder. These samplings of the latent space from the VAE architecture can be sufficient to create new objects38 and are capable of generating new protein sequences when trained on a family of proteins3",
+          "ince VAEs approximate a posterior distribution, they are powerful tools to cluster data in a latent space and have become a popular replacement for principal component analysis (PCA).",
+          "Objective: Previous analyses of protein sequences in latent space have shown the organization of sequences into phylogenetic clusters32,44, but the latent space embedding itself was not investigated. We propose that combining the predictive power of coevolutionary models with the classification and generative power of the VAE would better inform the analysis, generation, and modification of protein sequences in a manner that requires no labeling information.",
+          "Specifically, the LGL provides a framework to rationally sample and traverse latent space where certain protein attributes may be selected without input of labeling information.",
+          "This framework to study the sequence space of complete protein families serves as a conceptual and quantitative map to get insights into fitness, functional diversification, and a guide for generative protein design",
+          "We also developed software for interactive visualization of these landscapes that we have made available for others to use."
+        ],
+        "Results" : {
+          "LGL captures phylogenetic, function, and fitness information" : [
+            "The latent space constructed by z0 and z1 is treated as a manifold, which can be sampled to generate new sequences. Each coordinate in a 500 × 500 grid is sampled from the latent space manifold to generate the maximum likelihood sequence at the central coordinate and is represented by a pixel in a landscape plot",
+            "Thus, we are retrieving the VAE’s innate encoding of fitness using the Hamiltonian value as a score50",
+            "the Hamiltonian score has ample evidence demonstrating its utility and predictive capabilities for functional outcomes in proteins20,26,52–54."
+          ]
+        }
+      }
     }
   ]
 }

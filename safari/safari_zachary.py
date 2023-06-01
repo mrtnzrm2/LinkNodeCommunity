@@ -33,10 +33,10 @@ nlog10 = F
 lookup = F
 prob = F
 cut = F
-mode = "ALPHA"
+mode = "BETA"
 topology = "MIX"
 mapping="trivial"
-index = "bsim"
+index = "jacp"
 opt_score = ["_maxmu", "_X", "_D"]
 
 properties = {
@@ -112,7 +112,7 @@ for score in opt_score:
     plot_h.lcmap_pure([k], labels = rlabels, on=F)
     plot_h.heatmap_pure(r, on=T, labels = rlabels) #
     plot_h.heatmap_dendro(r, on=T)
-    plot_h.lcmap_dendro([k], on=T) #
+    plot_h.lcmap_dendro(k, r, on=T) #
     plot_n.plot_network_kk(H, rlabels, ang=80, score=score, on=T)
 
 

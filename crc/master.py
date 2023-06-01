@@ -46,10 +46,10 @@ array_distbase = pd.DataFrame(
 ## scalefree -----------------
 worker = ["scalefree"]
 cut = [F]
-number_of_nodes = [1000]
-topology = ["SOURCE", "MIX"]
-indices = ["jacp",  "bsim"]
-kav = [4]
+number_of_nodes = [500, 750, 1500]
+topology = ["SOURCE"]
+indices = ["bsim"]
+kav = [10]
 mut = [0.1, 0.3, 0.5]
 muw = [0.3]
 nmin = [10, 50]
@@ -78,13 +78,13 @@ array_scalefree = array_scalefree.loc[
 ## overlap -----------------
 worker = ["overlap"]
 cut = [F]
-number_of_nodes = [1000, 5000]
+number_of_nodes = [1000]
 topology = ["SOURCE", "MIX"]
 indices = ["jacp", "bsim"]
 kav = [10]
 mut = [0.1, 0.3, 0.5]
 muw = [0.3]
-on = [0.1, 0.5]
+on = [0.1, 0.3]
 om = [2, 5, 8]
 nmin = [10, 50]
 nmax = [20, 100]
@@ -134,14 +134,18 @@ array_swaps = pd.DataFrame(
 ## ER -----------------
 worker = ["ER"]
 topology = ["MIX"]
-index = ["jacp", "bsim"]
-list_of_lists = itertools.product(*[topology, index])
+index = ["jacp"]
+number_of_nodes = [50]
+Rho = [0.1]
+list_of_lists = itertools.product(*[topology, index, number_of_nodes, Rho])
 list_of_lists = np.array(list(list_of_lists))
 array_ER = pd.DataFrame(
   {
     "worker" : worker * list_of_lists.shape[0],
     "topology" : list_of_lists[:, 0].astype(str),
-    "index" : list_of_lists[:, 1].astype(str)
+    "index" : list_of_lists[:, 1].astype(str),
+    "number_of_nodes" : list_of_lists[:, 2].astype(int),
+    "Rho" : list_of_lists[:, 3].astype(float)
   }
 )
 ## HRG -----------------
@@ -164,7 +168,7 @@ array_HRG = pd.DataFrame(
 # THE_ARRAY = pd.concat([THE_ARRAY, array_overlap], ignore_index=True)
 # THE_ARRAY = pd.concat([THE_ARRAY, array_swaps], ignore_index=True)
 THE_ARRAY = pd.concat([THE_ARRAY, array_ER], ignore_index=True)
-THE_ARRAY = pd.concat([THE_ARRAY, array_HRG], ignore_index=True)
+# THE_ARRAY = pd.concat([THE_ARRAY, array_HRG], ignore_index=True)
 
 
 def NoGodsNoMaster(number_of_iterations, t):
@@ -196,7 +200,7 @@ def NoGodsNoMaster(number_of_iterations, t):
     lookup = F
     prob = F
     run = T
-    maxk = 5
+    maxk = 50
     beta = 3
     t1 = 2
     t2 = 1
@@ -253,13 +257,12 @@ def NoGodsNoMaster(number_of_iterations, t):
     lookup = F
     prob = F
     cut = F
-    number_of_nodes = 128
     mapping = "trivial"
     bias = float(0)
     mode = "ALPHA"
     worker_ER(
-      number_of_iterations, number_of_nodes, nlog10,
-      lookup, prob, cut, array.loc["topology"],
+      number_of_iterations, int(array.loc["number_of_nodes"]), float(array.loc["Rho"]),
+      nlog10, lookup, prob, cut, array.loc["topology"],
       mapping, array.loc["index"], bias, mode
     )
   elif array.loc["worker"] == "HRG":

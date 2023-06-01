@@ -22,7 +22,7 @@ lookup = F
 prob = F
 cut = F
 structure = "LN"
-mode = "BETA"
+mode = "ALPHA"
 distance = "tracto16"
 nature = "original"
 imputation_method = ""
@@ -31,7 +31,7 @@ mapping = "trivial"
 index  = "simple2"
 bias = float(0)
 opt_score = ["_maxmu", "_X", "_D"]
-save_data = T
+save_data = F
 version = 220830
 __nodes__ = 57
 __inj__ = 57
@@ -56,6 +56,7 @@ if __name__ == "__main__":
   )
   NET.create_pickle_directory()
   NET.create_plot_directory()
+  print(np.nansum(NET.C[:57, :57] > 0))
   # Transform data for analysis ----
   R, lookup, _ = maps[mapping](
     NET.C, nlog10, lookup, prob, b=bias
@@ -111,7 +112,7 @@ if __name__ == "__main__":
   plot_n = Plot_N(NET, H)
   plot_n.A_vs_dis(R, s=5, on=T, reg=T)
   plot_n.projection_probability(
-    NET.C, "LINEAR" , bins=12, on=F
+    NET.C, "EXPMLE" , bins=12, on=T
   )
   plot_n.histogram_weight(R, on=F)
   plot_n.histogram_weight(np.log(1 + NET.C), on=F, label="LN")
@@ -140,7 +141,7 @@ if __name__ == "__main__":
     plot_h.lcmap_pure([k], labels = rlabels, on=F)
     plot_h.heatmap_pure(r, on=T, labels = rlabels) #
     plot_h.heatmap_dendro(r, on=T)
-    plot_h.lcmap_dendro([k], on=T) #
+    plot_h.lcmap_dendro(k, r, on=T) #
     plot_h.flatmap_dendro(
       NET, [k], [r], on=T, EC=T #
     )
