@@ -89,6 +89,69 @@ double KL_divergence(
   return kl;
 }
 
+double jacp(std::vector<double> &u, std::vector<double> &v) {
+	int N = u.size();
+	double JACP = 0;
+	double p;
+	for (int i=0; i < N; i++){
+		if (u[i] > 0 && v[i] > 0){
+			p = 0;
+			for (int j=0; j < N; j++) {
+				p += std::max(u[j]/u[i], v[j]/v[i]);
+			}
+      JACP += 1/p;
+		}
+	}
+	return JACP;
+}
+
+double jaclog(std::vector<double> &u, std::vector<double> &v) {
+	int N = u.size();
+	double JACP = 0.;
+	double p;
+	for (int i=0; i < N; i++){
+		p = 0;
+		for (int j=0; j < N; j++){
+			p += std::log(1 + std::max((1 + u[j]) / (1 + u[i]), (1 + v[j]) / (1 + v[i])));
+		}
+		if (p != 0) JACP += std::log(2.) / p;
+		else std::cout << "Vectors in jaccardp  are both zero\n";
+	}
+	return JACP;
+}
+
+double simbin(std::vector<double> &bu, std::vector<double> &bv
+) {
+	int N = bu.size();
+	double uv=0., uu=0., vv=0.;
+	for (int i=0; i < N; i++) {
+		if ((bu[i] > 0 && bv[i] > 0) || (bu[i] == 0 && bv[i] == 0)) uv++;
+		if (bu[i] > 0) uu++;
+		if (bv[i] > 0) vv++;
+	}
+	uv /= N;
+	uu /= N;
+	vv /= N;
+	return uv - 1 + uu + vv - (2 * uu * vv);
+}
+
+double jacsqrt(
+	std::vector<double> &u, std::vector<double> &v
+) {
+	int N = u.size();
+	double JACP = 0.;
+	double p;
+	for (int i=0; i < N; i++){
+		p = 0;
+		for (int j=0; j < N; j++){
+			p += std::sqrt(std::max((1 + u[j]) / (1 + u[i]), (1 + v[j]) / (1 + v[i])));
+		}
+		if (p != 0) JACP += 1 / p;
+		else std::cout << "Vectors in jaccardp  are both zero\n";
+	}
+	return JACP;
+}
+
 PYBIND11_MODULE(ctools, m) {
 
   m.doc() = "Creates fast random networks";
@@ -96,6 +159,30 @@ PYBIND11_MODULE(ctools, m) {
   m.def(
     "KL_divergence",
     &KL_divergence,
+    py::return_value_policy::reference_internal
+  );
+
+  m.def(
+    "jaclog",
+    &jaclog,
+    py::return_value_policy::reference_internal
+  );
+
+  m.def(
+    "jacp",
+    &jacp,
+    py::return_value_policy::reference_internal
+  );
+
+  m.def(
+    "simbin",
+    &simbin,
+    py::return_value_policy::reference_internal
+  );
+
+   m.def(
+    "jacsqrt",
+    &jacsqrt,
     py::return_value_policy::reference_internal
   );
 }

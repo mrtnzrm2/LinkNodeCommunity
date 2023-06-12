@@ -11,6 +11,12 @@ def jacp(u, v, n : int, *args):
     return np.sum(1 / np.sum(np.maximum(U, V), axis=1))
   else: return np.nan
 
+def jaclog(X, Y, n:int, *args):
+    jac = 0
+    for i in np.arange(n):
+        jac += np.log(2) / np.sum(np.log(1 + np.maximum((1+X)/(1+X[i]), (1+Y)/(1+Y[i]))))
+    return jac
+
 def jacp_smooth(u, v, n : int, *args):
   if n > 0:
     p = 0
@@ -132,5 +138,6 @@ sims = {
   "ahn" : cosine_similarity_ahn,
   "hgeneity" : hgenity,
   "bsim" : binary_similarity,
-  "kl" : simetric_KL
+  "kl" : simetric_KL,
+  "jaclog": jaclog
 }

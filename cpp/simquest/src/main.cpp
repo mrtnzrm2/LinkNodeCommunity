@@ -64,6 +64,11 @@ class simquest {
 		double jacw(std::vector<double> &u, std::vector<double> &v);
 		double simple(std::vector<double> &u, std::vector<double> &v);
 		double simple2(std::vector<double> &u, std::vector<double> &v);
+		double simple3(std::vector<double> &u, std::vector<double> &v);
+		double simple4(std::vector<double> &u, std::vector<double> &v);
+		double simple5(std::vector<double> &u, std::vector<double> &v);
+		double simple6(std::vector<double> &u, std::vector<double> &v);
+		double logcos(std::vector<double> &u, std::vector<double> &v);
 		double from_reg(std::vector<double> &u, std::vector<double> &v, std::vector<bool> &bu, std::vector<bool> &bv, double &D);
 		double from_clf(std::vector<double> &u, std::vector<double> &v, std::vector<bool> &bu, std::vector<bool> &bv, double &D);
 		double bin_similarity(std::vector<bool> &bu, std::vector<bool> &bv);
@@ -166,6 +171,19 @@ double simquest::cosine_similarity(
 	return uv / (sqrt(uu * vv));
 }
 
+double simquest::logcos(
+	std::vector<double> &u, std::vector<double> &v
+) {
+	int N = u.size();
+	double uv=0., uu=0., vv=0.;
+	for (int i=0; i < N; i++) {
+		uv += log(1+ u[i]) * log(1+v[i]);
+		uu += log(1+u[i]) * log(1+u[i]);
+		vv += log(1+v[i]) * log(1+v[i]);
+	}
+	return uv / (sqrt(uu * vv));
+}
+
 double simquest::jacw(
 	std::vector<double> &u, std::vector<double> &v
 ) {
@@ -208,6 +226,71 @@ double simquest::simple2(
 	return JACP;
 }
 
+double simquest::simple3(
+	std::vector<double> &u, std::vector<double> &v
+) {
+	int N = u.size();
+	double JACP = 0.;
+	for (int i=0; i < N; i++)
+		JACP += log(1 + std::min(u[i], v[i])) - log(1 + std::max(u[i], v[i]));
+	return JACP / N;
+}
+
+double simquest::simple4(
+	std::vector<double> &u, std::vector<double> &v
+) {
+	int N = u.size();
+	double JACP = 0., a = 0., b = 0.;
+	for (int i=0; i < N; i++) {
+		a += log(1 + std::min(u[i], v[i]));
+		b += log(1 + std::max(u[i], v[i]));
+	}
+	return a / b;
+}
+
+double simquest::simple5(
+	std::vector<double> &u, std::vector<double> &v
+) {
+	int N = u.size();
+	double JACP = 0.;
+	double p;
+	for (int i=0; i < N; i++){
+		p = 0;
+		for (int j=0; j < N; j++){
+			p += std::sqrt(std::max((1 + u[j]) / (1 + u[i]), (1 + v[j]) / (1 + v[i])));
+		}
+		if (p != 0) JACP += 1 / p;
+		else std::cout << "Vectors in jaccardp  are both zero\n";
+	}
+	// if (JACP > 1) {
+	// 	JACP = 1 - 1e-8;
+	// 	std::cout << "\n\tSimilarity greater than one.\n";
+	// }
+	return JACP;
+}
+
+double simquest::simple6(
+	std::vector<double> &u, std::vector<double> &v
+) {
+	int N = u.size();
+	double JACP = 0.;
+	double p;
+	for (int i=0; i < N; i++){
+		p = 0;
+		if ((v[i] == 0 )|| (u[i] == 0)) continue;
+		for (int j=0; j < N; j++){
+			p += std::sqrt(std::max((u[j]) / (u[i]), (v[j]) / (v[i])));
+		}
+		if (p != 0) JACP += 1 / p;
+		else std::cout << "Vectors in jaccardp  are both zero\n";
+	}
+	// if (JACP > 1) {
+	// 	JACP = 1 - 1e-8;
+	// 	std::cout << "\n\tSimilarity greater than one.\n";
+	// }
+	return JACP;
+}
+
 double simquest::bin_similarity(
 	std::vector<bool> &bu, std::vector<bool> &bv
 ) {
@@ -234,7 +317,7 @@ double simquest::jacp(
 		if (bu[i] && bv[i]){
 			if (u[i] == 0 || v[i] == 0) std::cout << "\n\tWeight-topology ambiguity: Connection exists with zero weigth\n";
 			p = 0;
-			for (int j=0; j < N; j++){
+			for (int j=0; j < N; j++) {
 				p += std::max(u[j]/u[i], v[j]/v[i]);
 			}
 			if (p != 0)
@@ -291,6 +374,21 @@ double simquest::similarity_index(std::vector<double> &u, std::vector<double> &v
 	else if (index == 8) {
 		return from_clf(u, v, bu, bv, D);
 	}
+	else if (index == 9) {
+		return simple3(u, v);
+	}
+	else if (index == 10) {
+		return simple4(u, v);
+	}
+	else if (index == 11) {
+		return logcos(u, v);
+	}
+	else if (index == 12) {
+		return simple5(u, v);
+	}
+	else if (index == 13) {
+		return simple6(u, v);
+	}
   else {
     std::range_error("Similarity index must be a integer from 0 to 5\n");
   }
@@ -331,6 +429,11 @@ PYBIND11_MODULE(simquest, m) {
         .def("jacw", &simquest::jacw)
 				.def("simple", &simquest::simple)
 				.def("simple2", &simquest::simple2)
+				.def("simple3", &simquest::simple3)
+				.def("simple4", &simquest::simple4)
+				.def("simple5", &simquest::simple5)
+				.def("simple6", &simquest::simple6)
+				.def("logcos", &simquest::logcos)
 				.def("from_reg", &simquest::from_reg)
 				.def("from_clf", &simquest::from_clf)
 				.def("cosine_similarity", &simquest::cosine_similarity)

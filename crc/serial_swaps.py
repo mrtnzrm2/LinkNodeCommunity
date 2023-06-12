@@ -20,7 +20,7 @@ from various.data_transformations import maps
 
 def worker_swaps(
   number_of_iterations : int, number_of_inj : int,
-  number_of_nodes : int, data_version,
+  number_of_nodes : int, total_number_of_nodes : int , data_version,
   nlog10 : bool, lookup : bool, prob : bool, cut : bool, run : bool,
   topology : str, mapping : str, index : str, bias : float, mode : str
 ):
@@ -64,7 +64,7 @@ def worker_swaps(
   # Start main ----
   print("Load MAC data ----")
   # Create macaque class ----
-  NET = MAC(
+  NET = MAC[f"MAC{__inj__}"](
     linkage, mode,
     structure = structure,
     nlog10=nlog10, lookup=lookup,
@@ -85,7 +85,7 @@ def worker_swaps(
     "hanalysis"
   )
   # Create colregions ----
-  L = colregion(NET)
+  L = colregion(NET, labels_name=f"labels{__inj__}")
   # Create hrh class ----
   data = HRH(NET_H, L)
   RAND_H = 0
@@ -97,6 +97,7 @@ def worker_swaps(
     data.set_iter(i)
     RAND = SWAPNET(
       __inj__,
+      total_number_of_nodes,
       linkage,
       mode, i,
       structure = structure,
@@ -110,6 +111,8 @@ def worker_swaps(
       nlog10 = nlog10, lookup = lookup,
       cut=cut, b=bias
     )
+    RAND.C, RAND.A = NET.C, NET.A
+    RAND.D = NET.D
     # Create network ----
     print("Create random graph")
     RAND.random_one_k(run=run, on_save_csv=F)   #****
@@ -125,7 +128,6 @@ def worker_swaps(
     )
     ## Compute features ----
     RAND_H.BH_features_parallel()
-    print(RAND_H.BH[0])
     ## Compute link entropy ----
     RAND_H.link_entropy_cpp("short", cut=cut)
     ## Compute lq arbre de merde ----

@@ -7,6 +7,7 @@ from modules.colregion import colregion
 from modules.simanalysis import Sim
 from process_hclust import ph
 from la_arbre_a_merde import noeud_arbre
+from h_entropy import h_entropy as HE
 
 class Hierarchy(Sim):
   def __init__(
@@ -274,6 +275,39 @@ class Hierarchy(Sim):
     sh = np.nansum(self.link_entropy_H[0, :])
     sv = np.nansum(self.link_entropy_H[1, :])
     print(f"\n\tlink entropy H: Sh : {sh:.4f}, and Sv : {sv:.4f}\n")
+
+  
+  def node_entropy_cpp(self, dist : str, cut=False):
+    from scipy.cluster.hierarchy import cut_tree
+    # Run process_hclust_fast.cpp ----
+    entropy = HE(self.Z, self.nodes)
+
+    # link_matrix = np.zeros((self.leaves, self.leaves))
+    # for i in np.arange(self.leaves - 1, 0, -1):
+    #   link_matrix[i - 1, :] = cut_tree(self.H, i).ravel()
+    # link_matrix[self.leaves - 1, :] = np.arange(self.leaves)
+    # link_matrix = link_matrix.astype(int)
+    # link_height = np.zeros(self.leaves)
+    # link_height[1:] = self.H[:, 2]
+
+    entropy.arbre(dist)
+    max_level = entropy.get_max_level()
+    self.node_entropy = np.array(
+      [entropy.get_entropy_h()[(self.nodes - max_level-1):], entropy.get_entropy_v()[(self.nodes - max_level-1):]]
+    )
+    total_entropy = np.sum(self.node_entropy)
+    self.node_entropy = self.node_entropy / total_entropy
+    self.node_entropy_H = np.array(
+      [entropy.get_entropy_h_H()[(self.nodes - max_level-1):], entropy.get_entropy_v_H()[(self.nodes - max_level-1):]]
+    )
+    total_entropy_H = np.sum(self.node_entropy_H)
+    self.node_entropy_H = self.node_entropy_H / total_entropy_H
+    sh = np.nansum(self.node_entropy[0, :])
+    sv = np.nansum(self.node_entropy[1, :])
+    print(f"\n\tNode entropy :  Sh : {sh:.4f}, and Sv : {sv:.4f}\n")
+    sh = np.nansum(self.node_entropy_H[0, :])
+    sv = np.nansum(self.node_entropy_H[1, :])
+    print(f"\n\tNode entropy H: Sh : {sh:.4f}, and Sv : {sv:.4f}\n")
 
 
   def la_abre_a_merde_cpp(self, features):

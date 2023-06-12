@@ -65,7 +65,7 @@ def worker_distbase(
   )
   print("Load MAC data ----")
   # Create macaque class ----
-  NET = MAC(
+  NET = MAC[f"MAC{__inj__}"](
     linkage, mode,
     structure = structure,
     nlog10=nlog10, lookup=lookup,
@@ -78,7 +78,7 @@ def worker_distbase(
     index=index, mapping=mapping,
     cut=cut, b=bias
   )
-  _, _, _, _, est = fitters[__model__](NET.D, NET.C, NET.nodes, __bin__)
+  _, _, _, _, est = fitters[__model__](NET.D, NET.CC, NET.nodes, __bin__)
   lb = est.coef_[0]
   # Load hierarhical analysis ----
   NET_H = read_class(
@@ -86,10 +86,12 @@ def worker_distbase(
     "hanalysis"
   )
   # Create colregions ----
-  L = colregion(NET)
+  L = colregion(NET, labels_name=f"labels{__inj__}")
   # Create hrh class ----
   data = HRH(NET_H, L)
   RAND_H = 0
+  # Get distance matrix from structure ----
+  D = NET.D
   # RANDOM networks ----
   serie = np.arange(MAXI)
   print("Create random networks ----")
@@ -107,14 +109,13 @@ def worker_distbase(
         mapping=mapping, index=index, b=bias,
         lb=lb
       )
-    # Create distance matrix ----
-    D = RAND.get_distance_matrix(NET.struct_labels)
+    RAND.rows = NET.rows
     # Create network ----
     print("Create random graph")
     RC = RAND.distbase_dict[__model__](
       D, NET.C, run=run, on_save_csv=F
     )
-    # G = column_normalize(RC)
+    RA = column_normalize(RC)
     # Transform data for analysis ----
     R, lookup, _ = maps[mapping](
       RC, nlog10, lookup, prob, b=bias

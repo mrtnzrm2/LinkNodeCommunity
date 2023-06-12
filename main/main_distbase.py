@@ -15,6 +15,7 @@ from plotting_modules.plotting_N import Plot_N
 from various.data_transformations import maps
 from networks.distbase import DISTBASE
 from networks.structure import MAC
+from networks.MAC.mac40 import MAC40
 from various.network_tools import *
 from various.fit_tools import fitters
 # Declare global variables ----
@@ -24,24 +25,24 @@ nlog10 = T
 lookup = F
 prob = T
 cut = F
-structure = "LN"
-distance = "tracto16"
+structure = "FLN"
+distance = "MAP3D"
 nature = "original"
 __mode__ = "ALPHA"
 topology = "MIX"
-mapping = "trivial"
-index  = "simple2"
+mapping = "R2"
+index  = "jacw"
 imputation_method = ""
 opt_score = ["_maxmu", "_X"]
 save_datas = T
 # Declare global variables DISTBASE ----
 __model__ = "EXPMLE"
-total_nodes = 106
-__inj__ = 57
-__nodes__ = 57
+total_nodes = 91
+__inj__ = 40
+__nodes__ = 40
 __bin__ = 12
-__version__ = 220830
-bias = float(0)
+__version__ = "40d91"
+bias = float(1e-5)
 ## Very specific!!! Be careful ----
 if nature == "original":
   __ex_name__ = f"{total_nodes}_{__inj__}"
@@ -53,7 +54,7 @@ if cut: __ex_name__ = f"{__ex_name__}_cut"
 
 if __name__ == "__main__":
   # MAC network as reference ----
-  REF = MAC(
+  REF = MAC40(
     linkage, __mode__,
     structure = structure,
     nlog10=nlog10, lookup=lookup,
@@ -67,7 +68,7 @@ if __name__ == "__main__":
     mapping=mapping,
     cut=cut, b=bias
   )
-  _, _, _, _, est = fitters[__model__](REF.D, REF.C, REF.nodes, __bin__)
+  _, _, _, _, est = fitters[__model__](REF.D, REF.CC, REF.nodes, __bin__)
   lb = est.coef_[0]
   # Create EDR network ----
   NET = DISTBASE(
@@ -82,19 +83,19 @@ if __name__ == "__main__":
   NET.create_plot_path()
   # NET.create_csv_path()
   # NET.create_pickle_path()
-  L = colregion(NET)
+  L = colregion(REF, labels_name="labels40")
   NET.set_labels(L.labels)
   # Create distance matrix ----
-  D = NET.get_distance_matrix(NET.struct_labels)
+  D = REF.D
   # Create network ----
   print("Create random graph")
   Gn = NET.distbase_dict[__model__](
       D, REF.C, run=T, on_save_csv=F
     )
-  G = column_normalize(Gn)
+  Ga = column_normalize(Gn)
   # Transform data for analysis ----
   R, lookup, _ = maps[mapping](
-    Gn, nlog10, lookup, prob, b=bias
+    Ga, nlog10, lookup, prob, b=bias
   )
   # Compute Hierarchy ----
   print("Compute Hierarchy")
@@ -102,7 +103,7 @@ if __name__ == "__main__":
   if save_datas:
     ## Hierarchy object!! ----
     H = Hierarchy(
-      NET, Gn[:, :NET.nodes], R[:, :NET.nodes], D,
+      NET, Ga[:, :NET.nodes], R[:, :NET.nodes], D,
       __nodes__, linkage, __mode__,
       lookup=lookup
     )
@@ -135,17 +136,21 @@ if __name__ == "__main__":
   ]
   # Plot H ----
   plot_h = Plot_H(NET, H)
+  HS.zdict2newick(HS.tree, weighted=F, on=T)
+  plot_h.plot_newick_R(HS.newick, weighted=F, on=T)
+  HS.zdict2newick(HS.tree, weighted=T, on=T)
+  plot_h.plot_newick_R(HS.newick, weighted=T, on=T)
   plot_h.plot_measurements_Entropy(on=T)
   plot_h.plot_measurements_D(on=T)
   plot_h.plot_measurements_mu(on=T)
   plot_h.plot_measurements_X(on=T)
   # Plot N ----
   plot_n = Plot_N(NET, H)
-  plot_n.A_vs_dis(G[:, :__nodes__], on=F)
+  plot_n.A_vs_dis(Ga[:, :__nodes__], on=F)
   plot_n.A_vs_dis(Gn[:, :__nodes__], name="count", on=F)
-  GG = G.copy()
+  GG = Ga.copy()
   GG[GG == 0] = np.nan
-  plot_n.histogram_weight(-np.log(GG), on=T, label="logFLN")
+  plot_n.histogram_weight(np.log(GG), on=T, label="logFLN")
   plot_n.histogram_weight(np.log(1 + Gn), on=T, label="LN")
   plot_n.histogram_dist(on=F)
   plot_n.projection_probability(
@@ -164,10 +169,11 @@ if __name__ == "__main__":
     H.set_overlap_labels(ocn, score)
     plot_h.core_dendrogram([r], on=T)
     ## Single linkage ----
-    plot_h.heatmap_dendro(r, on=T)
+    plot_h.heatmap_dendro(r, np.log(1 + Gn[:, :__nodes__]), on=T, score="LN")
+    plot_h.heatmap_dendro(r, np.log(Ga[:, :__nodes__]), on=T, score="FLN")
     plot_h.lcmap_dendro(k, r, on=T)
     plot_h.flatmap_dendro(
-      NET, [k], [r], on=T, EC=T #
+      NET, [k], [r], on=F, EC=T #
     )
   save_class(
     H, NET.pickle_path,

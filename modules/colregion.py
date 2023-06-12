@@ -6,7 +6,7 @@ from os.path import join
 from various.network_tools import match
 
 class colregion:
-  def __init__(self, NET, **kwargs) -> None:
+  def __init__(self, NET, labels_name="labels", **kwargs) -> None:
     # Define attributes ----
     self.nodes = NET.nodes
     self.auto = False
@@ -24,7 +24,7 @@ class colregion:
       self.subject = NET.subject
       # Import labels ----
       labels_path = join(
-        NET.labels_path, "labels.csv"
+        NET.labels_path, f"{labels_name}.csv"
       )
       self.labels = pd.read_csv(
         labels_path

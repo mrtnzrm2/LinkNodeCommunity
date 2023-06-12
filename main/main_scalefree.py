@@ -19,29 +19,29 @@ from various.network_tools import *
 __iter__ = 0
 __nodes__ = 200
 linkage = "single"
-nlog10 = F
+nlog10 = T
 lookup = F
 prob = F
 cut = F
 run = T
 topology = "SOURCE"
 mapping = "trivial"
-index  = "bsim"
+index  = "simple2"
 __mode__ = "ALPHA"
 opt_score = ["_maxmu", "_X", "_D"]
 save_data = T
 # WDN paramters ----
 par = {
   "-N" : "{}".format(str(__nodes__)),
-  "-k" : "7",
-  "-maxk" : "10",
-  "-mut" : "0.2",
-  "-muw" : "0.2",
-  "-beta" : "2.5",
+  "-k" : "10",
+  "-maxk" : "50",
+  "-mut" : "0.1",
+  "-muw" : "0.3",
+  "-beta" : "3",
   "-t1" : "2",
   "-t2" : "1",
-  "-nmin" : "5",
-  "-nmax" : "15"
+  "-nmin" : "10",
+  "-nmax" : "20"
 }
 if __name__ == "__main__":
   # Create EDR network ----
@@ -58,8 +58,8 @@ if __name__ == "__main__":
   )
   NET.create_plot_path()
   NET.create_pickle_path()
-  NET.set_alpha([6])
-  NET.set_beta([0.1])
+  NET.set_alpha([6, 50, 100])
+  NET.set_beta([0.1, 0.2, 0.4])
   # Create network ----
   print("Create random graph")
   NET.random_WDN_cpp(run=run, on_save_pickle=T)
@@ -83,6 +83,11 @@ if __name__ == "__main__":
     # Set labels to network ----
     L = colregion(NET)
     H.set_colregion(L)
+    save_class(
+      H, NET.pickle_path,
+      "hanalysis_{}".format(H.subfolder),
+      on=T
+    )
     HS = Hierarchical_Entropy(H.Z, H.nodes, list(range(H.nodes)))
     HS.Z2dict("short")
     node_entropy = HS.S(HS.tree)
@@ -94,7 +99,7 @@ if __name__ == "__main__":
     save_class(
       H, NET.pickle_path,
       "hanalysis_{}".format(H.subfolder),
-      on=F
+      on=T
     )
   else:
     H = read_class(
@@ -107,7 +112,7 @@ if __name__ == "__main__":
   plot_h.plot_measurements_mu(on=T)
   plot_h.plot_measurements_X(on=T)
   plot_h.heatmap_pure(
-    0, score = "_GT_{}".format(number_of_communities),
+    0, np.log(1 + NET.A), score = "_GT_{}".format(number_of_communities),
     labels = NET.labels, on=T
   )
   # Find best k partition ----
@@ -125,11 +130,11 @@ if __name__ == "__main__":
       ## Plots ----
       plot_h.core_dendrogram([r], on=F)
       plot_h.heatmap_pure(
-        r, on=T, labels = rlabels, name=f"{r}_{nmi:.4f}"
+        r, np.log(1+NET.A), on=T, labels = rlabels, name=f"{r}_{nmi:.4f}"
       )
-      plot_h.heatmap_dendro([k], on=F)
+      plot_h.heatmap_dendro(r, np.log(1+NET.A), on=F)
       plot_h.lcmap_dendro(
-        [k], score="_"+score, on=T
+        k, np.log(1+NET.A), score="_"+score, on=T
       )
       plot_h.lcmap_pure(
         [r],

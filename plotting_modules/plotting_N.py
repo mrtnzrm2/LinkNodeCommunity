@@ -159,9 +159,9 @@ class Plot_N:
       # Distance range ----
       from pandas import DataFrame
       from various.fit_tools import fitters
-      _, x, y = range_and_probs_from_DC(self.D, C, self.nodes, bins)
+      _, x, y = range_and_probs_from_DC(self.D, C, bins)
       y = np.exp(y)
-      _, _, _, _, est = fitters[model](self.D, C, self.nodes, bins, **kwargs)
+      _, _, _, _, est = fitters[model](self.D, C, bins, **kwargs)
       y_pred = est.predict(
         x.reshape(-1, 1)
       )

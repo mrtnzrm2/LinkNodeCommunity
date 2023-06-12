@@ -18,6 +18,7 @@ class DISTBASE(EDR):
     self.mapping = mapping
     self.index = index
     self.cut = cut
+    self.rows = 0
     self.subfolder = f"{topology}_{index}_{mapping}"
     # Define class attributes ----
     self.bin = bin
@@ -89,23 +90,7 @@ class DISTBASE(EDR):
     self.create_directory(self.pickle_path)
 
   def create_csv_path(self):
-    self.create_directory(self.csv_path)
-    
-  def get_distance_matrix(self, labels):
-    fname =  join(self.dist_path, "distance.csv")
-    ##
-    raw = pd.read_csv(fname, index_col=0)
-    # raw = pd.read_csv(fname)
-    ##
-    raw.columns = np.char.lower(raw.columns.to_numpy().astype(str))
-    raw = raw.set_index(raw.columns)
-    # load areas definition
-    raw = raw[labels].reindex(labels)
-    D = raw.to_numpy()
-    D[np.isnan(D)] = 0
-    np.fill_diagonal(D, 0)
-    self.rows = D.shape[0]
-    return D
+    self.create_directory(self.csv_path) 
   
   def set_overlap(self, labels):
     self.overlap = labels

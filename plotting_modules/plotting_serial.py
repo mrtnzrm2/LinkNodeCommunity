@@ -68,7 +68,19 @@ class PLOT_S:
       print("Plot clustering similarity histogram!!!")
       subdata = self.data.copy()
       # Average score ----
-      print(subdata.groupby(["sim", "score"]).mean().reset_index())
+      mean_results = subdata.groupby(["sim", "score"]).mean().reset_index()
+      ## MAXMU
+      mean_nmi = mean_results["values"].loc[(mean_results.sim == "NMI") & (mean_results.score == "_maxmu")].to_numpy()
+      mean_nmi = np.round(mean_nmi, 3)[0]
+      mean_omega = mean_results["values"].loc[(mean_results.sim == "OMEGA") & (mean_results.score == "_maxmu")].to_numpy()
+      mean_omega = np.round(mean_omega, 3)[0]
+      ## X
+      mean_nmi_x = mean_results["values"].loc[(mean_results.sim == "NMI") & (mean_results.score == "_X")].to_numpy()
+      mean_nmi_x = np.round(mean_nmi_x, 3)[0]
+      mean_omega_x = mean_results["values"].loc[(mean_results.sim == "OMEGA") & (mean_results.score == "_X")].to_numpy()
+      mean_omega_x = np.round(mean_omega_x, 3)[0]
+      subdata["sim"] = subdata["sim"].map({"NMI" : f"NMI -> maxmu: {mean_nmi}     X: {mean_nmi_x}", "OMEGA" : f"OMEGA -> maxmu: {mean_omega}      X: {mean_omega_x}"})
+      # print(mean_results)
       # Create figure ----
       if c:
         subdata["score"] = [s.replace("_", "") for s in subdata["score"]]
@@ -84,7 +96,7 @@ class PLOT_S:
           sns.histplot,
           x="values",
           stat="count",
-          alpha=0.6,
+          alpha=0.4,
           common_norm=False,
           # bin_width=0.05,
           **kwargs
@@ -103,6 +115,7 @@ class PLOT_S:
           stat="count",
           **kwargs
         )
+      # g.set_titles({"NMI" : r"$\mu_{NMI}: }$" + f"{mean_nmi:.3f}", "OMEGA" : r"$\mu_{OMEGA}$:" + f"{mean_omega:.3f}"})
       # Arrange path ----
       plot_path = join(
         self.plot_path, "Features"

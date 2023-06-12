@@ -25,7 +25,9 @@ class Sim:
       "MIX" : 0, "SOURCE" : 1, "TARGET" : 2
     }
     self.indices = {
-      "jacp" : 0, "tanimoto" : 1, "cos" : 2, "jacw" : 3, "bsim" : 4,  "simple" : 5, "simple2" : 6, "from_reg": 7, "from_clf" : 8
+      "jacp" : 0, "tanimoto" : 1, "cos" : 2, "jacw" : 3,  "bsim" : 4,
+      "simple" : 5, "simple2" : 6, "from_reg": 7, "from_clf" : 8, "simple3": 9, "simple4" : 10, "logcos" : 11,
+      "simple5": 12, "simple6": 13
     }
     self.topology = topology
     self.index = index

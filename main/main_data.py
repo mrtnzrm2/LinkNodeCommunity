@@ -30,15 +30,15 @@ topology = "MIX"
 mapping = "trivial"
 index  = "simple2"
 bias = float(0)
-opt_score = ["_maxmu", "_X", "_D"]
-save_data = F
-version = 220830
+opt_score = ["_maxmu", "_X"]
+save_data = T
+version = "57d106"
 __nodes__ = 57
 __inj__ = 57
 # Start main ----
 if __name__ == "__main__":
   # Load structure ----
-  NET = MAC(
+  NET = MAC[f"MAC{__inj__}"](
     linkage, mode,
     nlog10 = nlog10,
     structure = structure,
@@ -56,7 +56,6 @@ if __name__ == "__main__":
   )
   NET.create_pickle_directory()
   NET.create_plot_directory()
-  print(np.nansum(NET.C[:57, :57] > 0))
   # Transform data for analysis ----
   R, lookup, _ = maps[mapping](
     NET.C, nlog10, lookup, prob, b=bias
@@ -76,8 +75,14 @@ if __name__ == "__main__":
     H.link_entropy_cpp("short", cut=cut)
     ## Compute lq arbre de merde ----
     H.la_abre_a_merde_cpp(H.BH[0])
+    ## Compute node entropy ----
+    H.node_entropy_cpp("short", cut=cut)
+    H.entropy = [
+      H.node_entropy, H.node_entropy_H,
+      H.link_entropy, H.link_entropy_H
+    ]
     # Set labels to network ----
-    L = colregion(NET)
+    L = colregion(NET, labels_name=f"labels{__inj__}")
     H.set_colregion(L)
     # Save ----
     save_class(
@@ -90,17 +95,10 @@ if __name__ == "__main__":
       NET.pickle_path,
       "hanalysis"
     )
-  # Entropy ----
-  HS = Hierarchical_Entropy(H.Z, H.nodes, H.colregion.labels[:H.nodes])
-  HS.Z2dict("short")
-  node_entropy = HS.S(HS.tree)
-  node_entropy_H = HS.S_height(HS.tree)
-  H.entropy = [
-    node_entropy, node_entropy_H,
-    H.link_entropy, H.link_entropy_H
-  ]
   # # Picasso ----
   plot_h = Plot_H(NET, H)
+  HS = Hierarchical_Entropy(H.Z, H.nodes, list(range(H.nodes)))
+  HS.Z2dict("short")
   HS.zdict2newick(HS.tree, weighted=F, on=T)
   plot_h.plot_newick_R(HS.newick, weighted=F, on=T)
   HS.zdict2newick(HS.tree, weighted=T, on=T)
@@ -110,14 +108,16 @@ if __name__ == "__main__":
   plot_h.plot_measurements_mu(on=T)
   plot_h.plot_measurements_X(on=T)
   plot_n = Plot_N(NET, H)
-  plot_n.A_vs_dis(R, s=5, on=T, reg=T)
+  plot_n.A_vs_dis(np.log(1 + NET.C), s=5, on=F, reg=T)
   plot_n.projection_probability(
-    NET.C, "EXPMLE" , bins=12, on=T
+    NET.CC, "EXPMLE" , bins=12, on=T
   )
-  plot_n.histogram_weight(R, on=F)
-  plot_n.histogram_weight(np.log(1 + NET.C), on=F, label="LN")
-  plot_n.histogram_weight(H.source_sim_matrix, on=T, label="SS")
-  plot_n.histogram_weight(H.target_sim_matrix, on=T, label="TS")
+  # plot_n.histogram_weight(np.sqrt(NET.A), on=T, label="sqrt_FLN")
+  # plot_n.histogram_weight(np.log(NET.A), on=T, label="FLN")
+  # plot_n.histogram_weight(np.log(1 + NET.C), on=T, label="LN")
+  # plot_n.histogram_weight(np.sqrt(NET.C), on=T, label="sqrt_LN")
+  # plot_n.histogram_weight(H.source_sim_matrix, on=T, label="SS")
+  # plot_n.histogram_weight(H.target_sim_matrix, on=T, label="TS")
   plot_n.histogram_dist(on=F)
   plot_n.plot_akis(NET.D, s=5, on=T)
   for score in opt_score:
@@ -139,8 +139,8 @@ if __name__ == "__main__":
     # Plot H ----
     plot_h.core_dendrogram([r], on=T) #
     plot_h.lcmap_pure([k], labels = rlabels, on=F)
-    plot_h.heatmap_pure(r, on=T, labels = rlabels) #
-    plot_h.heatmap_dendro(r, on=T)
+    plot_h.heatmap_pure(r, np.log10(NET.A), on=T, labels = rlabels) #
+    plot_h.heatmap_dendro(r, np.log10(NET.A), on=T)
     plot_h.lcmap_dendro(k, r, on=T) #
     plot_h.flatmap_dendro(
       NET, [k], [r], on=T, EC=T #

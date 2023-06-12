@@ -266,11 +266,12 @@ def fit_pareto_trunc_MLE(D, C, nodes, *args):
   ##
   return [], x.reshape(-1), log_prob, np.zeros(log_prob.shape), pred
   
-def fit_exp_MLE(D, C, nodes, *args, npoints=100, **kwargs):
+def fit_exp_MLE(D, C, *args, npoints=100, **kwargs):
   import matplotlib.pyplot as plt
   import seaborn as sns
-  import stan
+  # import stan
   CC = C.copy()
+  nodes = CC.shape[1]
   CC[:nodes, :nodes] = CC[:nodes, :nodes] + CC[:nodes, :nodes].T
   # CC = CC[:nodes, :nodes]
   CC = adj2df(CC)

@@ -7,7 +7,7 @@ from various.network_tools import column_normalize
 
 class SWAPNET(EDR):
   def __init__(
-    self, nodes : int, linkage : str, mode : str, iteration : int,
+    self, nodes : int, total_number_of_nodes : int, linkage : str, mode : str, iteration : int,
     nlog10=False, lookup=False, cut=False,
     mapping="R1", topology="MIX", index="jacp", **kwargs
   ) -> None:
@@ -36,7 +36,8 @@ class SWAPNET(EDR):
         self.structure_path, self.model, str(self.nodes)
       )
     # Get structure network ----
-    self.C, self.A = self.get_structure()
+    self.C, self.A = 0, 0
+    self.rows = total_number_of_nodes
     # Set ANALYSIS NAME ----
     self.analysis = linkage.upper() + "_{}_{}".format(
       self.rows, self.nodes
@@ -75,7 +76,7 @@ class SWAPNET(EDR):
       "Table_areas_regions_09_2019.csv"
     )
     # Get network's spatial distances ----
-    self.D = self.get_distance()
+    self.D = 0
     # Base clustering attributes ----
     self.overlap = np.array(["UNKNOWN"] * self.nodes)
 
@@ -107,41 +108,6 @@ class SWAPNET(EDR):
     D[np.isnan(D)] = 0
     np.fill_diagonal(D, 0)
     return D
-
-  def get_structure(self):
-    # Get structure ----
-    if self.nature == "original":
-      path = join(
-        self.structure_path, "Count.csv"
-      )
-      C = pd.read_csv(path, index_col=0)
-      clab = C.columns.to_numpy()
-      rlab = np.array(C.index)
-      nrlab = np.array([r for r in rlab if r not in clab])
-      rlab = np.hstack([clab, nrlab])
-      C = C.reindex(rlab).to_numpy()
-      # Take out claustrum
-      C = C[:-1, :]
-      self.struct_labels = rlab[:-1]
-      # self.struct_labels = rlab
-      #
-      self.struct_labels = np.array(self.struct_labels, dtype=str)
-      self.struct_labels = np.char.lower(self.struct_labels)
-      self.rows = C.shape[0]
-      self.nodes = C.shape[1]
-    elif self.nature == "imputation":
-      path = join(
-        self.structure_path, "fln.csv"
-      )
-      C = pd.read_csv(path)
-      self.struct_labels = list(C.columns)
-      C = C.to_numpy()
-      # Get network dimensions ----
-      self.rows = C.shape[0]
-      self.nodes = C.shape[1]
-    else:
-      raise ValueError("Unknow FLN network.")
-    return C, column_normalize(C.copy())
 
   def random_one_k(self, run=True, **kwargs):
     if self.nature == "original":

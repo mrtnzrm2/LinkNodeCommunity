@@ -13,6 +13,7 @@ from modules.hierarmerge import Hierarchy
 from modules.colregion import colregion
 from modules.hierarentropy import Hierarchical_Entropy
 from networks.structure import MAC
+from networks.MAC.mac40 import MAC40
 from various.data_transformations import maps
 from various.network_tools import *
 # Iterable varaibles ----
@@ -27,7 +28,7 @@ list_of_lists = np.array(list(list_of_lists))
 linkage = "single"
 nlog10 = T
 lookup = F
-prob = T
+prob = F
 structure = "LN"
 distance = "tracto16"
 nature = "original"
@@ -36,7 +37,7 @@ index = "simple2"
 mode = "ALPHA"
 imputation_method = ""
 opt_score = ["_maxmu", "_X"]
-version = 220830
+version = "57d106"
 __nodes__ = 57
 __inj__ = 57
 # Start main ----
@@ -47,7 +48,7 @@ if __name__ == "__main__":
       cut = T
     else: cut = F
     # Load structure ----
-    NET = MAC(
+    NET = MAC[f"MAC{__inj__}"](
       linkage, mode,
       structure = structure,
       nlog10=nlog10, lookup=lookup,
@@ -79,7 +80,7 @@ if __name__ == "__main__":
     ## Compute lq arbre de merde ----
     H.la_abre_a_merde_cpp(H.BH[0])
     # Set labels to network ----
-    L = colregion(NET)
+    L = colregion(NET, labels_name=f"labels{__inj__}")
     H.set_colregion(L)
     # Entropy ----
     HS = Hierarchical_Entropy(H.Z, H.nodes, H.colregion.labels[:H.nodes])

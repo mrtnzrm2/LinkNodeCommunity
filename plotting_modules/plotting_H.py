@@ -665,7 +665,7 @@ class Plot_H:
     else:
       print("No node-community dendrogram")
 
-  def heatmap_pure(self, r, score="", on=True, **kwargs):
+  def heatmap_pure(self, r, R, score="", on=True, **kwargs):
     if on:
       print("Visualize pure logFLN heatmap!!!")
       if "labels" in kwargs.keys():
@@ -675,7 +675,7 @@ class Plot_H:
         I = np.arange(self.nodes, dtype=int)
         fq = {}
       # Transform FLNs ----
-      W = self.R.copy()
+      W = R.copy()
       W[~self.nonzero] = np.nan
       W = W[I, :][:, I]
       # Configure labels ----
@@ -840,11 +840,11 @@ class Plot_H:
   #   else:
   #     print("No pure sln heatmap")
 
-  def heatmap_dendro(self, r, feature="", score="", on=True):
+  def heatmap_dendro(self, r, R, feature="", score="", on=True):
     if on:
       print("Visualize logFLN heatmap!!!")
       # Transform FLNs ----
-      W = np.log(1+self.R.copy())
+      W = R.copy()
       # print(W)
       W[~self.nonzero] = np.nan
       # Get nodes ordering ----

@@ -45,7 +45,8 @@ def minus_one_Dc(dA):
     if Dc <= 0:
       dA["id"].loc[dA["id"] == id] = -1
 
-def range_and_probs_from_DC(D, C, nodes, bins):
+def range_and_probs_from_DC(D, C, bins):
+  nodes = C.shape[1]
   D_ = D[:, :nodes]
   # Treat distances ----
   min_d = np.min(D_[D_ > 0])

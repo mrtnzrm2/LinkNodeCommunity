@@ -24,10 +24,10 @@ THE_ARRAY = pd.DataFrame()
 worker = ["distbase"]
 distbases = ["EXPMLE"]
 cut = [F]
-topology = ["TARGET", "SOURCE", "MIX"]
+topology = ["MIX", "TARGET", "SOURCE"]
 bias = [0]
 bins = [12]
-mode = ["ALPHA", "BETA"]
+mode = ["ALPHA"]
 list_of_lists = itertools.product(
   *[distbases, cut, topology, bias, bins, mode]
 )
@@ -46,9 +46,9 @@ array_distbase = pd.DataFrame(
 ## scalefree -----------------
 worker = ["scalefree"]
 cut = [F]
-number_of_nodes = [500, 750, 1500]
+number_of_nodes = [200]
 topology = ["SOURCE"]
-indices = ["bsim"]
+indices = ["simple2"]
 kav = [10]
 mut = [0.1, 0.3, 0.5]
 muw = [0.3]
@@ -115,9 +115,9 @@ array_overlap = array_overlap.loc[
 ## swaps -----------------
 worker = ["swaps"]
 cut = [F]
-topology = ["MIX"]
+topology = ["MIX", "TARGET", "SOURCE"]
 bias = [0]
-mode = ["ALPHA", "BETA"]
+mode = ["ALPHA"]
 list_of_lists = itertools.product(
   *[cut, topology, bias, mode]
 )
@@ -136,7 +136,7 @@ worker = ["ER"]
 topology = ["MIX"]
 index = ["jacp"]
 number_of_nodes = [50]
-Rho = [0.1]
+Rho = [0.2]
 list_of_lists = itertools.product(*[topology, index, number_of_nodes, Rho])
 list_of_lists = np.array(list(list_of_lists))
 array_ER = pd.DataFrame(
@@ -164,10 +164,10 @@ array_HRG = pd.DataFrame(
 
 ## Merge arrays -----------------
 # THE_ARRAY = pd.concat([THE_ARRAY, array_distbase], ignore_index=True)
-# THE_ARRAY = pd.concat([THE_ARRAY, array_scalefree], ignore_index=True)
+THE_ARRAY = pd.concat([THE_ARRAY, array_scalefree], ignore_index=True)
 # THE_ARRAY = pd.concat([THE_ARRAY, array_overlap], ignore_index=True)
 # THE_ARRAY = pd.concat([THE_ARRAY, array_swaps], ignore_index=True)
-THE_ARRAY = pd.concat([THE_ARRAY, array_ER], ignore_index=True)
+# THE_ARRAY = pd.concat([THE_ARRAY, array_ER], ignore_index=True)
 # THE_ARRAY = pd.concat([THE_ARRAY, array_HRG], ignore_index=True)
 
 
@@ -179,13 +179,13 @@ def NoGodsNoMaster(number_of_iterations, t):
     number_of_inj = 57
     number_of_nodes = 57
     total_number_nodes = 106
-    version = 220830
+    version = "57d106"
     nlog10 = T
     lookup = F
-    prob = T
+    prob = F
     run = T
     mapping = "trivial"
-    index = "simple2"
+    index = "simple5"
     if array.loc["cut"] == "True": cut = T
     else: cut = F
     worker_distbase(
@@ -235,19 +235,20 @@ def NoGodsNoMaster(number_of_iterations, t):
       int(array.loc["number_of_nodes"] * array.loc["on"]), int(array.loc["om"])
     )
   elif array.loc["worker"] == "swaps":
-    number_of_inj = 57
-    number_of_nodes = 57
-    version = 220830
+    number_of_inj = 47
+    number_of_nodes = 47
+    total_number_nodes = 106
+    version = "47d106"
     nlog10 = T
     lookup = F
-    prob = T
+    prob = F
     run = T
     mapping = "trivial"
     index = "simple2"
     if array.loc["cut"] == "True": cut = T
     else: cut = F
     worker_swaps(
-      number_of_iterations, number_of_inj, number_of_nodes,
+      number_of_iterations, number_of_inj, number_of_nodes, total_number_nodes,
       version, nlog10, lookup, prob, cut,
       run, array.loc["topology"], mapping, index, array.loc["bias"],
       array.loc["mode"]
