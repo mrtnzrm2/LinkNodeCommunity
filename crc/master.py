@@ -46,8 +46,8 @@ array_distbase = pd.DataFrame(
 ## scalefree -----------------
 worker = ["scalefree"]
 cut = [F]
-number_of_nodes = [200]
-topology = ["SOURCE"]
+number_of_nodes = [500, 750, 1000]
+topology = ["SOURCE", "MIX"]
 indices = ["simple2"]
 kav = [10]
 mut = [0.1, 0.3, 0.5]
@@ -78,7 +78,7 @@ array_scalefree = array_scalefree.loc[
 ## overlap -----------------
 worker = ["overlap"]
 cut = [F]
-number_of_nodes = [1000]
+number_of_nodes = [500, 750, 1000]
 topology = ["SOURCE", "MIX"]
 indices = ["jacp", "bsim"]
 kav = [10]
@@ -165,7 +165,7 @@ array_HRG = pd.DataFrame(
 ## Merge arrays -----------------
 # THE_ARRAY = pd.concat([THE_ARRAY, array_distbase], ignore_index=True)
 THE_ARRAY = pd.concat([THE_ARRAY, array_scalefree], ignore_index=True)
-# THE_ARRAY = pd.concat([THE_ARRAY, array_overlap], ignore_index=True)
+THE_ARRAY = pd.concat([THE_ARRAY, array_overlap], ignore_index=True)
 # THE_ARRAY = pd.concat([THE_ARRAY, array_swaps], ignore_index=True)
 # THE_ARRAY = pd.concat([THE_ARRAY, array_ER], ignore_index=True)
 # THE_ARRAY = pd.concat([THE_ARRAY, array_HRG], ignore_index=True)
@@ -290,4 +290,4 @@ if __name__ == "__main__":
   from collections import Counter
   print(Counter(THE_ARRAY.worker))
   print(THE_ARRAY.iloc[t - 1])
-  NoGodsNoMaster(number_of_iterations, t)
+  # NoGodsNoMaster(number_of_iterations, t)

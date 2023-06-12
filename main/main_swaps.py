@@ -81,6 +81,13 @@ if __name__ == "__main__":
     H.link_entropy_cpp("short", cut=cut)
     ## Compute lq arbre de merde ----
     H.la_abre_a_merde_cpp(H.BH[0])
+    ## Compute node entropy ----
+    H.node_entropy_cpp("short", cut=cut)
+    # Set entropy ----
+    H.entropy = [
+      H.node_entropy, H.node_entropy_H,
+      H.link_entropy, H.link_entropy_H
+    ]
     H.set_colregion(L)
     save_class(
       H, NET.pickle_path,
@@ -92,15 +99,6 @@ if __name__ == "__main__":
       NET.pickle_path,
       "hanalysis"
     )
-  # Entropy ----
-  HS = Hierarchical_Entropy(
-    H.Z, H.nodes, H.colregion.labels[:H.nodes]
-  )
-  HS.Z2dict("short")
-  HS.zdict2newick(HS.tree, weighted=F, on=F)
-  HS.zdict2newick(HS.tree, weighted=T, on=F)
-  node_entropy = HS.S(HS.tree)
-  node_entropy_H = HS.S_height(HS.tree)
   # Plot H ----
   plot_h = Plot_H(NET, H)
   plot_h.Mu_plotly(on=F)

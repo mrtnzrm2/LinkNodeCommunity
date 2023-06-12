@@ -77,6 +77,7 @@ if __name__ == "__main__":
     H.la_abre_a_merde_cpp(H.BH[0])
     ## Compute node entropy ----
     H.node_entropy_cpp("short", cut=cut)
+    ## Update entropy ----
     H.entropy = [
       H.node_entropy, H.node_entropy_H,
       H.link_entropy, H.link_entropy_H

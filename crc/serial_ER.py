@@ -12,7 +12,6 @@ import networkx as nx
 from networks.toy import TOY
 from networks_serial.toyh import TOYH
 from modules.hierarmerge import Hierarchy
-from modules.hierarentropy import Hierarchical_Entropy
 from various.network_tools import *
 
 def worker_ER(
@@ -67,15 +66,11 @@ def worker_ER(
     H.link_entropy_cpp("short", cut=cut)
     ## Compute lq arbre de merde ----
     H.la_abre_a_merde_cpp(H.BH[0])
-    # Entropy ----
-    HS = Hierarchical_Entropy(H.Z, H.nodes, labels)
-    HS.Z2dict("short")
-    HS.zdict2newick(HS.tree, weighted=F, on=F)
-    HS.zdict2newick(HS.tree, weighted=T, on=F)
-    node_entropy = HS.S(HS.tree)
-    node_entropy_H = HS.S_height(HS.tree)
+    ## Compute node entropy ----
+    H.node_entropy_cpp("short", cut=cut)
+    # Update entropy ----
     data.update_entropy(
-      [node_entropy, node_entropy_H, H.link_entropy, H.link_entropy_H],  
+      [H.node_entropy, H.node_entropy_H, H.link_entropy, H.link_entropy_H],  
     )
   data.set_subfolder(H.subfolder)
   data.set_pickle_path(H, bias=bias)

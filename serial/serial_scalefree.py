@@ -159,4 +159,3 @@ if __name__ == "__main__":
   plot_s.plot_measurements_ntrees_noodle(on=T)
   plot_s.plot_measurements_ordp(on=T)
   plot_s.plot_measurements_ordp_noodle(on=T)
-  plot_s.histogram_nmi(on=T, c=T, hue_norm=opt_score)

@@ -80,26 +80,20 @@ if __name__ == "__main__":
     H.link_entropy_cpp("short", cut=cut)
     ## Compute lq arbre de merde ----
     H.la_abre_a_merde_cpp(H.BH[0])
+    ## Compute node entropy ----
+    H.node_entropy_cpp("short", cut=cut)
+    # Set entropy ----
+    H.entropy = [
+      H.node_entropy, H.node_entropy_H,
+      H.link_entropy, H.link_entropy_H
+    ]
     # Set labels to network ----
     L = colregion(NET)
     H.set_colregion(L)
     save_class(
       H, NET.pickle_path,
       "hanalysis_{}".format(H.subfolder),
-      on=T
-    )
-    HS = Hierarchical_Entropy(H.Z, H.nodes, list(range(H.nodes)))
-    HS.Z2dict("short")
-    node_entropy = HS.S(HS.tree)
-    node_entropy_H = HS.S_height(HS.tree)
-    H.entropy = [
-      node_entropy, node_entropy_H,
-      H.link_entropy, H.link_entropy_H
-    ]
-    save_class(
-      H, NET.pickle_path,
-      "hanalysis_{}".format(H.subfolder),
-      on=T
+      on=F
     )
   else:
     H = read_class(

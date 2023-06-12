@@ -89,26 +89,20 @@ def worker_scalefree(
     ## Compute features ----
     RAND_H.BH_features_parallel()
     ## Compute link entropy ----
-    # RAND_H.link_entropy_cpp("short", cut=cut)
+    RAND_H.link_entropy_cpp("short", cut=cut)
     ## Compute lq arbre de merde ----
     RAND_H.la_abre_a_merde_cpp(RAND_H.BH[0])
+    ## Compute node entropy ----
+    RAND_H.node_entropy_cpp("short", cut=cut)
     # Save stats ----
     data.set_data_measurements(RAND_H, i)
     # Set labels to network ----
     L = colregion(RAND)
     RAND_H.set_colregion(L)
-   # Entropy ----
-    # HS = Hierarchical_Entropy(
-    #   RAND_H.Z, RAND_H.nodes, RAND_H.colregion.labels[:RAND_H.nodes]
-    # )
-    # HS.Z2dict("short")
-    # HS.zdict2newick(HS.tree, weighted=F, on=F)
-    # HS.zdict2newick(HS.tree, weighted=T, on=F)
-    # node_entropy = HS.S(HS.tree)
-    # node_entropy_H = HS.S_height(HS.tree)
-    # data.update_entropy(
-    #   [node_entropy, node_entropy_H, RAND_H.link_entropy, RAND_H.link_entropy_H],  
-    # )
+    #  Update entropy ----
+    data.update_entropy(
+      [RAND_H.node_entropy, RAND_H.node_entropy_H, RAND_H.link_entropy, RAND_H.link_entropy_H],  
+    )
     rlabels = zeros(1)
     for score in opt_score:
       print("Score: {}".format(score))
@@ -122,7 +116,10 @@ def worker_scalefree(
         if np.nan in rlabels:
           print("*** BAD dendrogram")
           break
-        data.set_nmi_nc(RAND.labels, rlabels, score = score)
+        if score == "_maxmu":
+          data.set_nmi_nc(RAND.labels, rlabels, score = score+f"_{RAND.Alpha[ii]}")
+        else:
+          data.set_nmi_nc(RAND.labels, rlabels, score = score)
     if np.sum(np.isnan(rlabels)) == 0: i += 1
   # Save ----
   if isinstance(RAND_H, Hierarchy):

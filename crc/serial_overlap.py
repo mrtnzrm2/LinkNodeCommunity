@@ -106,20 +106,15 @@ def worker_overlap(
       RAND_H.link_entropy_cpp("short", cut=cut)
       ## Compute lq arbre de merde ----
       RAND_H.la_abre_a_merde_cpp(RAND_H.BH[0])
+      ## Compute node entropy ----
+      RAND_H.node_entropy_cpp("short", cut=cut)
+      # Set colregion ----
       RAND_H.set_colregion(L)
       # Save stats ----
       data.set_data_measurements(RAND_H, i)
-      # Entropy ----
-      HS = Hierarchical_Entropy(
-        RAND_H.Z, RAND_H.nodes, RAND_H.colregion.labels[:RAND_H.nodes]
-      )
-      HS.Z2dict("short")
-      HS.zdict2newick(HS.tree, weighted=F, on=F)
-      HS.zdict2newick(HS.tree, weighted=T, on=F)
-      node_entropy = HS.S(HS.tree)
-      node_entropy_H = HS.S_height(HS.tree)
+      # Update entropy ----
       data.update_entropy(
-        [node_entropy, node_entropy_H, RAND_H.link_entropy, RAND_H.link_entropy_H],  
+        [RAND_H.node_entropy, RAND_H.node_entropy_H, RAND_H.link_entropy, RAND_H.link_entropy_H],  
       )
       for score in opt_score:
         # Get best k, r for given score ----
@@ -137,13 +132,22 @@ def worker_overlap(
             rlabels, noc_covers, RAND_H.colregion.labels[:RAND_H.nodes], on=T
           )
           # NMI between ground-truth and pred labels ----
-          data.set_nmi_nc_overlap(
-            RAND.labels, rlabels, RAND.overlap, noc_covers, omega,
-            score = score
-          )
-          data.set_overlap_scores(
-            omega, sen, sep, score = score
-          )
+          if score == "_maxmu":
+            data.set_nmi_nc_overlap(
+              RAND.labels, rlabels, RAND.overlap, noc_covers, omega,
+              score = score+f"_{RAND.Alpha[ii]}"
+            )
+            data.set_overlap_scores(
+              omega, sen, sep, score = score+f"_{RAND.Alpha[ii]}"
+            )
+          else:
+            data.set_nmi_nc_overlap(
+              RAND.labels, rlabels, RAND.overlap, noc_covers, omega,
+              score = score
+            )
+            data.set_overlap_scores(
+              omega, sen, sep, score = score
+            )
     i += 1
   # Save ----
   if isinstance(RAND_H, Hierarchy):

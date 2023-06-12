@@ -140,23 +140,18 @@ if __name__ == "__main__":
       RAND_H.link_entropy_cpp("short", cut=cut)
       ## Compute lq arbre de merde ----
       RAND_H.la_abre_a_merde_cpp(RAND_H.BH[0])
+      ## Compute node entropy ----
+      RAND_H.node_entropy_cpp("short", cut=cut)
+      # Set colregion ----
       RAND_H.set_colregion(L)
       # Saving statistics ----
       data.set_data_homogeneity_zero(RAND_H.R)
       data.set_data_measurements_zero(RAND_H, i)
       # Convergence ----
       data.set_stats(RAND_H)
-      # Entropy ----
-      HS = Hierarchical_Entropy(
-        RAND_H.Z, RAND_H.nodes, RAND_H.colregion.labels[:RAND_H.nodes]
-      )
-      HS.Z2dict("short")
-      HS.zdict2newick(HS.tree, weighted=F, on=F)
-      HS.zdict2newick(HS.tree, weighted=T, on=F)
-      node_entropy = HS.S(HS.tree)
-      node_entropy_H = HS.S_height(HS.tree)
+      # Update entropy ----
       data.set_entropy_zero(
-        [node_entropy, node_entropy_H, RAND_H.link_entropy, RAND_H.link_entropy_H]
+        [RAND_H.node_entropy, RAND_H.node_entropy_H, RAND_H.link_entropy, RAND_H.link_entropy_H]
       )
       for score in opt_score:
         # Get k from RAND_H ----

@@ -87,6 +87,8 @@ if __name__ == "__main__":
     H.BH_features_parallel()
     ## Compute lq arbre de merde ----
     H.la_abre_a_merde_cpp(H.BH[0])
+    ## Compute node entropy ----
+    H.node_entropy_cpp("short", cut=cut)
     H.set_colregion(L)
     save_class(
       H, NET.pickle_path, "hanalysis_{}".format(H.subfolder),
