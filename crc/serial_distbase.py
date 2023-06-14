@@ -32,6 +32,7 @@ def worker_distbase(
   nature = "original"
   distance = "tracto16"
   mode = mode
+  alpha = 0.
   imputation_method = ""
   opt_score = ["_maxmu", "_X"]  
   # Statistic test ----
@@ -76,7 +77,7 @@ def worker_distbase(
     inj=__inj__,
     topology=topology,
     index=index, mapping=mapping,
-    cut=cut, b=bias
+    cut=cut, b=bias, alpha=alpha
   )
   _, _, _, _, est = fitters[__model__](NET.D, NET.CC, NET.nodes, __bin__)
   lb = est.coef_[0]
@@ -124,7 +125,7 @@ def worker_distbase(
     print("Compute Hierarchy")
     RAND_H = Hierarchy(
       RAND, RC[:, :__nodes__], R[:, :__nodes__], D,
-      __nodes__, linkage, mode, lookup=lookup
+      __nodes__, linkage, mode, lookup=lookup, alpha=alpha
     )
     ## Compute features ----
     RAND_H.BH_features_parallel()

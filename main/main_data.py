@@ -28,8 +28,9 @@ nature = "original"
 imputation_method = ""
 topology = "MIX"
 mapping = "trivial"
-index  = "simple2"
-bias = float(0)
+index  = "D1_2_2"
+bias = 0.
+alpha = 0.
 opt_score = ["_maxmu", "_X"]
 save_data = T
 version = "57d106"
@@ -52,7 +53,8 @@ if __name__ == "__main__":
     index = index,
     mapping = mapping,
     cut = cut,
-    b = bias
+    b = bias,
+    alpha = alpha
   )
   NET.create_pickle_directory()
   NET.create_plot_directory()
@@ -67,7 +69,7 @@ if __name__ == "__main__":
     ## Hierarchy object!! ----
     H = Hierarchy(
       NET, NET.C, R, NET.D,
-      __nodes__, linkage, mode, lookup=lookup
+      __nodes__, linkage, mode, lookup=lookup, alpha=alpha
     )
     ## Compute features ----
     H.BH_features_parallel()
@@ -98,7 +100,7 @@ if __name__ == "__main__":
     )
   # # Picasso ----
   plot_h = Plot_H(NET, H)
-  HS = Hierarchical_Entropy(H.Z, H.nodes, list(range(H.nodes)))
+  HS = Hierarchical_Entropy(H.Z, H.nodes, H.colregion.labels[:H.nodes])
   HS.Z2dict("short")
   HS.zdict2newick(HS.tree, weighted=F, on=T)
   plot_h.plot_newick_R(HS.newick, weighted=F, on=T)

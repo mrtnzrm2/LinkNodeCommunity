@@ -28,6 +28,7 @@ def worker_swaps(
   MAXI = number_of_iterations
   linkage = "single"
   mode = mode
+  alpha = 0.
   structure = "LN"
   distance = "tracto16"
   nature = "original"
@@ -77,7 +78,7 @@ def worker_swaps(
     mapping=mapping,
     index=index,
     cut = cut,
-    b=bias
+    b=bias, alpha=alpha
   )
   # Load hierarhical analysis ----
   NET_H = read_class(
@@ -124,7 +125,7 @@ def worker_swaps(
     print("Compute Hierarchy")
     RAND_H = Hierarchy(
       RAND, RAND.C[:, :__nodes__], R[:, :__nodes__], RAND.D,
-      __nodes__, linkage, mode, lookup=lookup
+      __nodes__, linkage, mode, lookup=lookup, alpha=alpha
     )
     ## Compute features ----
     RAND_H.BH_features_parallel()

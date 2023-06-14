@@ -18,7 +18,7 @@ topologies = ["MIX", "TARGET", "SOURCE"]
 distbases = ["EXPMLE"]
 bias = [0]
 bins = [12]
-mode = ["ALPHA"]
+mode = ["BETA"]
 list_of_lists = itertools.product(
   *[topologies, distbases, bias, bins, mode]
 )
@@ -35,9 +35,10 @@ structure = "LN"
 distance = "tracto16"
 nature = "original"
 mapping = "trivial"
-index  = "simple5"
+index  = "D1_2"
 imputation_method = ""
 opt_score = ["_maxmu", "_X"]
+alpha = 0.
 # Statistic test ----
 alternative = "less"
 # Declare global variables DISTBASE ----
@@ -75,7 +76,7 @@ if __name__ == "__main__":
     if lookup: lup = "_lup"
     if cut: _cut = "_cut"
     data = read_class(
-        "../pickle/RAN/distbase/MAC/{}/{}/{}/{}/BIN_{}/{}/{}/{}/{}".format(
+        "../pickle/RAN/distbase/MAC/{}/{}/{}/{}/BIN_{}/{}/{}/{}/{}/{}".format(
           __version__,
           structure,
           distance,
@@ -84,7 +85,8 @@ if __name__ == "__main__":
           f"{linkage.upper()}_{total_nodes}_{__nodes__}{l10}{lup}{_cut}",
           mode,
           f"{topology}_{index}_{mapping}",
-          f"b_{bias}"
+          f"b_{bias}",
+          f"alpha_{alpha:.2f}"
         ),
         "series_{}".format(MAXI)
       )

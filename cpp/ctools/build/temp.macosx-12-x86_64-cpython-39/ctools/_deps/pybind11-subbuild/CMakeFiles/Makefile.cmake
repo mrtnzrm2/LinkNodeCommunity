@@ -7,10 +7,8 @@ set(CMAKE_DEPENDS_GENERATOR "Unix Makefiles")
 # The top level Makefile was generated from the following files:
 set(CMAKE_MAKEFILE_DEPENDS
   "CMakeCache.txt"
-  "/Applications/CMake.app/Contents/share/cmake-3.24/Modules/CMakeDetermineSystem.cmake"
   "/Applications/CMake.app/Contents/share/cmake-3.24/Modules/CMakeGenericSystem.cmake"
   "/Applications/CMake.app/Contents/share/cmake-3.24/Modules/CMakeInitializeConfigs.cmake"
-  "/Applications/CMake.app/Contents/share/cmake-3.24/Modules/CMakeSystem.cmake.in"
   "/Applications/CMake.app/Contents/share/cmake-3.24/Modules/CMakeSystemSpecificInformation.cmake"
   "/Applications/CMake.app/Contents/share/cmake-3.24/Modules/CMakeSystemSpecificInitialize.cmake"
   "/Applications/CMake.app/Contents/share/cmake-3.24/Modules/ExternalProject.cmake"
@@ -35,7 +33,6 @@ set(CMAKE_MAKEFILE_OUTPUTS
 
 # Byproducts of CMake generate step:
 set(CMAKE_MAKEFILE_PRODUCTS
-  "CMakeFiles/3.24.0-rc4/CMakeSystem.cmake"
   "pybind11-populate-prefix/tmp/pybind11-populate-mkdirs.cmake"
   "pybind11-populate-prefix/tmp/pybind11-populate-gitclone.cmake"
   "pybind11-populate-prefix/src/pybind11-populate-stamp/pybind11-populate-gitinfo.txt"

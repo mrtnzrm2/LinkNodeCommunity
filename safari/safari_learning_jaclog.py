@@ -48,7 +48,10 @@ def sim_1_1(F, path):
       Z = np.zeros((N, N))
       for i, x in enumerate(Lx):
          for j, y in enumerate(Lx):
-            Z[i,j] = F[key](X, np.array([1+x, 1+y]))
+            if len(F[key]["args"]) == 0:
+               Z[i, j] = F[key]["feat"](X, np.array([1+x, 1+y]))
+            elif len(F[key]["args"]) == 1:
+               Z[i, j] = F[key]["feat"](X, np.array([1+x, 1+y]), F[key]["args"][0])
       ZZ[key] = Z.ravel()
 
    data = pd.DataFrame()
@@ -78,7 +81,9 @@ def sim_1_1(F, path):
       data=data,
       x="(x,y)",
       y="score",
-      hue="label"
+      hue="label",
+      linewidth=1,
+      alpha=0.6
    )
    plt.xticks(loc, zz, rotation=45)
    fig = plt.gcf()
@@ -95,7 +100,10 @@ def sim_0_x(F, path):
    for key, value in F.items():
       Z = np.zeros((N,))
       for i, x in enumerate(Lx):
-            Z[i] = F[key](np.array([0, x]), np.array([0, x]))
+            if len(F[key]["args"]) == 0:
+               Z[i] = F[key]["feat"](np.array([0, x]), np.array([0, x]))
+            elif len(F[key]["args"]) == 1:
+               Z[i] = F[key]["feat"](np.array([0, x]), np.array([0, x]), F[key]["args"][0])
       ZZ[key] = Z
 
    data = pd.DataFrame()
@@ -117,7 +125,9 @@ def sim_0_x(F, path):
       data=data,
       x="x",
       y="score",
-      hue="label"
+      hue="label",
+      linewidth=1,
+      alpha=0.6
    )
    ax = plt.gca()
    # ax.set_xscale("log")
@@ -133,7 +143,10 @@ def sim_x_0_0_x(F, path):
    for key, value in F.items():
       Z = np.zeros((N,))
       for i, x in enumerate(Lx):
-            Z[i] = F[key](np.array([x, 0]), np.array([0, x]))
+            if len(F[key]["args"]) == 0:
+               Z[i] = F[key]["feat"](np.array([x, 0]), np.array([0, x]))
+            elif len(F[key]["args"]) == 1:
+               Z[i] = F[key]["feat"](np.array([x, 0]), np.array([0, x]), F[key]["args"][0])
       ZZ[key] = Z
 
    data = pd.DataFrame()
@@ -155,7 +168,9 @@ def sim_x_0_0_x(F, path):
       data=data,
       x="x",
       y="score",
-      hue="label"
+      hue="label",
+      linewidth=1,
+      alpha=0.5
    )
    ax = plt.gca()
    # ax.set_xscale("log")
@@ -176,7 +191,10 @@ def sim_rot_scl(F, path):
       Z = np.zeros((N, NL))
       for i, x in enumerate(theta):
             for j, l in enumerate(labda):
-               Z[i,j] = F[key](X, l * np.matmul(R(x), X))
+               if len(F[key]["args"]) == 0:
+                  Z[i, j] = F[key]["feat"](X, l * np.matmul(R(x), X))
+               elif len(F[key]["args"]) == 1:
+                  Z[i, j] = F[key]["feat"](X, l * np.matmul(R(x), X), F[key]["args"][0])
       ZZ[key] = Z.ravel()
 
    data = pd.DataFrame()
@@ -204,7 +222,9 @@ def sim_rot_scl(F, path):
       data=data,
       x="pararmeters",
       y="similarity score",
-      hue="label"
+      hue="label",
+      linewidth=1,
+      alpha=0.6
    )
    plt.xticks(loc, zz, rotation=45)
    ax = plt.gca()
@@ -275,234 +295,249 @@ def hist_sim_theta_lambda(F, path):
 def standardized(x):
    return (x - np.mean(x)) / np.std(x)
 
+def Data_sims(path):
+   S = {}
+   T = {}
+   # Declare global variables ----
+   linkage = "single"
+   nlog10 = T
+   lookup = F
+   prob = F
+   cut = F
+   structure = "LN"
+   mode = "ALPHA"
+   distance = "tracto16"
+   nature = "original"
+   imputation_method = ""
+   topology = "MIX"
+   mapping = "trivial"
+   bias = 0
+   alpha = 1/3
+   version = "57d106"
+   __nodes__ = 57
+   __inj__ = 57
+
+   sims = ["simple2", "simple3", "logcos", "simple5", "D1", "D1_2", "D2", "Dinf", "Dalpha"]
+   for index in sims:
+      # Load structure ----
+      NET = MAC57(
+         linkage, mode,
+         nlog10 = nlog10,
+         structure = structure,
+         lookup = lookup,
+         version = version,
+         nature = nature,
+         model = imputation_method,
+         distance = distance,
+         inj = __inj__,
+         topology = topology,
+         index = index,
+         mapping = mapping,
+         cut = cut,
+         b = bias,
+         alpha = alpha
+      )
+      # Transform data for analysis ----
+      R, lookup, _ = maps[mapping](
+         NET.C, nlog10, lookup, prob, b=bias
+      )
+      H = Hierarchy(
+         NET, NET.C, R, NET.D,
+         __nodes__, linkage, mode, lookup=lookup, alpha = alpha
+      )
+      S[index] = adj2df(H.source_sim_matrix)
+      S[index] = S[index].loc[S[index].source > S[index].target]
+      T[index] = adj2df(H.target_sim_matrix)
+      T[index] = T[index].loc[T[index].source > T[index].target]
+   # Declare global variables ----
+   linkage = "single"
+   nlog10 = T
+   lookup = F
+   prob = T
+   cut = F
+   structure = "FLN"
+   mode = "ALPHA"
+   distance = "tracto16"
+   nature = "original"
+   imputation_method = ""
+   topology = "MIX"
+   mapping = "R2"
+   index = "jacw"
+   bias = 1e-5
+   alpha = 1/3
+   version = "57d106"
+   __nodes__ = 57
+   __inj__ = 57
+   NET = MAC57(
+         linkage, mode,
+         nlog10 = nlog10,
+         structure = structure,
+         lookup = lookup,
+         version = version,
+         nature = nature,
+         model = imputation_method,
+         distance = distance,
+         inj = __inj__,
+         topology = topology,
+         index = index,
+         mapping = mapping,
+         cut = cut,
+         b = bias,
+         alpha = alpha
+   )
+   # Transform data for analysis ----
+   R, lookup, _ = maps[mapping](
+         NET.A, nlog10, lookup, prob, b=bias
+   )
+   H = Hierarchy(
+         NET, NET.A, R, NET.D,
+         __nodes__, linkage, mode, lookup=lookup, alpha = alpha
+   )
+   S[index] = adj2df(H.source_sim_matrix)
+   S[index] = S[index].loc[S[index].source > S[index].target]
+   T[index] = adj2df(H.target_sim_matrix)
+   T[index] = T[index].loc[T[index].source > T[index].target]
+
+   ##
+
+   D = NET.D[:__inj__, :__inj__]
+   D = adj2df(D)
+   D = D.loc[D.source > D.target]
+
+   #
+
+   G = {
+      "simple2" : "jaclog_LN",
+      "simple3" : "jacw_LN",
+      "jacw" : "jacw_FLNe",
+      "logcos" : "logcos_LN",
+      "simple5" : "jacsqrt_LN",
+      "D1" : "D1_LN",
+      "D1_2" : "D1_2_LN",
+      "D2" : "D2_LN",
+      "Dinf" : "Dinf_LN",
+      "Dalpha" : "Dalpha_LN"
+   }
+   data = pd.DataFrame()
+
+   for i, g in enumerate(G.keys()):
+      for j, h in enumerate(G.keys()):
+         # if i <= j: continue
+         data = pd.concat(
+            [
+            data,
+               pd.DataFrame(
+                  {
+                     "x" : S[g].weight,
+                     "y" : S[h].weight,
+                     "x_index" : [G[g]] * D.weight.shape[0],
+                     "y_index" : [G[h]] * D.weight.shape[0],
+                     "dir" : ["source"] * D.weight.shape[0]
+                  }
+               )
+            ], ignore_index=True
+         )
+         data = pd.concat(
+            [
+               data,
+               pd.DataFrame(
+                  {
+                     "x" : T[g].weight,
+                     "y" : T[h].weight,
+                     "x_index" : [G[g]] * D.weight.shape[0],
+                     "y_index" : [G[h]] * D.weight.shape[0],
+                     "dir" : ["target"] * D.weight.shape[0]
+                  }
+               )
+            ], ignore_index=True
+         )
+   
+   g = sns.lmplot(
+      data=data,
+      col="x_index",
+      row="y_index",
+      hue="dir",
+      x="x",
+      y="y",
+      lowess=True,
+      #  scatter=False,
+      scatter_kws={"s": 3, "alpha":0.4},
+      # line_kws={"linewidth" : 1, "alpha" : 0.6},
+      sharex=False,
+      sharey=False
+   )
+
+   plt.savefig(path+"/sim_sim.png", dpi=300)
+   plt.close()
+
+   data = pd.DataFrame()
+
+   for g in G.keys():
+      data = pd.concat(
+         [
+            data,
+            pd.DataFrame(
+               {
+                  "stdr_score" : standardized(S[g].weight),
+                  "distance" : D.weight,
+                  "index" : [G[g]] * D.weight.shape[0],
+                  "dir" : ["source"] * D.weight.shape[0]
+               }
+            )
+         ], ignore_index=True
+      )
+      data = pd.concat(
+         [
+            data,
+            pd.DataFrame(
+               {
+                  "stdr_score" : standardized(T[g].weight),
+                  "distance" : D.weight,
+                  "index" : [G[g]] * D.weight.shape[0],
+                  "dir" : ["target"] * D.weight.shape[0]
+               }
+            )
+         ], ignore_index=True
+      )
+   
+   g = sns.lmplot(
+      data=data,
+      col="dir",
+      x="distance",
+      y="stdr_score",
+      hue="index",
+      lowess=True,
+      scatter=False,
+      #  scatter_kws={"s": 2, "alpha":0.4},
+      line_kws={"linewidth" : 1, "alpha" : 0.6}
+   )
+   
+   plt.savefig(path+"/sim_dist.png", dpi=300)
+   plt.close()
+
 plot_path = "../plots/TOY/learning_jaclog"
 
 F = {
-   "cos" : cos,
-   "jacp" : ct.jacp,
-   "jaclog" : ct.jaclog,
-   "jacsqrt" : ct.jacsqrt
+   "cos" : {"feat": cos, "args" : []},
+   "jacp" : {"feat": ct.jacp, "args" : []},
+   "jaclog" : {"feat": ct.jaclog, "args" : []},
+   "jacsqrt" : {"feat": ct.jacsqrt, "args" : []},
+   "D1" : {"feat": ct.D1, "args" : []},
+   "D1_2" : {"feat": ct.D1_2, "args" : []},
+   "D2" : {"feat": ct.D2, "args" : []},
+   "Dinf": {"feat": ct.Dinf, "args" : []},
+   "Dalpha" : {"feat": ct.Dalpha, "args" : [1/3]},
    # "simbin" : ct.simbin
 }
 
+# sim_1_1(F, plot_path)
 # sim_0_x(F, plot_path)
-# sim_1_1(F, plot_path),
 # sim_rot_scl(F, plot_path)
 # sim_x_0_0_x(F, plot_path)
-hist_sim_theta_lambda(F, plot_path)
+# hist_sim_theta_lambda(F, plot_path)
+Data_sims(plot_path)
 
-# Start main ----
-# if __name__ == "__main__":
-#   S = {}
-#   T = {}
-#   # Declare global variables ----
-#   linkage = "single"
-#   nlog10 = T
-#   lookup = F
-#   prob = F
-#   cut = F
-#   structure = "LN"
-#   mode = "ALPHA"
-#   distance = "tracto16"
-#   nature = "original"
-#   imputation_method = ""
-#   topology = "MIX"
-#   mapping = "trivial"
-#   bias = 0
-#   opt_score = ["_maxmu", "_X", "_D"]
-#   save_data = T
-#   version = "57d106"
-#   __nodes__ = 57
-#   __inj__ = 57
-
-#   sims = ["simple2", "simple3", "logcos", "simple5"]
-#   for index in sims:
-#     # Load structure ----
-#     NET = MAC57(
-#         linkage, mode,
-#         nlog10 = nlog10,
-#         structure = structure,
-#         lookup = lookup,
-#         version = version,
-#         nature = nature,
-#         model = imputation_method,
-#         distance = distance,
-#         inj = __inj__,
-#         topology = topology,
-#         index = index,
-#         mapping = mapping,
-#         cut = cut,
-#         b = bias
-#     )
-#     # Transform data for analysis ----
-#     R, lookup, _ = maps[mapping](
-#         NET.C, nlog10, lookup, prob, b=bias
-#     )
-#     H = Hierarchy(
-#         NET, NET.C, R, NET.D,
-#         __nodes__, linkage, mode, lookup=lookup
-#     )
-#     S[index] = adj2df(H.source_sim_matrix)
-#     S[index] = S[index].loc[S[index].source > S[index].target]
-#     T[index] = adj2df(H.target_sim_matrix)
-#     T[index] = T[index].loc[T[index].source > T[index].target]
-#   # Declare global variables ----
-#   linkage = "single"
-#   nlog10 = T
-#   lookup = F
-#   prob = T
-#   cut = F
-#   structure = "FLN"
-#   mode = "ALPHA"
-#   distance = "tracto16"
-#   nature = "original"
-#   imputation_method = ""
-#   topology = "MIX"
-#   mapping = "R2"
-#   index = "jacw"
-#   bias = 1e-5
-#   opt_score = ["_maxmu", "_X", "_D"]
-#   save_data = T
-#   version = "57d106"
-#   __nodes__ = 57
-#   __inj__ = 57
-#   NET = MAC57(
-#       linkage, mode,
-#       nlog10 = nlog10,
-#       structure = structure,
-#       lookup = lookup,
-#       version = version,
-#       nature = nature,
-#       model = imputation_method,
-#       distance = distance,
-#       inj = __inj__,
-#       topology = topology,
-#       index = index,
-#       mapping = mapping,
-#       cut = cut,
-#       b = bias
-#   )
-#   # Transform data for analysis ----
-#   R, lookup, _ = maps[mapping](
-#       NET.A, nlog10, lookup, prob, b=bias
-#   )
-#   H = Hierarchy(
-#       NET, NET.A, R, NET.D,
-#       __nodes__, linkage, mode, lookup=lookup
-#   )
-#   S[index] = adj2df(H.source_sim_matrix)
-#   S[index] = S[index].loc[S[index].source > S[index].target]
-#   T[index] = adj2df(H.target_sim_matrix)
-#   T[index] = T[index].loc[T[index].source > T[index].target]
-
-#   ##
-
-#   D = NET.D[:__inj__, :__inj__]
-#   D = adj2df(D)
-#   D = D.loc[D.source > D.target]
-
-#   #
-
-#   G = {
-#     "simple2" : "jaclog_LN",
-#     "simple3" : "jacw_LN",
-#     "jacw" : "jacw_FLNe",
-#     "logcos" : "logcos_LN",
-#     "simple5" : "jacsqrt_LN"
-#   }
-#   data = pd.DataFrame()
-
-#   for i, g in enumerate(G.keys()):
-#     for j, h in enumerate(G.keys()):
-#       # if i <= j: continue
-#       data = pd.concat(
-#           [
-#           data,
-#             pd.DataFrame(
-#                 {
-#                   "x" : S[g].weight,
-#                   "y" : S[h].weight,
-#                   "x_index" : [G[g]] * D.weight.shape[0],
-#                   "y_index" : [G[h]] * D.weight.shape[0],
-#                   "dir" : ["source"] * D.weight.shape[0]
-#                 }
-#             )
-#           ], ignore_index=True
-#       )
-#       data = pd.concat(
-#           [
-#             data,
-#             pd.DataFrame(
-#                 {
-#                   "x" : T[g].weight,
-#                   "y" : T[h].weight,
-#                   "x_index" : [G[g]] * D.weight.shape[0],
-#                   "y_index" : [G[h]] * D.weight.shape[0],
-#                   "dir" : ["target"] * D.weight.shape[0]
-#                 }
-#             )
-#           ], ignore_index=True
-#       )
   
-#   g = sns.lmplot(
-#     data=data,
-#     col="x_index",
-#     row="y_index",
-#     hue="dir",
-#     x="x",
-#     y="y",
-#     lowess=True,
-#     scatter_kws={"s": 3, "alpha":0.4},
-#     sharex=False,
-#     sharey=False
-#   )
-
-#   plt.savefig(plot_path+"/sim_sim.png", dpi=300)
-#   plt.close()
-
-#   data = pd.DataFrame()
-
-#   for g in G.keys():
-#      data = pd.concat(
-#         [
-#            data,
-#            pd.DataFrame(
-#               {
-#                  "stdr_score" : standardized(S[g].weight),
-#                  "distance" : D.weight,
-#                  "index" : [G[g]] * D.weight.shape[0],
-#                  "dir" : ["source"] * D.weight.shape[0]
-#               }
-#            )
-#         ], ignore_index=True
-#      )
-#      data = pd.concat(
-#         [
-#            data,
-#            pd.DataFrame(
-#               {
-#                  "stdr_score" : standardized(T[g].weight),
-#                  "distance" : D.weight,
-#                  "index" : [G[g]] * D.weight.shape[0],
-#                  "dir" : ["target"] * D.weight.shape[0]
-#               }
-#            )
-#         ], ignore_index=True
-#      )
-  
-#   g = sns.lmplot(
-#     data=data,
-#     col="dir",
-#     x="distance",
-#     y="stdr_score",
-#     hue="index",
-#     lowess=True,
-#     scatter_kws={"s": 2, "alpha":0.4},
-#     line_kws={"linewidth" : 2, "alpha" : 0.6}
-#   )
-
-#   plt.savefig(plot_path+"/sim_dist.png", dpi=300)
-#   plt.close()
 
 
 

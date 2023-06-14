@@ -33,7 +33,7 @@ structure = "LN"
 distance = "tracto16"
 nature = "original"
 mapping = "trivial"
-index = "simple5"
+index = "D1_2"
 imputation_method = ""
 opt_score = ["_maxmu", "_X"]
 # Declare global variables DISTBASE ----

@@ -13,15 +13,15 @@ from modules.hierarmerge import Hierarchy
 from modules.colregion import colregion
 from modules.hierarentropy import Hierarchical_Entropy
 from networks.structure import MAC
-from networks.MAC.mac40 import MAC40
 from various.data_transformations import maps
 from various.network_tools import *
 # Iterable varaibles ----
 cut = [F]
-topologies = ["MIX", "TARGET", "SOURCE"]
+topologies = ["MIX"]
 bias = [0]
+indices = ["simple2", "D1_2", "D1_2_2"]
 list_of_lists = itertools.product(
-  *[cut, topologies, bias]
+  *[cut, topologies, indices, bias]
 )
 list_of_lists = np.array(list(list_of_lists))
 # Declare global variables ----
@@ -33,8 +33,8 @@ structure = "LN"
 distance = "tracto16"
 nature = "original"
 mapping = "trivial"
-index = "simple2"
 mode = "ALPHA"
+alpha = 0.
 imputation_method = ""
 opt_score = ["_maxmu", "_X"]
 version = "57d106"
@@ -42,7 +42,7 @@ __nodes__ = 57
 __inj__ = 57
 # Start main ----
 if __name__ == "__main__":
-  for _cut_, topology, bias in list_of_lists:
+  for _cut_, topology, index, bias in list_of_lists:
     bias = float(bias)
     if _cut_ == "True":
       cut = T
@@ -59,7 +59,7 @@ if __name__ == "__main__":
       inj = __inj__,
       topology=topology,
       index=index, mapping=mapping,
-      cut=cut, b = bias
+      cut=cut, b = bias, alpha=alpha
     )
     NET.create_pickle_directory()
     # Transform data for analysis ----
@@ -71,7 +71,7 @@ if __name__ == "__main__":
     ## Hierarchy object!! ----
     H = Hierarchy(
       NET, NET.C, R, NET.D,
-      __nodes__, linkage, mode, lookup=lookup
+      __nodes__, linkage, mode, lookup=lookup, alpha=alpha
     )
     ## Compute features ----
     H.BH_features_parallel()
@@ -90,6 +90,7 @@ if __name__ == "__main__":
     H.set_colregion(L)
     # Entropy ----
     HS = Hierarchical_Entropy(H.Z, H.nodes, H.colregion.labels[:H.nodes])
+    HS.Z2dict("short")
     HS.zdict2newick(HS.tree, weighted=F, on=T)
     HS.zdict2newick(HS.tree, weighted=T, on=T)
     for score in opt_score:

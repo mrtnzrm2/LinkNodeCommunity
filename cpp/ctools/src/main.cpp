@@ -152,6 +152,107 @@ double jacsqrt(
 	return JACP;
 }
 
+double D1(
+	std::vector<double> &u, std::vector<double> &v
+) {
+	int N = u.size();
+	double JACP = 0.;
+	double p = 0, pu = 0, pv = 0;
+	for (int j=0; j < N; j++){
+			pu += 1 + u[j];
+			pv += 1 + v[j];
+	}
+	for (int i=0; i < N; i++){
+		// D1
+		p += ((1 + u[i]) / pu) * log(((1 + u[i]) / pu) * (pv / (1 + v[i])));
+		p += ((1 + v[i]) / pv) * log(((1 + v[i]) / pv) * (pu / (1 + u[i])));
+	}
+	JACP = 1 /(1 + p / 2.);
+	return JACP;
+}
+
+double D1_2(
+	std::vector<double> &u, std::vector<double> &v
+) {
+	int N = u.size();
+	double JACP = 0.;
+	double p = 0, pu = 0, pv = 0;
+	for (int j=0; j < N; j++){
+			pu += 1 + u[j];
+			pv += 1 + v[j];
+	}
+	for (int i=0; i < N; i++){
+		// D1/2
+		p += sqrt(((1 + u[i]) / pu) * ((1 + v[i]) / pv));
+	}
+	// D1/2
+	 p = - 2 * log(p);
+	JACP = 1 / (1 + p);
+	return JACP;
+}
+
+double D2(
+	std::vector<double> &u, std::vector<double> &v
+) {
+	int N = u.size();
+	double JACP = 0.;
+	double p = 0, pu = 0, pv = 0, p2 = 0;
+	for (int j=0; j < N; j++){
+			pu += 1 + u[j];
+			pv += 1 + v[j];
+	}
+	for (int i=0; i < N; i++){
+		// D2
+		p += pow((1 + u[i]) / pu, 2.) * (pv / (1 + v[i]));
+		p2 += pow((1 + v[i]) / pv, 2.) * (pu / (1 + u[i]));
+	}
+	// D2
+	p = log(p) + log(p2);
+	JACP = 1 /(1 + p / 2.);
+	return JACP;
+}
+
+double Dinf(
+	std::vector<double> &u, std::vector<double> &v
+) {
+	int N = u.size();
+	double JACP = 0.;
+	double p = 0, pu = 0, pv = 0, p2 = 0;
+	for (int j=0; j < N; j++){
+			pu += 1 + u[j];
+			pv += 1 + v[j];
+	}
+	for (int i=0; i < N; i++){
+		// Dinf
+		if (((1 + u[i]) / pu) * (pv / (1 + v[i])) > p) p = ((1 + u[i]) / pu) * (pv / (1 + v[i]));
+		if (((1 + v[i]) / pv) * (pu / (1 + u[i])) > p2) p2 = ((1 + v[i]) / pv) * (pu / (1 + u[i]));
+	}
+	// Dinf
+	p = log(p) + log(p2);
+	JACP = 1 /(1 + p / 2.);
+	return JACP;
+}
+
+double Dalpha(
+	std::vector<double> &u, std::vector<double> &v, double &alpha
+) {
+	int N = u.size();
+	double JACP = 0.;
+	double p = 0, pu = 0, pv = 0, q = 0;
+	for (int j=0; j < N; j++){
+			pu += 1 + u[j];
+			pv += 1 + v[j];
+	}
+	for (int i=0; i < N; i++){
+		p += pow((1 + u[i]) / pu, alpha) / pow((1 + v[i]) / pv, alpha - 1);
+		q += pow((1 + v[i]) / pv, alpha) / pow((1 + u[i]) / pu, alpha - 1);
+	}
+	// Dalpha
+	JACP = log(p) / (alpha - 1) + log(q) / (alpha - 1);
+	JACP = 1 /(1 + JACP / 2.);
+	return JACP;
+}
+
 PYBIND11_MODULE(ctools, m) {
 
   m.doc() = "Creates fast random networks";
@@ -183,6 +284,36 @@ PYBIND11_MODULE(ctools, m) {
    m.def(
     "jacsqrt",
     &jacsqrt,
+    py::return_value_policy::reference_internal
+  );
+
+  m.def(
+    "D1",
+    &D1,
+    py::return_value_policy::reference_internal
+  );
+
+  m.def(
+    "D1_2",
+    &D1_2,
+    py::return_value_policy::reference_internal
+  );
+
+  m.def(
+    "D2",
+    &D2,
+    py::return_value_policy::reference_internal
+  );
+
+  m.def(
+    "Dinf",
+    &Dinf,
+    py::return_value_policy::reference_internal
+  );
+
+  m.def(
+    "Dalpha",
+    &Dalpha,
     py::return_value_policy::reference_internal
   );
 }

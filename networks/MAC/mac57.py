@@ -27,6 +27,9 @@ class base:
     if "b" in kwargs.keys():
       self.b = kwargs["b"]
     else: self.b = ""
+    if "alpha" in kwargs.keys():
+      self.alpha = kwargs["alpha"]
+    else: self.alpha = ""
     ### mu parameters ----
     self.Alpha = np.array([6])
     beta1 = np.linspace(0.01, 0.2, 4)
@@ -98,12 +101,12 @@ class MAC57(base):
       self.plot_path = join(
         "../plots", self.common_path,
         self.analysis, mode, self.subfolder,
-        "b_"+str(self.b)
+        "b_"+str(self.b), "alpha_"+ f"{self.alpha:.2f}" # "alpha"+ f"{self.alpha:.2f}"
       )
     self.pickle_path = join(
       "../pickle", self.common_path,
       self.analysis, mode, self.subfolder,
-      "b_"+str(self.b)
+      "b_"+str(self.b), "alpha_"+ f"{self.alpha:.2f}"
     )
     if "regions_path" in kwargs.keys():
       self.regions_path = kwargs["regions_path"]

@@ -11,13 +11,13 @@ from h_entropy import h_entropy as HE
 
 class Hierarchy(Sim):
   def __init__(
-    self, G, A, R, D, nodes, linkage, mode, lookup=0
+    self, G, A, R, D, nodes, linkage, mode, lookup=0, alpha=1/2
   ):
     # Initialize Sim ---
     super().__init__(
       nodes, A, R, D, mode,
       topology=G.topology, index=G.index,
-      lookup=lookup
+      lookup=lookup, alpha=alpha
     )
     # Set parameters
     self.linkage = linkage

@@ -9,7 +9,7 @@ import simquest as squest
 
 class Sim:
   def __init__(
-    self, nodes : int, A, R, D, mode, topology="MIX", index="jacp", lookup=0
+    self, nodes : int, A, R, D, mode, topology="MIX", index="jacp", lookup=0, alpha=1/2
   ):
     # Parameters ----
     self.nodes = nodes
@@ -19,6 +19,7 @@ class Sim:
     self.D = D
     self.nonzero = (A != 0)
     self.lup = lookup
+    self.al = alpha
     # Number of connections in the EC component ----
     self.leaves = np.sum(self.A[:nodes, :nodes] != 0).astype(int)
     self.topologies = {
@@ -27,7 +28,8 @@ class Sim:
     self.indices = {
       "jacp" : 0, "tanimoto" : 1, "cos" : 2, "jacw" : 3,  "bsim" : 4,
       "simple" : 5, "simple2" : 6, "from_reg": 7, "from_clf" : 8, "simple3": 9, "simple4" : 10, "logcos" : 11,
-      "simple5": 12, "simple6": 13
+      "simple5": 12, "simple6": 13, "D1" : 14, "D1_2" : 15, "D2" : 16, "Dinf" : 17, "simple7" : 18,
+      "Dalpha" : 19, "simple2_2" : 20, "D1_2_2" : 21
     }
     self.topology = topology
     self.index = index
@@ -40,6 +42,8 @@ class Sim:
         aik[i, i] = np.nanmean(aik[i, :][aik[i, :] != self.lup])
       elif self.mode == "BETA":
         aik[i, i] = np.nanmean(aki[i, :][aki[i, :] != self.lup])
+      elif self.mode == "GAMMA":
+        aik[i, i] = 0.5 * np.nanmean(aik[i, :][aik[i, :] != self.lup]) + 0.5 * np.nanmean(aki[i, :][aki[i, :] != self.lup])
     # print(aik)
     return aik
   
@@ -60,6 +64,8 @@ class Sim:
         aki[i, i] = np.nanmean(aki[i, :][aki[i, :] != self.lup])
       elif self.mode == "BETA":
         aki[i, i] = np.nanmean(aik[i, :][aik[i, :] != self.lup])
+      elif self.mode == "GAMMA":
+        aki[i, i] = 0.5 * np.nanmean(aik[i, :][aik[i, :] != self.lup]) + 0.5 * np.nanmean(aki[i, :][aki[i, :] != self.lup])
     # print(aki)
     return aki
   
@@ -202,7 +208,7 @@ class Sim:
       self.get_aki(), self.get_aik(),
       self.get_aki_bin(), self.get_aik_bin(),
       self.nodes, self.leaves, self.topologies[self.topology],
-      self.indices[self.index]
+      self.indices[self.index], self.al
     )
     self.linksim_matrix = np.array(Quest.get_linksim_matrix())
     self.source_sim_matrix = np.array(Quest.get_source_matrix())

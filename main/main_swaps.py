@@ -35,6 +35,7 @@ opt_score = ["_maxmu", "_X"]
 __nodes__ = 57
 __version__ = 220830
 bias = float(0)
+alpha = 0.
 save_data = T
 
 if __name__ == "__main__":
@@ -73,7 +74,7 @@ if __name__ == "__main__":
     ## Hierarchy object!! ----
     H = Hierarchy(
       NET, NET.A[:, :NET.nodes], R[:, :NET.nodes],
-      NET.D, __nodes__, linkage, __mode__, lookup=lookup
+      NET.D, __nodes__, linkage, __mode__, lookup=lookup, alpha=alpha
     )
     ## Compute features ----
     H.BH_features_parallel()

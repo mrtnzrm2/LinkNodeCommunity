@@ -43,6 +43,7 @@ __nodes__ = 40
 __bin__ = 12
 __version__ = "40d91"
 bias = float(1e-5)
+alpha = 0.
 ## Very specific!!! Be careful ----
 if nature == "original":
   __ex_name__ = f"{total_nodes}_{__inj__}"
@@ -105,7 +106,7 @@ if __name__ == "__main__":
     H = Hierarchy(
       NET, Ga[:, :NET.nodes], R[:, :NET.nodes], D,
       __nodes__, linkage, __mode__,
-      lookup=lookup
+      lookup=lookup, alpha=alpha
     )
     ## Compute quality functions ----
     H.BH_features_parallel()

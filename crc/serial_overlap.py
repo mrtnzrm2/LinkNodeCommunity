@@ -17,7 +17,7 @@ from modules.colregion import colregion
 from various.network_tools import *
 
 def worker_overlap(
-  number_of_iterations : int, number_of_nodes : int,
+  number_of_iterations : int, number_of_nodes : int, mode : str,
   nlog10 : bool, lookup : bool, prob : bool, cut : bool, run : bool,
   topology : str, mapping : str, index : str,
   kav : float, maxk : int, mut : float, muw : float, beta : float,
@@ -27,7 +27,8 @@ def worker_overlap(
   MAXI = number_of_iterations
   __nodes__ = number_of_nodes
   linkage = "single"
-  __mode__ = "ALPHA"
+  __mode__ = mode
+  alpha = 0.
   opt_score = ["_maxmu", "_X", "_D"]
   # Overlapping WDN paramters ----
   opar = {
@@ -98,7 +99,7 @@ def worker_overlap(
       print("Compute Hierarchy")
       RAND_H = Hierarchy(
         RAND, RAND.A, RAND.A, zeros(RAND.A.shape),
-        __nodes__, linkage, __mode__
+        __nodes__, linkage, __mode__, alpha=alpha
       )
       ## Compute features ----
       RAND_H.BH_features_parallel()

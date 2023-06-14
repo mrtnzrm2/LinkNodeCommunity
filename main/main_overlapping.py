@@ -26,6 +26,7 @@ topology = "TARGET"
 mapping = "trivial"
 index  = "bsim"
 __mode__ = "ALPHA"
+alpha = 0.
 opt_score = ["_maxmu", "_X", "_D"]
 save_datas = T
 # Overlapping WDN paramters ----
@@ -81,7 +82,7 @@ if __name__ == "__main__":
     ## Hierarchy object!! ----
     H = Hierarchy(
       NET, NET.A, NET.A, zeros(NET.A.shape),
-      __nodes__, linkage, __mode__
+      __nodes__, linkage, __mode__, alpha=alpha
     )
     ## Compute features ----
     H.BH_features_parallel()

@@ -24,10 +24,11 @@ lookup = F
 prob = F
 cut = F
 run = T
-topology = "SOURCE"
+topology = "MIX"
 mapping = "trivial"
-index  = "simple2"
+index  = "D1_2_2"
 __mode__ = "ALPHA"
+alpha = 0.
 opt_score = ["_maxmu", "_X", "_D"]
 save_data = T
 # WDN paramters ----
@@ -40,8 +41,8 @@ par = {
   "-beta" : "3",
   "-t1" : "2",
   "-t2" : "1",
-  "-nmin" : "10",
-  "-nmax" : "20"
+  "-nmin" : "2",
+  "-nmax" : "5"
 }
 if __name__ == "__main__":
   # Create EDR network ----
@@ -72,7 +73,7 @@ if __name__ == "__main__":
     ## Hierarchy object!! ----
     H = Hierarchy(
       NET, NET.A, NET.A, zeros(NET.A.shape),
-      __nodes__, linkage, __mode__
+      __nodes__, linkage, __mode__, alpha=alpha
     )
     ## Compute features ----
     H.BH_features_parallel()

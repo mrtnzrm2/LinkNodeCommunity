@@ -32,6 +32,7 @@ class simquest {
     std::vector<std::vector<double> > linksim_matrix;
     std::vector<std::vector<double> > source_matrix;
     std::vector<std::vector<double> > target_matrix;
+		double alpha;
   public:
     simquest(
       std::vector<std::vector<bool> > BA,
@@ -43,7 +44,8 @@ class simquest {
       const int N,
       const int leaves,
       const int topology,
-      const int index
+      const int index,
+			const double al
     );
     ~simquest(){};
     std::vector<std::vector<double> > calculate_linksim_matrix(
@@ -64,10 +66,18 @@ class simquest {
 		double jacw(std::vector<double> &u, std::vector<double> &v);
 		double simple(std::vector<double> &u, std::vector<double> &v);
 		double simple2(std::vector<double> &u, std::vector<double> &v);
+		double simple2_2(std::vector<double> &u, std::vector<double> &v);
 		double simple3(std::vector<double> &u, std::vector<double> &v);
 		double simple4(std::vector<double> &u, std::vector<double> &v);
 		double simple5(std::vector<double> &u, std::vector<double> &v);
 		double simple6(std::vector<double> &u, std::vector<double> &v);
+		double simple7(std::vector<double> &u, std::vector<double> &v);
+		double D1(std::vector<double> &u, std::vector<double> &v);
+		double D1_2(std::vector<double> &u, std::vector<double> &v);
+		double D1_2_2(std::vector<double> &u, std::vector<double> &v);
+		double D2(std::vector<double> &u, std::vector<double> &v);
+		double Dinf(std::vector<double> &u, std::vector<double> &v);
+		double Dalpha(std::vector<double> &u, std::vector<double> &v);
 		double logcos(std::vector<double> &u, std::vector<double> &v);
 		double from_reg(std::vector<double> &u, std::vector<double> &v, std::vector<bool> &bu, std::vector<bool> &bv, double &D);
 		double from_clf(std::vector<double> &u, std::vector<double> &v, std::vector<bool> &bu, std::vector<bool> &bv, double &D);
@@ -84,8 +94,10 @@ simquest::simquest(
 	const int N,
 	const int leaves,
   const int topology,
-  const int index
+  const int index,
+	const double al
 ){
+	alpha = al;
 	// MIX topology
 	if (topology == 0) {
 		source_matrix = calculate_nodesim_matrix(AIK, BAIK, D, N, index);
@@ -226,6 +238,27 @@ double simquest::simple2(
 	return JACP;
 }
 
+double simquest::simple2_2(
+	std::vector<double> &u, std::vector<double> &v
+) {
+	int N = u.size();
+	double JACP = 0.;
+	double p;
+	for (int i=0; i < N; i++){
+		p = 0;
+		for (int j=0; j < N; j++){
+			p += std::max((1 + u[j]) / (1 + u[i]), (1 + v[j]) / (1 + v[i]));
+		}
+		if (p != 0) JACP += 1 / (log(p)/log(N)) / N;
+		else std::cout << "Vectors in jaccardp  are both zero\n";
+	}
+	// if (JACP > 1) {
+	// 	JACP = 1 - 1e-8;
+	// 	std::cout << "\n\tSimilarity greater than one.\n";
+	// }
+	return JACP;
+}
+
 double simquest::simple3(
 	std::vector<double> &u, std::vector<double> &v
 ) {
@@ -288,6 +321,144 @@ double simquest::simple6(
 	// 	JACP = 1 - 1e-8;
 	// 	std::cout << "\n\tSimilarity greater than one.\n";
 	// }
+	return JACP;
+}
+
+double simquest::simple7(
+	std::vector<double> &u, std::vector<double> &v
+) {
+	int N = u.size();
+	double JACP = 0.;
+	double p;
+	for (int i=0; i < N; i++){
+		p = 0;
+		for (int j=0; j < N; j++){
+			p += std::max((log(2 + u[j])) / (log(2 + u[i])), (log(2 + v[j])) / (log(2 + v[i])));
+		}
+		if (p != 0) JACP += 1 / p;
+		else std::cout << "Vectors in jaccardp  are both zero\n";
+	}
+	return JACP;
+}
+
+double simquest::D1(
+	std::vector<double> &u, std::vector<double> &v
+) {
+	int N = u.size();
+	double JACP = 0.;
+	double p = 0, pu = 0, pv = 0;
+	for (int j=0; j < N; j++){
+			pu += 1 + u[j];
+			pv += 1 + v[j];
+	}
+	for (int i=0; i < N; i++){
+		// D1
+		p += ((1 + u[i]) / pu) * log(((1 + u[i]) / pu) * (pv / (1 + v[i])));
+		p += ((1 + v[i]) / pv) * log(((1 + v[i]) / pv) * (pu / (1 + u[i])));
+	}
+	JACP = 1 /(1 + p / 2.);
+	return JACP;
+}
+
+double simquest::D1_2(
+	std::vector<double> &u, std::vector<double> &v
+) {
+	int N = u.size();
+	double JACP = 0.;
+	double p = 0, pu = 0, pv = 0;
+	for (int j=0; j < N; j++){
+			pu += 1 + u[j];
+			pv += 1 + v[j];
+	}
+	for (int i=0; i < N; i++){
+		// D1/2
+		p += sqrt(((1 + u[i]) / pu) * ((1 + v[i]) / pv));
+	}
+	// D1/2
+	 p = - 2 * log(p);
+	JACP = 1 / (1 + p);
+	return JACP;
+}
+
+double simquest::D1_2_2(
+	std::vector<double> &u, std::vector<double> &v
+) {
+	int N = u.size();
+	double JACP = 0.;
+	double p = 0, pu = 0, pv = 0;
+	for (int j=0; j < N; j++){
+			pu += u[j];
+			pv += v[j];
+	}
+	for (int i=0; i < N; i++){
+		// D1/2
+		p += sqrt(((u[i]) / pu) * ((v[i]) / pv));
+	}
+	// D1/2
+	 p = - 2 * log(p);
+	JACP = 1 / (1 + p);
+	return JACP;
+}
+
+double simquest::D2(
+	std::vector<double> &u, std::vector<double> &v
+) {
+	int N = u.size();
+	double JACP = 0.;
+	double p = 0, pu = 0, pv = 0, p2 = 0;
+	for (int j=0; j < N; j++){
+			pu += 1 + u[j];
+			pv += 1 + v[j];
+	}
+	for (int i=0; i < N; i++){
+		// D2
+		p += pow((1 + u[i]) / pu, 2.) * (pv / (1 + v[i]));
+		p2 += pow((1 + v[i]) / pv, 2.) * (pu / (1 + u[i]));
+	}
+	// D2
+	p = log(p) + log(p2);
+	JACP = 1 /(1 + p / 2.);
+	return JACP;
+}
+
+double simquest::Dinf(
+	std::vector<double> &u, std::vector<double> &v
+) {
+	int N = u.size();
+	double JACP = 0.;
+	double p = 0, pu = 0, pv = 0, p2 = 0;
+	for (int j=0; j < N; j++){
+			pu += 1 + u[j];
+			pv += 1 + v[j];
+	}
+	for (int i=0; i < N; i++){
+		// Dinf
+		if (((1 + u[i]) / pu) * (pv / (1 + v[i])) > p) p = ((1 + u[i]) / pu) * (pv / (1 + v[i]));
+		if (((1 + v[i]) / pv) * (pu / (1 + u[i])) > p2) p2 = ((1 + v[i]) / pv) * (pu / (1 + u[i]));
+	}
+	// Dinf
+	p = log(p) + log(p2);
+	JACP = 1 /(1 + p / 2.);
+	return JACP;
+}
+
+double simquest::Dalpha(
+	std::vector<double> &u, std::vector<double> &v
+) {
+	int N = u.size();
+	double JACP = 0.;
+	double p = 0, pu = 0, pv = 0, q = 0;
+	for (int j=0; j < N; j++){
+			pu += 1 + u[j];
+			pv += 1 + v[j];
+	}
+	for (int i=0; i < N; i++){
+		p += pow((1 + u[i]) / pu, alpha) / pow((1 + v[i]) / pv, alpha - 1);
+		q += pow((1 + v[i]) / pv, alpha) / pow((1 + u[i]) / pu, alpha - 1);
+	}
+	// Dalpha
+	JACP = log(p) / (alpha - 1) + log(q) / (alpha - 1);
+	JACP = 1 /(1 + JACP / 2.);
 	return JACP;
 }
 
@@ -389,6 +560,30 @@ double simquest::similarity_index(std::vector<double> &u, std::vector<double> &v
 	else if (index == 13) {
 		return simple6(u, v);
 	}
+	else if (index == 14) {
+		return D1(u, v);
+	}
+	else if (index == 15) {
+		return D1_2(u, v);
+	}
+	else if (index == 16) {
+		return D2(u, v);
+	}
+	else if (index == 17) {
+		return Dinf(u, v);
+	}
+	else if (index == 18) {
+		return simple7(u, v);
+	}
+	else if (index == 19) {
+		return Dalpha(u, v);
+	}
+	else if (index == 20) {
+		return simple2_2(u, v);
+	}
+	else if (index == 21) {
+		return D1_2_2(u, v);
+	}
   else {
     std::range_error("Similarity index must be a integer from 0 to 5\n");
   }
@@ -419,7 +614,8 @@ PYBIND11_MODULE(simquest, m) {
 						const int,
 						const int,
 						const int,
-						const int
+						const int,
+						const double
           >()
         )
         .def("get_linksim_matrix", &simquest::get_linksim_matrix)
@@ -429,10 +625,17 @@ PYBIND11_MODULE(simquest, m) {
         .def("jacw", &simquest::jacw)
 				.def("simple", &simquest::simple)
 				.def("simple2", &simquest::simple2)
+				.def("simple2_2", &simquest::simple2_2)
 				.def("simple3", &simquest::simple3)
 				.def("simple4", &simquest::simple4)
 				.def("simple5", &simquest::simple5)
 				.def("simple6", &simquest::simple6)
+				.def("D1", &simquest::D1)
+				.def("D1_2", &simquest::D1_2)
+				.def("D1_2_2", &simquest::D1_2_2)
+				.def("D2", &simquest::D2)
+				.def("Dinf", &simquest::Dinf)
+				.def("Dalpha", &simquest::Dalpha)
 				.def("logcos", &simquest::logcos)
 				.def("from_reg", &simquest::from_reg)
 				.def("from_clf", &simquest::from_clf)
