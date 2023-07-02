@@ -22,9 +22,9 @@ def draw_heatmap(*args, **kwargs):
   sns.heatmap(d, **kwargs)
 
 # Declare iter variables ----
-number_of_nodes = [1000]
-topologies = ["SOURCE", "MIX"]
-indices = ["jacp",  "bsim"]
+number_of_nodes = [200]
+topologies = ["SOURCE"]
+indices = ["bsim", "D1_2_2"]
 MUT = [0.1, 0.3, 0.5]
 NMIN = [10, 50]
 NMAX = [20, 100]
@@ -33,7 +33,7 @@ list_of_lists = itertools.product(
 )
 list_of_lists = np.array(list(list_of_lists))
 # Constant parameters ---
-MAXI = 25
+MAXI = 100
 linkage = "single"
 nlog10 = F
 lookup = F

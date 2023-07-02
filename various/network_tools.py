@@ -111,8 +111,16 @@ def get_best_kr_equivalence(score, H):
     )
   else: raise ValueError(f"Unexpected score: {score}")
   r = get_r_from_equivalence(k, H)
-  k = int(k)
-  return k, r
+  # print(k)
+  # k = int(k)
+  if isinstance(r, list) and isinstance(k, list):
+    return np.array(k), np.array(r)
+  elif isinstance(k, list):
+    return np.array(k), np.array([r])
+  elif isinstance(r, list):
+    return np.array([k]), np.array(r)
+  else:
+    return np.array([k]), np.array([r])
 
 def aesthetic_ids_vector(v):
   vv = v.copy()
@@ -225,16 +233,9 @@ def get_H_from_BH(H):
 
 def get_H_from_BH_with_maxmu(H):
   h = pd.DataFrame()
-  maxmu = []
   for i in np.arange(len(H.BH)):
-    maxmu.append(H.BH[i]["mu"].to_numpy())
-  maxmu = np.array(maxmu).T
-  maxmu = np.nanmax(maxmu, axis=1)
-  h  = pd.concat(
-    [h , H.BH[0]],
-    ignore_index=True
-  )
-  h["mu"] = maxmu
+    h = pd.concat([h, H.BH[i]], ignore_index=True)
+  h = h.groupby(["K", "alpha", "D", "m", "ntrees", "X"])["mu"].max().reset_index()
   return h
 
 def get_k_from_ntrees(H):
@@ -265,7 +266,7 @@ def get_k_from_avmu(H):
   return k
 
 def get_k_from_maxmu(H : pd.DataFrame):
-  alphas = np.unique(H.alpha)
+  alphas = np.sort(np.unique(H.alpha))
   avH = H.copy().groupby(["K", "alpha"]).max().reset_index()
   avH = [avH.loc[avH.alpha == al] for al in alphas]
   k = [np.min(avH[i].K.loc[avH[i].mu == np.nanmax(avH[i].mu)]).astype(int) for i in np.arange(alphas.shape[0])]
@@ -359,7 +360,10 @@ def get_r_from_X(H):
   return r
 
 def get_r_from_equivalence(k, H):
-  return H.equivalence[H.equivalence[:, 0] == k, 1][0]
+  if isinstance(k, list):
+    return [H.equivalence[H.equivalence[:, 0] == kk, 1][0] for kk in k]
+  else:
+    return H.equivalence[H.equivalence[:, 0] == k, 1][0]
 
 def get_r_from_X_diag(K, H, Z, R, nodes):
   from scipy.cluster.hierarchy import cut_tree, dendrogram

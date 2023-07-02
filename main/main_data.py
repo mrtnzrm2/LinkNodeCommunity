@@ -22,13 +22,13 @@ lookup = F
 prob = F
 cut = F
 structure = "LN"
-mode = "ALPHA"
+mode = "ZERO"
 distance = "tracto16"
 nature = "original"
 imputation_method = ""
 topology = "MIX"
 mapping = "trivial"
-index  = "D1_2_2"
+index  = "D1_2_3"
 bias = 0.
 alpha = 0.
 opt_score = ["_maxmu", "_X"]
@@ -56,6 +56,7 @@ if __name__ == "__main__":
     b = bias,
     alpha = alpha
   )
+  NET.set_alpha([6, 20])
   NET.create_pickle_directory()
   NET.create_plot_directory()
   # Transform data for analysis ----
@@ -115,39 +116,37 @@ if __name__ == "__main__":
   plot_n.projection_probability(
     NET.CC, "EXPMLE" , bins=12, on=T
   )
-  # plot_n.histogram_weight(np.sqrt(NET.A), on=T, label="sqrt_FLN")
-  # plot_n.histogram_weight(np.log(NET.A), on=T, label="FLN")
-  # plot_n.histogram_weight(np.log(1 + NET.C), on=T, label="LN")
-  # plot_n.histogram_weight(np.sqrt(NET.C), on=T, label="sqrt_LN")
-  # plot_n.histogram_weight(H.source_sim_matrix, on=T, label="SS")
-  # plot_n.histogram_weight(H.target_sim_matrix, on=T, label="TS")
   plot_n.histogram_dist(on=F)
   plot_n.plot_akis(NET.D, s=5, on=T)
+  ial = 0
   for score in opt_score:
-    print(f"Find node partition using {score}")
     # Get best K and R ----
-    K, R = get_best_kr(score, H)
-    r = R[K == np.min(K)][0]
-    k = K[K == np.min(K)][0]
-    H.set_kr(k, r, score=score)
-    print("Best K: {}\nBest R: {}\t Score: {}".format(k, r, score))
-    rlabels = get_labels_from_Z(H.Z, r)
-    # Overlap ----
-    NET.overlap, NET.data_nocs = H.get_ocn_discovery(k, rlabels)
-    H.set_overlap_labels(NET.overlap, score)
-    print(NET.overlap)
-    print("\n\tAreas with predicted overlapping communities:\n",  NET.data_nocs, "\n")
-    cover = omega_index_format(rlabels,  NET.data_nocs, NET.struct_labels[:NET.nodes])
-    H.set_cover(cover, score)
-    # Plot H ----
-    plot_h.core_dendrogram([r], on=T) #
-    plot_h.lcmap_pure([k], labels = rlabels, on=F)
-    plot_h.heatmap_pure(r, np.log10(NET.A), on=T, labels = rlabels) #
-    plot_h.heatmap_dendro(r, np.log10(NET.A), on=T)
-    plot_h.lcmap_dendro(k, r, on=T) #
-    plot_h.flatmap_dendro(
-      NET, [k], [r], on=T, EC=T #
-    )
+    K, R = get_best_kr_equivalence(score, H)
+    for k, r in zip(K, R):
+      if score == "_maxmu":
+        SCORE = f"{score}_{NET.Alpha[ial]}"
+        ial += 1
+      else: SCORE = score
+      print(f"Find node partition using {score}")
+      H.set_kr(k, r, score=SCORE)
+      print("Best K: {}\nBest R: {}\t Score: {}".format(k, r, SCORE))
+      rlabels = get_labels_from_Z(H.Z, r)
+      # Overlap ----
+      NET.overlap, NET.data_nocs = H.get_ocn_discovery_2(k, rlabels)
+      H.set_overlap_labels(NET.overlap, SCORE)
+      print(NET.overlap)
+      print("\n\tAreas with predicted overlapping communities:\n",  NET.data_nocs, "\n")
+      cover = omega_index_format(rlabels,  NET.data_nocs, NET.struct_labels[:NET.nodes])
+      H.set_cover(cover, SCORE)
+      # Plot H ----
+      plot_h.core_dendrogram([r], on=T) #
+      plot_h.lcmap_pure([k], labels = rlabels, on=T)
+      plot_h.heatmap_pure(r, np.log10(1+NET.C), on=T, labels = rlabels, score='LN') #
+      plot_h.heatmap_dendro(r, np.log10(1+NET.C), on=T, score="LN")
+      plot_h.lcmap_dendro(k, r, on=T) #
+      plot_h.flatmap_dendro(
+        NET, [k], [r], on=T, EC=T #
+      )
   save_class(
     H, NET.pickle_path,
     "hanalysis"

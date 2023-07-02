@@ -1,5 +1,6 @@
 # Standard libs ----
 import numpy as np
+from sklearn.linear_model import LinearRegression
 from fastdtw import fastdtw
 from scipy.spatial.distance import euclidean
 from itertools import chain, repeat, count, islice
@@ -29,7 +30,8 @@ class Sim:
       "jacp" : 0, "tanimoto" : 1, "cos" : 2, "jacw" : 3,  "bsim" : 4,
       "simple" : 5, "simple2" : 6, "from_reg": 7, "from_clf" : 8, "simple3": 9, "simple4" : 10, "logcos" : 11,
       "simple5": 12, "simple6": 13, "D1" : 14, "D1_2" : 15, "D2" : 16, "Dinf" : 17, "simple7" : 18,
-      "Dalpha" : 19, "simple2_2" : 20, "D1_2_2" : 21
+      "Dalpha" : 19, "simple2_2" : 20, "D1_2_2" : 21, "D1b" : 22, "dist_sim" : 23,  "D1_2_3" : 24,
+      "bsim_2" : 25, "jacp_2" : 26
     }
     self.topology = topology
     self.index = index
@@ -42,9 +44,34 @@ class Sim:
         aik[i, i] = np.nanmean(aik[i, :][aik[i, :] != self.lup])
       elif self.mode == "BETA":
         aik[i, i] = np.nanmean(aki[i, :][aki[i, :] != self.lup])
+      elif self.mode == "expALPHA":
+        aii = aik[i, :][aik[i, :] != self.lup]
+        max_aii = np.nanmax(aii)
+        aik[i, i] = max_aii + np.log(np.nansum(np.exp(aii - max_aii))) - np.log(np.nansum(aii > 0))
+      elif self.mode == "expBETA":
+        aii = aki[i, :][aki[i, :] != self.lup]
+        max_aii = np.nanmax(aii)
+        aik[i, i] = max_aii + np.log(np.nansum(np.exp(aii - max_aii))) - np.log(np.nansum(aii > 0))
       elif self.mode == "GAMMA":
         aik[i, i] = 0.5 * np.nanmean(aik[i, :][aik[i, :] != self.lup]) + 0.5 * np.nanmean(aki[i, :][aki[i, :] != self.lup])
-    # print(aik)
+      elif self.mode == "ZERO":
+        aik[i, i] = 0
+      elif self.mode == "SUM":
+        aik[i, i] = np.nansum(aik[i, :][aik[i, :] != self.lup][:self.nodes])
+      elif self.mode == "DELTA":
+        aik[i, i] = np.nansum(aik[i, :][aik[i, :] != self.lup][:self.nodes]) * 1e+4
+      elif self.mode == "FIT":
+        yup = (aik[i, :] != self.lup) & ~np.isnan(aik[i, :])
+        y = np.log(aik[i, :][yup])
+        x = self.D[i, :self.nodes][yup].reshape(-1, 1)
+        m = LinearRegression().fit(x, y)
+        aik[i, i] = np.exp(m.intercept_)
+      elif self.mode == "gALPHA":
+        aik[i, i] = np.exp(np.nanmean(np.log(aik[i, :][aik[i, :] != self.lup])))
+      elif self.mode == "gBETA":
+        aik[i, i] = np.exp(np.nanmean(np.log(aki[i, :][aki[i, :] != self.lup])))
+      else:
+        raise ValueError("Bad mode")
     return aik
   
   def get_aik_bin(self):
@@ -64,9 +91,34 @@ class Sim:
         aki[i, i] = np.nanmean(aki[i, :][aki[i, :] != self.lup])
       elif self.mode == "BETA":
         aki[i, i] = np.nanmean(aik[i, :][aik[i, :] != self.lup])
+      elif self.mode == "expALPHA":
+        aii = aki[i, :][aki[i, :] != self.lup]
+        max_aii = np.nanmax(aii)
+        aik[i, i] = max_aii + np.log(np.nansum(np.exp(aii - max_aii))) - np.log(np.nansum(aii > 0))
+      elif self.mode == "expBETA":
+        aii = aik[i, :][aik[i, :] != self.lup]
+        max_aii = np.nanmax(aii)
+        aik[i, i] = max_aii + np.log(np.nansum(np.exp(aii - max_aii))) - np.log(np.nansum(aii > 0))
       elif self.mode == "GAMMA":
         aki[i, i] = 0.5 * np.nanmean(aik[i, :][aik[i, :] != self.lup]) + 0.5 * np.nanmean(aki[i, :][aki[i, :] != self.lup])
-    # print(aki)
+      elif self.mode == "ZERO":
+        aki[i, i] = 0
+      elif self.mode == "SUM":
+        aki[i, i] = np.nansum(aki[i, :][aki[i, :] != self.lup][:self.nodes])
+      elif self.mode == "DELTA":
+        aki[i, i] = np.nansum(aki[i, :][aki[i, :] != self.lup][:self.nodes]) * 1e+4
+      elif self.mode == "FIT":
+        yup = (aki[i, :] != self.lup) & ~np.isnan(aki[i, :])
+        y = np.log(aki[i, :][yup])
+        x = self.D[i, yup].reshape(-1, 1)
+        m = LinearRegression().fit(x, y)
+        aki[i, i] = np.exp(m.intercept_)
+      elif self.mode == "gALPHA":
+        aki[i, i] = np.exp(np.nanmean(np.log(aki[i, :][aki[i, :] != self.lup])))
+      elif self.mode == "gBETA":
+        aki[i, i] = np.exp(np.nanmean(np.log(aik[i, :][aik[i, :] != self.lup])))
+      else:
+        raise ValueError("Bad mode")
     return aki
   
   def get_aki_bin(self):

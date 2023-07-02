@@ -147,22 +147,26 @@ def worker_swaps(
        RAND_H.link_entropy, RAND_H.link_entropy_H],  
     )
     data.set_stats(RAND_H)
+    ial = 0
     for score in opt_score:
       # Get best k, r for given score ----
-      K, R = get_best_kr(score, RAND_H)
-      r = R[K == np.min(K)][0]
-      k = K[K == np.min(K)][0]
-      RAND_H.set_kr(k, r, score)
-      data.set_kr_zero(RAND_H)
-      # Add iteartion to data----
-      rlabels = get_labels_from_Z(RAND_H.Z, r)
-      # Overlap ----
-      ocn, subcover = RAND_H.get_ocn_discovery(k, rlabels)
-      cover = omega_index_format(
-        rlabels, subcover, RAND_H.colregion.labels[:RAND_H.nodes]
-      )
-      data.set_clustering_similarity(rlabels, cover, score)
-      data.set_overlap_data_zero(ocn, score)
+      K, R = get_best_kr_equivalence(score, RAND_H)
+      for k, r in zip(K, R):
+        if score == "_maxmu":
+          SCORE = f"{score}_{RAND.Alpha[ial]}"
+          ial += 1
+        else: SCORE = score
+        RAND_H.set_kr(k, r, SCORE)
+        data.set_kr_zero(RAND_H)
+        # Add iteartion to data----
+        rlabels = get_labels_from_Z(RAND_H.Z, r)
+        # Overlap ----
+        ocn, subcover = RAND_H.get_ocn_discovery_2(k, rlabels)
+        cover = omega_index_format(
+          rlabels, subcover, RAND_H.colregion.labels[:RAND_H.nodes]
+        )
+        data.set_clustering_similarity(rlabels, cover, SCORE)
+        data.set_overlap_data_zero(ocn, SCORE)
   # Save ----
   if isinstance(RAND_H, Hierarchy):
     data.set_subfolder(RAND_H.subfolder)

@@ -115,7 +115,8 @@ def worker_overlap(
       data.set_data_measurements(RAND_H, i)
       # Update entropy ----
       data.update_entropy(
-        [RAND_H.node_entropy, RAND_H.node_entropy_H, RAND_H.link_entropy, RAND_H.link_entropy_H],  
+        [RAND_H.node_entropy, RAND_H.node_entropy_H,
+         RAND_H.link_entropy, RAND_H.link_entropy_H],  
       )
       for score in opt_score:
         # Get best k, r for given score ----

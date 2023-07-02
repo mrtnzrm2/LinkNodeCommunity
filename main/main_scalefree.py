@@ -17,7 +17,7 @@ from numpy import zeros
 from various.network_tools import *
 
 __iter__ = 0
-__nodes__ = 200
+__nodes__ = 100
 linkage = "single"
 nlog10 = T
 lookup = F
@@ -26,8 +26,8 @@ cut = F
 run = T
 topology = "MIX"
 mapping = "trivial"
-index  = "D1_2_2"
-__mode__ = "ALPHA"
+index  = "D1_2_3"
+__mode__ = "ZERO"
 alpha = 0.
 opt_score = ["_maxmu", "_X", "_D"]
 save_data = T
@@ -35,14 +35,14 @@ save_data = T
 par = {
   "-N" : "{}".format(str(__nodes__)),
   "-k" : "10",
-  "-maxk" : "50",
+  "-maxk" : "20",
   "-mut" : "0.1",
-  "-muw" : "0.3",
+  "-muw" : "0.01",
   "-beta" : "3",
   "-t1" : "2",
   "-t2" : "1",
-  "-nmin" : "2",
-  "-nmax" : "5"
+  "-nmin" : "5",
+  "-nmax" : "25"
 }
 if __name__ == "__main__":
   # Create EDR network ----
@@ -77,7 +77,7 @@ if __name__ == "__main__":
     )
     ## Compute features ----
     H.BH_features_parallel()
-     ## Compute link entropy ----
+    ## Compute link entropy ----
     H.link_entropy_cpp("short", cut=cut)
     ## Compute lq arbre de merde ----
     H.la_abre_a_merde_cpp(H.BH[0])
@@ -112,7 +112,7 @@ if __name__ == "__main__":
   )
   # Find best k partition ----
   for score in opt_score:
-    K, R = get_best_kr(score, H)
+    K, R = get_best_kr_equivalence(score, H)
     for ii, kr in enumerate(zip(K, R)):
       k, r = kr
       rlabels = get_labels_from_Z(H.Z, r)
@@ -122,6 +122,10 @@ if __name__ == "__main__":
           break
       ## Prints ----
       nmi = AD_NMI_label(NET.labels, rlabels, on=T)
+      overlap, data_nocs = H.get_ocn_discovery_2(k, rlabels)
+      cover = omega_index_format(rlabels, data_nocs, NET.struct_labels[:NET.nodes])
+      gt_cover = reverse_partition(NET.labels, NET.struct_labels[:NET.nodes])
+      omega = omega_index(gt_cover, cover)
       ## Plots ----
       plot_h.core_dendrogram([r], on=F)
       plot_h.heatmap_pure(

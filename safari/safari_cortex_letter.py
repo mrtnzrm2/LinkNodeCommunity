@@ -17,10 +17,10 @@ from networks.structure import MAC
 from various.network_tools import *
 
 def omega(plot_path):
-  path = "../pickle/RAN/distbase/MAC/57d106/LN/tracto16/EXPMLE/BIN_12/SINGLE_106_57_l10/ALPHA/MIX_simple2_trivial/b_0.0/"
-  H_EDR = read_class(path, "series_500")
-  path = "../pickle/RAN/swaps/MAC/57d106/LN/tracto16/1k/SINGLE_106_57_l10/ALPHA/MIX_simple2_trivial/b_0.0/"
-  H_CONG = read_class(path, "series_500")
+  path = "../pickle/RAN/distbase/MAC/57d106/LN/tracto16/EXPMLE/BIN_12/SINGLE_106_57_l10/BETA/MIX_D1_2_2_trivial/b_0.0/"
+  H_EDR = read_class(path, "series_1000")
+  path = "../pickle/RAN/swaps/MAC/57d106/LN/tracto16/1k/SINGLE_106_57_l10/BETA/MIX_D1_2_2_trivial/b_0.0/"
+  H_CONG = read_class(path, "series_1000")
   edr_data =H_EDR.data
   cong_data = H_CONG.data
   edr_data["score"] = [s.replace("_", "") for s in edr_data["score"]]
@@ -62,10 +62,10 @@ def omega(plot_path):
   plt.close()
 
 def entropy(plot_path):
-  path = "../pickle/RAN/distbase/MAC/57d106/LN/tracto16/EXPMLE/BIN_12/SINGLE_106_57_l10/ALPHA/MIX_simple2_trivial/b_0.0/"
-  H_EDR = read_class(path, "series_500")
-  path = "../pickle/RAN/swaps/MAC/57d106/LN/tracto16/1k/SINGLE_106_57_l10/ALPHA/MIX_simple2_trivial/b_0.0/"
-  H_CONG = read_class(path, "series_500")
+  path = "../pickle/RAN/distbase/MAC/57d106/LN/tracto16/EXPMLE/BIN_12/SINGLE_106_57_l10/BETA/MIX_D1_2_2_trivial/b_0.0/"
+  H_EDR = read_class(path, "series_1000")
+  path = "../pickle/RAN/swaps/MAC/57d106/LN/tracto16/1k/SINGLE_106_57_l10/BETA/MIX_D1_2_2_trivial/b_0.0/"
+  H_CONG = read_class(path, "series_1000")
   edr_data = pd.concat([H_EDR.node_entropy, H_EDR.link_entropy])
   cong_data = pd.concat([H_CONG.node_entropy, H_CONG.link_entropy])
   edr_data = edr_data.loc[(edr_data.c == "node_hierarchy") | (edr_data.c == "link_hierarchy") & (edr_data.dir == "H")]
@@ -120,9 +120,9 @@ def read_scalefree_entropy(MAXI : int):
     from networks_serial.scalehrh import SCALEHRH
     topologies = ["SOURCE"]
     indices = ["bsim"]
-    nodes = [1000]
+    nodes = [200]
     KAV = [10]
-    MUT = [0.1, 0.3, 0.5]
+    MUT = [0.1]
     MUW = [0.3]
     NMIN = [10, 50]
     NMAX = [20, 100]
@@ -139,7 +139,8 @@ def read_scalefree_entropy(MAXI : int):
     t1 = 2
     t2 = 1
     mapping = "trivial"
-    __mode__ = "ALPHA"
+    __mode__ = "BETA"
+    alpha=0.
     cut = F
     LBF = pd.DataFrame()
     for topology, index, N, kav, mut, muw, nmin, nmax in list_of_lists:
@@ -167,7 +168,7 @@ def read_scalefree_entropy(MAXI : int):
       if lookup: lup = "_lup"
       if cut: _cut = "_cut"
       data = read_class(
-        "../pickle/RAN/scalefree/-N_{}/-k_{}/-maxk_{}/-mut_{}/-muw_{}/-beta_{}/-t1_{}/-t2_{}/-nmin_{}/-nmax_{}/{}/{}/{}/{}".format(
+        "../pickle/RAN/scalefree/-N_{}/-k_{}/-maxk_{}/-mut_{}/-muw_{}/-beta_{}/-t1_{}/-t2_{}/-nmin_{}/-nmax_{}/{}/{}/{}/{}/".format(
           str(N),
           par["-k"], par["-maxk"],
           par["-mut"], par["-muw"],
@@ -183,16 +184,16 @@ def read_scalefree_entropy(MAXI : int):
         scale_data = scale_data.loc[
           ((scale_data.c == "node_hierarchy") | (scale_data.c == "link_hierarchy")) & (scale_data.dir == "H")
         ].groupby(["iter", "c"]).sum()["S"].reset_index()
-        scale_data["model"] = f"LBF_{N}_{mut}"
+        scale_data["model"] = f"LFR_{N}_{mut}"
         LBF = pd.concat([LBF, scale_data])
     return LBF
 
 
 def entropy_networks_220830(plot_path):
-    path = "../pickle/RAN/distbase/MAC/57d106/LN/tracto16/EXPMLE/BIN_12/SINGLE_106_57_l10/ALPHA/MIX_simple2_trivial/b_0.0/"
-    H_EDR = read_class(path, "series_500")
-    path = "../pickle/RAN/swaps/MAC/57d106/LN/tracto16/1k/SINGLE_106_57_l10/ALPHA/MIX_simple2_trivial/b_0.0/"
-    H_CONG = read_class(path, "series_500")
+    path = "../pickle/RAN/distbase/MAC/57d106/LN/tracto16/EXPMLE/BIN_12/SINGLE_106_57_l10/BETA/MIX_D1_2_2_trivial/b_0.0/"
+    H_EDR = read_class(path, "series_1000")
+    path = "../pickle/RAN/swaps/MAC/57d106/LN/tracto16/1k/SINGLE_106_57_l10/BETA/MIX_D1_2_2_trivial/b_0.0/"
+    H_CONG = read_class(path, "series_1000")
     edr_data = pd.concat([H_EDR.node_entropy, H_EDR.link_entropy])
     cong_data = pd.concat([H_CONG.node_entropy, H_CONG.link_entropy])
     edr_data = edr_data.loc[
@@ -231,8 +232,8 @@ def entropy_networks_220830(plot_path):
 
     # ###
 
-    path = "../pickle/RAN/distbase/MAC/57d106/LN/tracto16/EXPMLE/BIN_12/SINGLE_106_57_l10/ALPHA/MIX_simple2_trivial/b_0.0/"
-    H_EDR = read_class(path, "series_500")
+    path = "../pickle/RAN/distbase/MAC/57d106/LN/tracto16/EXPMLE/BIN_12/SINGLE_106_57_l10/BETA/MIX_D1_2_2_trivial/b_0.0/"
+    H_EDR = read_class(path, "series_1000")
     mac_data = pd.concat([H_EDR.node_entropy, H_EDR.link_entropy])
     mac_data = mac_data.loc[
        ((mac_data.c == "node_hierarchy") | (mac_data.c == "link_hierarchy")) &
@@ -252,7 +253,7 @@ def entropy_networks_220830(plot_path):
 
     ##
 
-    lbf = read_scalefree_entropy(25)
+    lbf = read_scalefree_entropy(100)
 
     lbf_models = list(np.unique(lbf.model))
 
@@ -282,7 +283,7 @@ def entropy_networks_220830(plot_path):
        ax=ax
     )
     ax.set_ylabel(r"$s_{H}$")
-    ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=45, size=20)
     fig.set_figheight(9)
     fig.set_figwidth(12)
     fig.tight_layout()
@@ -456,7 +457,7 @@ def entropy_networks_40d91(plot_path):
     plt.close()
 
 def sim_histogram(plot_path):
-    path = "../pickle/MAC/57d106/LN/original/tracto16/57/SINGLE_106_57_l10/ALPHA/MIX_simple2_trivial/b_0.0"
+    path = "../pickle/MAC/57d106/LN/original/tracto16/57/SINGLE_106_57_l10/BETA/MIX_D1_2_2_trivial/b_0.0/alpha_0.00"
     H = read_class(path, "hanalysis")
     src = H.source_sim_matrix
     tgt = H.target_sim_matrix
@@ -469,19 +470,20 @@ def sim_histogram(plot_path):
 
     data = pd.DataFrame(
        {
-        "Jaclog" : list(src.weight) + list(tgt.weight) ,
+        r"$D_{1/2}$" : list(np.log(1 / src.weight - 1)) + list(np.log(1 / tgt.weight - 1)) ,
         "direction" : ["outgoing"] * src.shape[0] + ["incoming"] * tgt.shape[0]
        }
     )
 
     sns.histplot(
        data=data,
-       x="Jaclog",
+       x=r"$D_{1/2}$",
        hue="direction",
-       stat="probability"
+       stat="density"
     )
     fig = plt.gcf()
     ax = plt.gca()
+    ax.set_xlabel(r"$\log(D_{1/2})$")
     fig.set_figheight(7)
     fig.set_figwidth(10)
     fig.tight_layout()
@@ -490,14 +492,14 @@ def sim_histogram(plot_path):
     Path(plot_path).mkdir(exist_ok=True, parents=True)
     plt.savefig(
       join(
-        plot_path, "jaclog_dir.png"
+        plot_path, "D1_2_2_dir.png"
       ),
       dpi=300
     )
     plt.close()
 
 def sim_dist(plot_path):
-    path = "../pickle/MAC/57d106/LN/original/tracto16/57/SINGLE_106_57_l10/ALPHA/MIX_simple2_trivial/b_0.0"
+    path = "../pickle/MAC/57d106/LN/original/tracto16/57/SINGLE_106_57_l10/BETA/MIX_D1_2_2_trivial/b_0.0/alpha_0.00"
     H = read_class(path, "hanalysis")
     src = H.source_sim_matrix
     tgt = H.target_sim_matrix
@@ -513,7 +515,7 @@ def sim_dist(plot_path):
 
     data = pd.DataFrame(
        {
-        "Jaclog" : list(src.weight) + list(tgt.weight) ,
+        r"$D_{1/2}$" : list(1 / src.weight - 1) + list(1 / tgt.weight - 1) ,
         "direction" : ["outgoing"] * src.shape[0] + ["incoming"] * tgt.shape[0],
         "dist" : list(D.weight) + list(D.weight) 
        }
@@ -522,7 +524,7 @@ def sim_dist(plot_path):
     sns.scatterplot(
        data=data,
        x="dist",
-       y="Jaclog",
+       y=r"$D_{1/2}$",
        hue="direction",
        alpha = 0.7
     )
@@ -537,7 +539,133 @@ def sim_dist(plot_path):
     Path(plot_path).mkdir(exist_ok=True, parents=True)
     plt.savefig(
       join(
-        plot_path, "jaclog_dist.png"
+        plot_path, "D1_2_2_dist.png"
+      ),
+      dpi=300
+    )
+    plt.close()
+
+def sim_dist_bin(plot_path):
+    import statsmodels.api as sm
+    from sklearn.preprocessing import StandardScaler
+    path = "../pickle/MAC/57d106/LN/original/tracto16/57/SINGLE_106_57_l10/BETA/MIX_D1_2_2_trivial/b_0.0/alpha_0.00"
+    H = read_class(path, "hanalysis")
+    src = H.source_sim_matrix
+    tgt = H.target_sim_matrix
+    D = NET.D[:__nodes__, :__nodes__]
+    
+    src = adj2df(src)
+    tgt = adj2df(tgt)
+    D = adj2df(D)
+
+    src = 1 / src.loc[src.source > src.target].weight.to_numpy() - 1
+    src[src > 100] = np.nan
+    tgt = 1 / tgt.loc[tgt.source > tgt.target].weight.to_numpy() - 1
+    D = D.loc[D.source > D.target].weight.to_numpy()
+
+    ## linear regression statistics ----
+    scale= StandardScaler()
+    X = NET.D.copy()
+    X[X <= 0] = np.nan
+    n = X.shape[0]
+    X = scale.fit_transform(X.reshape(-1, 1))
+    X = X.reshape(n, n)
+    X = X[:__nodes__, :__nodes__]
+    X = adj2df(X)
+    X = X.loc[X.source > X.target].weight.to_numpy()
+    yup_d = ~np.isnan(X)
+    Ysrc = src.copy()
+    yup_src = (~np.isnan(Ysrc)) & (Ysrc != np.inf) & (yup_d)
+    Ysrc = Ysrc[yup_src]
+    Ytgt = tgt.copy()
+    yup_tgt = (~np.isnan(Ytgt)) & (Ytgt != np.inf) & (yup_d)
+    Ytgt = Ytgt[yup_tgt]
+    Xsrc = X[yup_src].reshape(-1,1)
+    Xtgt = X[yup_tgt].reshape(-1,1)
+    # Xsrc = np.hstack([Xsrc, np.power(Xsrc, 3.)])
+    # Xtgt = np.hstack([Xtgt, np.power(Xtgt, 3.)])
+    Xsrc = sm.add_constant(Xsrc)
+    Xtgt = sm.add_constant(Xtgt)
+    est_src = sm.OLS(Ysrc, Xsrc).fit()
+    est_tgt = sm.OLS(Ytgt, Xtgt).fit()
+    print(est_src.summary())
+    print(est_tgt.summary())
+
+    data_resid =pd.DataFrame(
+       {
+          "residuals" : list(est_src.resid) + list(est_tgt.resid),
+          r"$D_{1/2}$" : list(Ysrc) + list(Ytgt),
+          "direction" : ["outgoing"] * len(Ysrc) + ["incoming"] * len(Ytgt)
+       }
+    )
+
+    ### ----
+
+    data = pd.DataFrame(
+       {
+        r"$D_{1/2}$" : list(src) + list(tgt) ,
+        "direction" : ["outgoing"] * src.shape[0] + ["incoming"] * tgt.shape[0],
+        "interareal tractography distance [mm]" : list(D) + list(D) 
+       }
+    )
+
+    # Binarize ----
+    nbin = 15
+    dD = (np.max(D) - np.min(D)) / nbin
+    d_range = np.arange(np.min(D), np.max(D), dD)
+    d_range[-1] += 0.0001
+    src_bin = [np.nanmean(src[np.where((D >= d_range[i]) & (D < d_range[i+1]))[0]]) for i in np.arange(nbin - 1)]
+    tgt_bin = [np.nanmean(tgt[np.where((D >= d_range[i]) & (D < d_range[i+1]))[0]]) for i in np.arange(nbin - 1)]
+    d_range[-1] -= 0.0001
+    d_range = d_range[:-1]
+    d_range = d_range + dD / 2
+    data_bin = pd.DataFrame(
+       {
+          r"$D_{1/2}$" : list(src_bin) + list(tgt_bin) ,
+          "direction" : ["outgoing"] * len(src_bin) + ["incoming"] * len(src_bin),
+          "interareal tractography distance [mm]" : list(d_range) + list(d_range) 
+       }
+    )
+
+    fig, ax = plt.subplots(1, 1)
+    
+    sns.lmplot(
+       data=data_bin,
+       x="interareal tractography distance [mm]",
+       y = r"$D_{1/2}$",
+       hue="direction",
+       scatter_kws={"alpha":0.9, "s":8},
+       line_kws={"linewidth":1},
+       legend=False,
+       aspect=1.3
+    )
+    sns.scatterplot(
+       data=data,
+       x="interareal tractography distance [mm]",
+      y= r"$D_{1/2}$",
+      hue="direction",
+      alpha=0.3,
+      s=4
+    )
+    # g = sns.lmplot(
+    #    data=data_resid,
+    #    x=r"$D_{1/2}$" ,
+    #    y="residuals",
+    #    hue="direction",
+    #    scatter_kws= {"s" : 3, "alpha" : 0.5},
+    #    lowess=True
+    # )
+    # ax.set_xlabel("tractography distance [mm]")
+    # # ax[1] = g.axes[0, 0]
+    # fig.set_figheight(5)
+    # fig.set_figwidth(9.5)
+    # fig.tight_layout()
+
+    plot_path = plot_path + "cortex_letter/"
+    Path(plot_path).mkdir(exist_ok=True, parents=True)
+    plt.savefig(
+      join(
+        plot_path, "D1_2_2_dist_bin.png"
       ),
       dpi=300
     )
@@ -545,10 +673,10 @@ def sim_dist(plot_path):
 
 
 def overlap(plot_path):
-    path = "../pickle/RAN/distbase/MAC/57d106/LN/tracto16/EXPMLE/BIN_12/SINGLE_106_57_l10/ALPHA/MIX_simple2_trivial/b_0.0/"
-    H_EDR = read_class(path, "series_500")
-    path = "../pickle/RAN/swaps/MAC/57d106/LN/tracto16/1k/SINGLE_106_57_l10/ALPHA/MIX_simple2_trivial/b_0.0/"
-    H_CONG = read_class(path, "series_500")
+    path = "../pickle/RAN/distbase/MAC/57d106/LN/tracto16/EXPMLE/BIN_12/SINGLE_106_57_l10/BETA/MIX_D1_2_2_trivial/b_0.0/"
+    H_EDR = read_class(path, "series_1000")
+    path = "../pickle/RAN/swaps/MAC/57d106/LN/tracto16/1k/SINGLE_106_57_l10/BETA/MIX_D1_2_2_trivial/b_0.0/"
+    H_CONG = read_class(path, "series_1000")
 
     edr_overlap = H_EDR.data_overlap.loc[
       H_EDR.data_overlap.score == "_maxmu"
@@ -578,7 +706,7 @@ def overlap(plot_path):
     ax = plt.gca()
     ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
     [t.set_color("red") for i, t in enumerate(ax.xaxis.get_ticklabels()) if np.isin(t.get_text(), mac_overlap.Areas)]
-    
+    plt.ylabel("NOC count")
     plot_path = plot_path + "cortex_letter/"
     Path(plot_path).mkdir(exist_ok=True, parents=True)
     plt.savefig(
@@ -739,6 +867,33 @@ def entropy_ER(plot_path):
     )
     plt.close()
 
+def target_bar_plot(PATH, NET):
+  df = adj2df(NET.C)
+  df["SOURCE"] = NET.struct_labels[df.source]
+  df["TARGET"] = NET.struct_labels[df.target]
+  data = df.loc[np.isin(df.TARGET, ["v1c", "v2c", "8l"])]
+  data["Neural count"] = data.weight
+
+  g = sns.catplot(
+      data=data,
+      x="SOURCE",
+      y="Neural count",
+      row="TARGET",
+      kind="bar",
+      color="b",
+      aspect=4
+  )
+  for ax in g.axes.flat:
+    labels = ax.get_yticklabels()
+    ax.set_yticklabels(labels, size=20)
+  plt.xticks(rotation=90)
+  plt.yscale('log')
+  plt.tight_layout()
+  plt.savefig(
+      PATH + "/cortex_letter/areal_count.png",
+      dpi=300
+  )
+
 
 # Declare global variables ----
 linkage = "single"
@@ -747,14 +902,15 @@ lookup = F
 prob = F
 cut = F
 structure = "LN"
-mode = "ALPHA"
+mode = "BETA"
 distance = "tracto16"
 nature = "original"
 imputation_method = ""
 topology = "MIX"
 mapping = "trivial"
-index  = "simple2"
+index  = "D1_2_2"
 bias = float(0)
+alpha = 0.
 opt_score = ["_maxmu", "_X"]
 save_data = T
 version = "57d106"
@@ -776,10 +932,80 @@ if __name__ == "__main__":
       index = index,
       mapping = mapping,
       cut = cut,
-      b = bias
+      b = bias,
+      alpha = alpha
     )
     cortex_letter_path = "../plots/MAC/57d106/LN/original/tracto16/57/SINGLE_106_57_l10/"
     # entropy(cortex_letter_path)
     # omega(cortex_letter_path)
     # overlap(cortex_letter_path)
-    entropy_networks_220830(cortex_letter_path)
+    # entropy_networks_220830(cortex_letter_path)
+    # sim_dist(cortex_letter_path)
+    # sim_dist_bin(cortex_letter_path)
+    # sim_histogram(cortex_letter_path)
+    D = NET.D.copy()[:, :__nodes__]
+    C = NET.C.copy()
+
+    labels = NET.struct_labels
+
+    dC = adj2df(C)
+    dC["SOURCE_INJ"] = labels[dC.source]
+    dC["TARGET_INJ"] = labels[dC.target]
+    dC = dC.loc[(dC.source < __nodes__) & (dC.target < __nodes__)]
+
+    dD = adj2df(D)
+    dD = dD.loc[(dD.source < __nodes__) & (dD.target < __nodes__)]
+
+    dC["D"] = dD.weight
+
+    dCs = dC.loc[np.isin(dC.SOURCE_INJ, ["v1c", "v2c", "10", "8l"])]
+    dCs["dir"] = "source"
+    dCs["Area_X"] = dCs.SOURCE_INJ
+    dCs["Area_Y"] = dCs.TARGET_INJ 
+    dCt = dC.loc[np.isin(dC.TARGET_INJ, ["v1c", "v2c", "10", "8l"])]
+    dCt["dir"] = "target"
+    dCt["Area_X"] = dCt.TARGET_INJ
+    dCt["Area_Y"] = dCt.SOURCE_INJ
+
+    CC = pd.concat(
+      [dCs, dCt], ignore_index=True
+    )
+
+    CC = CC.loc[CC.weight > 0]
+    CC["Average neural count"] = CC.weight
+
+    CC = CC.sort_values("D", ascending=True)
+
+    g = sns.FacetGrid(
+       data=CC,
+       col="Area_X",
+       hue="dir",
+       sharex=False,
+       col_wrap=2
+    )
+
+    g.map_dataframe(
+       sns.scatterplot,
+       x="Area_Y",
+       y="Average neural count"
+    )
+
+    g.map_dataframe(
+       sns.lineplot,
+       x="Area_Y",
+       y="Average neural count"
+    )
+
+    g.add_legend()
+
+    g.set_xticklabels(rotation=90)
+    plt.yscale("log")
+    plt.ylabel("Average neural count")
+    fig = plt.gcf()
+    fig.set_figheight(8)
+    fig.set_figwidth(15)
+    fig.tight_layout()
+    plt.savefig(
+      cortex_letter_path + "/cortex_letter/directed_average_count.png",
+      dpi=300
+  )

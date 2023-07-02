@@ -90,7 +90,67 @@ class colregion:
           "COLOR"
         ].to_numpy()
       
+class colECoG:
+  def __init__(self, NET) -> None:
+      self.subject = NET.subject
+      self.version = NET.version
+      self.labels = NET.struct_labels
+      self.regions_path = NET.regions_path
+      self.nodes = NET.nodes
+  
+  def get_regions(self):
+    ## COLOR ----
+    # REGION=c('V1', 'V2', 'V4', 'TEO', 'TPt', 'DP',
+    #                                     '7A', '7B', 'S1', '5', 'F1', 'F4',
+    #                                     'F2', '8L', '8M'),
+    #                            COLOR=c('#AF0000', '#EF0000', '#FF3000', '#FF7000',
+    #                                    '#FFAF00', '#FFEF00', '#CFFF30', '#8FFF70',
+    #                                    '#50FFAF', '#10FFEF', '#00CFFF', '#008FFF',
+    #                                    '#0050FF', '#0010FF', '#0000CF'))
 
+    color = {
+      "V1" :'#AF0000',
+      "V2" :'#EF0000',
+      "V4" :'#FF3000', 
+      "TEO" : '#FF7000',
+      "TPt" : '#FFAF00',
+      "DP" : '#FFEF00',
+      "7A" : '#CFFF30',
+      "7B" : '#8FFF70',
+      "S1" : '#50FFAF',
+      "5" : '#10FFEF',
+      "F1" : '#00CFFF',
+      "F4" : '#008FFF',
+      "F2" : '#0050FF',
+      "8L" : '#0010FF',
+      "8M" : "#0000CF"
+    }
+
+    ##
+    file = pd.read_table(f"{self.regions_path}", sep="\t", header=None, index_col=0)
+    if self.version == "MK1":
+      coli = 1
+      colf = 2
+    elif self.version == "MK2":
+      coli = 3
+      colf = 4
+    else:
+      raise ValueError("Version unknown")
+    self.regions = pd.DataFrame(
+        {
+          "AREA" : self.labels,
+          "REGION" : ["UNDEFINED"] * self.nodes,
+          "COLOR" : [to_hex((0., 0., 0.))] * self.nodes
+        }
+    )
+    regions = file.index.to_numpy()
+    regions = [re.split(" ")[0] for re in regions]
+    for re, u, v in zip(regions, file[coli], file[colf]):
+      self.regions["REGION"].loc[np.isin(self.regions.AREA, np.arange(u, v + 1))] = re
+    for key in color.keys():
+      self.regions["COLOR"].loc[self.regions.REGION == key] = color[key]
+    self.regions["AREA_REGION"] = [f"{a}_{r}" for a, r in zip(self.regions.AREA, self.regions.REGION)]
+    
 
 
     

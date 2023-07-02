@@ -27,9 +27,6 @@ class base:
     if "b" in kwargs.keys():
       self.b = kwargs["b"]
     else: self.b = ""
-    if "alpha" in kwargs.keys():
-      self.alpha = kwargs["alpha"]
-    else: self.alpha = ""
     ### mu parameters ----
     self.Alpha = np.array([6])
     beta1 = np.linspace(0.01, 0.2, 4)
@@ -52,10 +49,10 @@ class base:
       ).mkdir(exist_ok=True, parents=True)
 
   def set_alpha(self, alpha):
-    self.Alpha = alpha
+    self.Alpha = np.sort(alpha)
 
   def set_beta(self, beta):
-    self.Beta = beta
+    self.Beta = np.sort(beta)
 
 class MAC57(base):
   def __init__(
@@ -101,12 +98,12 @@ class MAC57(base):
       self.plot_path = join(
         "../plots", self.common_path,
         self.analysis, mode, self.subfolder,
-        "b_"+str(self.b), "alpha_"+ f"{self.alpha:.2f}" # "alpha"+ f"{self.alpha:.2f}"
+        "b_"+str(self.b)
       )
     self.pickle_path = join(
       "../pickle", self.common_path,
       self.analysis, mode, self.subfolder,
-      "b_"+str(self.b), "alpha_"+ f"{self.alpha:.2f}"
+      "b_"+str(self.b)
     )
     if "regions_path" in kwargs.keys():
       self.regions_path = kwargs["regions_path"]

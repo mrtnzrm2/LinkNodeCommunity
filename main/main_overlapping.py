@@ -14,18 +14,18 @@ from modules.colregion import colregion
 from numpy import zeros
 from various.network_tools import *
 # Declare global variables ----
-__iter__ = 3
-__nodes__ = 128
+__iter__ = 0
+__nodes__ = 100
 linkage = "single"
 nlog10 = F
 lookup = F
 prob = F
 cut = F
 run = T
-topology = "TARGET"
+topology = "MIX"
 mapping = "trivial"
-index  = "bsim"
-__mode__ = "ALPHA"
+index  = "D1_2_3"
+__mode__ = "ZERO"
 alpha = 0.
 opt_score = ["_maxmu", "_X", "_D"]
 save_datas = T
@@ -34,15 +34,15 @@ opar = {
   "-N" : "{}".format(
     str(__nodes__)
   ),
-  "-k" : "7.0",
-  "-maxk" : "30.0",
+  "-k" : "10",
+  "-maxk" : "20",
   "-mut" : "0.1",
-  "-muw" : "0.1",
-  "-beta" : "2.5",
+  "-muw" : "0.01",
+  "-beta" : "3",
   "-t1" : "2",
   "-t2" : "1",
-  "-nmin" : "2",
-  "-nmax" : "10",
+  "-nmin" : "5",
+  "-nmax" : "25",
   "-on" : "10",
   "-om" : "3"
 }
@@ -72,6 +72,7 @@ if __name__ == "__main__":
       "LFB failed to create the network with the desired properties."
     )
   NET.col_normalized_adj(on=F)
+  number_of_communities = len(np.unique(NET.labels))
   # Compute Hierarchy ----
   print("Compute Hierarchy")
   # Create colregions ----
@@ -86,6 +87,8 @@ if __name__ == "__main__":
     )
     ## Compute features ----
     H.BH_features_parallel()
+    ## Compute link entropy ----
+    H.link_entropy_cpp("short", cut=cut)
     ## Compute lq arbre de merde ----
     H.la_abre_a_merde_cpp(H.BH[0])
     ## Compute node entropy ----
@@ -105,15 +108,20 @@ if __name__ == "__main__":
   plot_h.plot_measurements_mu(on=T)
   plot_h.plot_measurements_X(on=T)
   plot_h.heatmap_pure(
-    0, score = "_GT", labels = NET.labels, on=T
+     0, np.log(1 + NET.A), score = "_GT_{}".format(number_of_communities),
+    labels = NET.labels, on=T
   )
   for score in opt_score:
     # Find best k partition ----
-    K, R = get_best_kr(score, H)
+    K, R = get_best_kr_equivalence(score, H)
     for ii, kr in enumerate(zip(K, R)):
       k, r = kr
       rlabels = get_labels_from_Z(H.Z, r)
-      nocs, noc_covers = H.get_ocn_discovery(k, rlabels)
+      # Check labels safety ----
+      if np.nan in rlabels:
+          print("Warning: Impossible node dendrogram")
+          break
+      nocs, noc_covers = H.get_ocn_discovery_2(k, rlabels)
       #Prints ----
       nmi = AD_NMI_overlap(
         NET.labels, rlabels, NET.overlap, noc_covers, on=T
@@ -129,10 +137,9 @@ if __name__ == "__main__":
         [r], on=T, score="_"+score
       )
       plot_h.heatmap_pure(
-        r, on=T, labels = rlabels,
-        score=f"{r}_{nmi:.4f}"
+         r, np.log(1+NET.A), on=T, labels = rlabels, name=f"{r}_{nmi:.4f}"
       )
       plot_h.lcmap_dendro(
-        [k], on=T, score="_"+score
+         k, np.log(1+NET.A), score="_"+score, on=T
       )
   print("End!")

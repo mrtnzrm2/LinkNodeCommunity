@@ -19,9 +19,10 @@ from various.network_tools import *
 cut = [F]
 topologies = ["MIX"]
 bias = [0]
-indices = ["simple2", "D1_2", "D1_2_2"]
+indices = ["D1_2_2"]
+modes = ["ALPHA", "BETA"]
 list_of_lists = itertools.product(
-  *[cut, topologies, indices, bias]
+  *[cut, modes, topologies, indices, bias]
 )
 list_of_lists = np.array(list(list_of_lists))
 # Declare global variables ----
@@ -33,7 +34,6 @@ structure = "LN"
 distance = "tracto16"
 nature = "original"
 mapping = "trivial"
-mode = "ALPHA"
 alpha = 0.
 imputation_method = ""
 opt_score = ["_maxmu", "_X"]
@@ -42,7 +42,7 @@ __nodes__ = 57
 __inj__ = 57
 # Start main ----
 if __name__ == "__main__":
-  for _cut_, topology, index, bias in list_of_lists:
+  for _cut_, mode, topology, index, bias in list_of_lists:
     bias = float(bias)
     if _cut_ == "True":
       cut = T
@@ -103,7 +103,7 @@ if __name__ == "__main__":
       print("\n\tBest K: {}\nBest R: {}\n".format(k, r))
       rlabels = get_labels_from_Z(H.Z, r)
       # Overlap ----
-      NET.overlap, NET.data_nocs = H.get_ocn_discovery(k, rlabels)
+      NET.overlap, NET.data_nocs = H.get_ocn_discovery_2(k, rlabels)
       H.set_overlap_labels(NET.overlap, score)
       print("\n\tAreas with predicted overlapping communities:\n",  NET.data_nocs, "\n")
       cover = omega_index_format(rlabels,  NET.data_nocs, NET.struct_labels[:NET.nodes])

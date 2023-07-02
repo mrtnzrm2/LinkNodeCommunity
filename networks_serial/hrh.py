@@ -147,7 +147,7 @@ class HRH:
       [
         self.data_measures,
         get_H_from_BH_with_maxmu(H)[
-          ["K", "mu", "X", "D", "m", "ntrees"]
+          ["K", "alpha", "mu", "X", "D", "m", "ntrees"]
         ]
       ],
       ignore_index=True
@@ -156,7 +156,7 @@ class HRH:
   
   def set_data_measurements_zero(self, HH : Hierarchy, iter : int):
     H = get_H_from_BH_with_maxmu(HH)[
-      ["K", "mu", "X", "D", "m", "ntrees"]
+      ["K", "alpha", "mu", "X", "D", "m", "ntrees"]
     ]
     H["data"] = ["0"] * H.shape[0]
     H["iter"] = [str(iter)] * H.shape[0]

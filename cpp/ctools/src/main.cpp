@@ -171,6 +171,29 @@ double D1(
 	return JACP;
 }
 
+double D1b(
+	std::vector<double> &u, std::vector<double> &v
+) {
+	int N = u.size();
+	double JACP = 0.;
+	double p = 0, pu = 0, pv = 0;
+	for (int j=0; j < N; j++){
+			pu += u[j];
+			pv += v[j];
+	}
+	for (int i=0; i < N; i++){
+		// D1
+		// if (u[i] == 0 || v[i] == 0) continue;
+		p += ((u[i]) / pu) * log(((u[i]) / pu) * (pv / (v[i])));
+		p += ((v[i]) / pv) * log(((v[i]) / pv) * (pu / (u[i])));
+	}
+	if (p >= 0)
+		JACP = 1 /(1 + p / 2.);
+	else
+		JACP = 0.;
+	return JACP;
+}
+
 double D1_2(
 	std::vector<double> &u, std::vector<double> &v
 ) {
@@ -230,6 +253,30 @@ double Dinf(
 	// Dinf
 	p = log(p) + log(p2);
 	JACP = 1 /(1 + p / 2.);
+	return JACP;
+}
+
+double D1_2_2(
+	std::vector<double> &u, std::vector<double> &v
+) {
+	int N = u.size();
+	double JACP = 0.;
+	double p = 0, pu = 0, pv = 0;
+	for (int j=0; j < N; j++){
+			pu += u[j];
+			pv += v[j];
+	}
+	for (int i=0; i < N; i++){
+		// D1/2
+		p += sqrt(((u[i]) / pu) * ((v[i]) / pv));
+	}
+	// D1/2
+  if (p > 0) {
+    p = - 2 * log(p);
+    JACP = 1 / (1 + p);
+  }
+  else
+    JACP = 0;
 	return JACP;
 }
 
@@ -300,6 +347,12 @@ PYBIND11_MODULE(ctools, m) {
   );
 
   m.def(
+    "D1b",
+    &D1b,
+    py::return_value_policy::reference_internal
+  );
+
+  m.def(
     "D2",
     &D2,
     py::return_value_policy::reference_internal
@@ -314,6 +367,12 @@ PYBIND11_MODULE(ctools, m) {
   m.def(
     "Dalpha",
     &Dalpha,
+    py::return_value_policy::reference_internal
+  );
+
+  m.def(
+    "D1_2_2",
+    &D1_2_2,
     py::return_value_policy::reference_internal
   );
 }

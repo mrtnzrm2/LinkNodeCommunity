@@ -1,4 +1,5 @@
 library(igraph)
+library(magrittr)
 library(latex2exp)
 
 source_network <- function() {
@@ -15,7 +16,7 @@ source_network <- function() {
     edge.color = "black",
     edge.width=5,
     edge.arrow.size=3,
-    edge.label = c(TeX("$N_{XA}$"), TeX("$N_{XB}$"), TeX("$N_{XC}$"), TeX("$N_{YA}$"), TeX("$N_{YB}$"), TeX("$N_{YC}$")),
+    edge.label = c(TeX("$n_{XA}$"), TeX("$n_{XB}$"), TeX("$n_{XC}$"), TeX("$n_{YA}$"), TeX("$n_{YB}$"), TeX("$n_{YC}$")),
     edge.label.family = "Arial",
     edge.label.cex = 1.6,
     edge.label.x = c(-0.95, -0.52, 0.23, -0.23, 0.52, 0.95),
@@ -41,7 +42,7 @@ target_network <- function() {
     edge.color = "black",
     edge.width=5,
     edge.arrow.size=3,
-    edge.label = c(TeX("$N_{AX}$"), TeX("$N_{BX}$"), TeX("$N_{CX}$"), TeX("$N_{AY}$"), TeX("$N_{BY}$"), TeX("$N_{CY}$")),
+    edge.label = c(TeX("$n_{AX}$"), TeX("$n_{BX}$"), TeX("$n_{CX}$"), TeX("$n_{AY}$"), TeX("$n_{BY}$"), TeX("$n_{CY}$")),
     edge.label.family = "Arial",
     edge.label.cex = 1.6,
     edge.label.x = c(-1, -0.25, 0.52, -0.52, 0.25, 1),
@@ -101,6 +102,169 @@ ladder <- function() {
 }
 
 # source_network()
-target_network()
+# target_network()
 # bow_tie()
 # ladder()
+
+simple_4_step1 <- function() {
+  g  <- make_empty_graph() %>%
+    add.vertices(
+      8,
+      name = c("A+", "B+", "C+", "D+", "A-", "B-", "C-", "D-"),
+      color = c(rep("#c44e52", 4), rep("#4c72b0", 4))
+    )
+  coordA <- matrix(
+    c(
+      0, 0.5, 0.5, 0.5, 1, 0.5, 1.5, 0.5,
+      0, 0, 0.5, 0, 1, 0, 1.5, 0
+    ), ncol = 2, byrow = TRUE
+  )
+  png(
+    file="/Users/jmarti53/Documents/Projects/LINKPROJECT/plots/TOY/cortex_letter/4_dir_vex.png"
+  )
+  par(mar=c(0,0,0,0)+.1)
+  plot.igraph(
+    g, layout = coordA,
+    vertex.size = 30,
+    vertex.label.cex = 2.5,
+    vertex.label.family = "Arial",
+    vertex.label.color = "white"
+  )
+}
+
+simple_4_step2 <- function() {
+  g  <- make_empty_graph() %>%
+    add.vertices(
+      8,
+      name = c("A+", "B+", "C+", "D+", "A-", "B-", "C-", "D-"),
+      color  = c(rep("#c44e52", 4), rep("#4c72b0", 4))
+    ) %>%
+    add.edges(
+      c(
+        "A+", "B-", "B+", "B-", "C+", "B-", "D+", "B-"
+      ), color = "#4c72b0", width = c(1, 5, 1, 1)
+    )
+  coordA <- matrix(
+    c(
+      0, 0.1, 0.5, 0.1, 1, 0.1, 1.5, 0.1,
+      0, 0, 0.5, 0, 1, 0, 1.5, 0
+    ), ncol = 2, byrow = TRUE
+  )
+  png(
+    file="/Users/jmarti53/Documents/Projects/LINKPROJECT/plots/TOY/cortex_letter/blue_dir_edge.png"
+  )
+  par(mar=c(0,0,0,0)+.1)
+  plot.igraph(
+    g, layout = coordA,
+    vertex.size = 30,
+    vertex.label.cex = 2.5,
+    vertex.label.family = "Arial",
+    vertex.label.color = "white",
+    edge.arrow.size = 3
+  )
+}
+
+simple_4_step3 <- function() {
+  g  <- make_empty_graph() %>%
+    add.vertices(
+      8,
+      name = c("A+", "B+", "C+", "D+", "A-", "B-", "C-", "D-"),
+      color  = c(rep("#c44e52", 4), rep("#4c72b0", 4))
+    ) %>%
+    add.edges(
+      c(
+        "B+", "A-", "B+", "B-", "B+", "C-", "B+", "D-"
+      ), color = "#c44e52", width = c(1, 5, 1, 1)
+    )
+  coordA <- matrix(
+    c(
+      0, 0.5, 0.5, 0.5, 1, 0.5, 1.5, 0.5,
+      0, 0, 0.5, 0, 1, 0, 1.5, 0
+    ), ncol = 2, byrow = TRUE
+  )
+  png(
+    file="/Users/jmarti53/Documents/Projects/LINKPROJECT/plots/TOY/cortex_letter/red_dir_edge.png"
+  )
+  par(mar=c(0,0,0,0)+.1)
+  plot.igraph(
+    g, layout = coordA,
+    vertex.size = 30,
+    vertex.label.cex = 2.5,
+    vertex.label.family = "Arial",
+    vertex.label.color = "white",
+    edge.arrow.size = 3
+  )
+}
+
+simple_4_step4 <- function() {
+  g  <- make_empty_graph() %>%
+    add.vertices(
+      8,
+      name = c("A+", "B+", "C+", "D+", "A-", "B-", "C-", "D-"),
+      color  = c(rep("#c44e52", 4), rep("#4c72b0", 4))
+    ) %>%
+    add.edges(
+      c(
+        "B+", "A-", "B+", "B-", "B+", "C-", "B+", "D-"
+      ),
+      color = c("#c44e52", "#4c72b0", "#c44e52", "#c44e52"),
+      width = c(1, 5, 1, 1)
+    )
+  coordA <- matrix(
+    c(
+      0, 0.5, 0.5, 0.5, 1, 0.5, 1.5, 0.5,
+      0, 0, 0.5, 0, 1, 0, 1.5, 0
+    ), ncol = 2, byrow = TRUE
+  )
+  png(
+    file="/Users/jmarti53/Documents/Projects/LINKPROJECT/plots/TOY/cortex_letter/rb_dir_edge.png"
+  )
+  par(mar=c(0,0,0,0)+.1)
+  plot.igraph(
+    g, layout = coordA,
+    vertex.size = 30,
+    vertex.label.cex = 2.5,
+    vertex.label.family = "Arial",
+    vertex.label.color = "white",
+    edge.arrow.size = 3
+  )
+}
+
+simple_4_step5 <- function() {
+  g  <- make_empty_graph() %>%
+    add.vertices(
+      8,
+      name = c("A+", "B+", "C+", "D+", "A-", "B-", "C-", "D-"),
+      color  = c(rep("#c44e52", 4), rep("#4c72b0", 4))
+    ) %>%
+    add.edges(
+      c(
+        "A+", "B-", "B+", "B-", "C+", "B-", "D+", "B-"
+      ),
+      color = c("#4c72b0", "#c44e52", "#4c72b0", "#4c72b0"),
+      width = c(1, 5, 1, 1)
+    )
+  coordA <- matrix(
+    c(
+      0, 0.5, 0.5, 0.5, 1, 0.5, 1.5, 0.5,
+      0, 0, 0.5, 0, 1, 0, 1.5, 0
+    ), ncol = 2, byrow = TRUE
+  )
+  png(
+    file="/Users/jmarti53/Documents/Projects/LINKPROJECT/plots/TOY/cortex_letter/br_dir_edge.png"
+  )
+  par(mar=c(0,0,0,0)+.1)
+  plot.igraph(
+    g, layout = coordA,
+    vertex.size = 30,
+    vertex.label.cex = 2.5,
+    vertex.label.family = "Arial",
+    vertex.label.color = "white",
+    edge.arrow.size = 3
+  )
+}
+
+simple_4_step2()
+# simple_4_step3()
+# simple_4_step4()
+# simple_4_step5()

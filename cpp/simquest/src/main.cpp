@@ -52,7 +52,7 @@ class simquest {
       std::vector<std::vector<bool> >& bmatrix, const int& N, const int& leaves
     );
     double similarity_index(
-      std::vector<double> &u, std::vector<double> &v, std::vector<bool> &bu, std::vector<bool> &bv, double &D, const int &index
+      std::vector<double> &u, std::vector<double> &v, std::vector<bool> &bu, std::vector<bool> &bv, double &D, int &ii, int &jj, const int &index
     );
     std::vector<std::vector<double> > calculate_nodesim_matrix(
       std::vector<std::vector<double> >& matrix, std::vector<std::vector<bool> >& bmatrix, std::vector<std::vector<double> > D, const int& N, const int& index
@@ -60,8 +60,10 @@ class simquest {
 		std::vector<std::vector<double> > get_linksim_matrix();
 		std::vector<std::vector<double> > get_source_matrix();
 		std::vector<std::vector<double> > get_target_matrix();
-		double jacp(std::vector<double> &u, std::vector<double> &v, std::vector<bool> &bu, std::vector<bool> &bv);
+		double jacp(std::vector<double> &u, std::vector<double> &v);
+		double jacp_2(std::vector<double> &u, std::vector<double> &v, int &ii, int &jj);
 		double tanimoto_coefficient(std::vector<double> &u, std::vector<double> &v);
+		double dist_sim(double &d);
 		double cosine_similarity(std::vector<double> &u, std::vector<double> &v);
 		double jacw(std::vector<double> &u, std::vector<double> &v);
 		double simple(std::vector<double> &u, std::vector<double> &v);
@@ -73,8 +75,10 @@ class simquest {
 		double simple6(std::vector<double> &u, std::vector<double> &v);
 		double simple7(std::vector<double> &u, std::vector<double> &v);
 		double D1(std::vector<double> &u, std::vector<double> &v);
+		double D1b(std::vector<double> &u, std::vector<double> &v);
 		double D1_2(std::vector<double> &u, std::vector<double> &v);
 		double D1_2_2(std::vector<double> &u, std::vector<double> &v);
+		double D1_2_3(std::vector<double> &u, std::vector<double> &v, int &ii, int&jj);
 		double D2(std::vector<double> &u, std::vector<double> &v);
 		double Dinf(std::vector<double> &u, std::vector<double> &v);
 		double Dalpha(std::vector<double> &u, std::vector<double> &v);
@@ -82,6 +86,7 @@ class simquest {
 		double from_reg(std::vector<double> &u, std::vector<double> &v, std::vector<bool> &bu, std::vector<bool> &bv, double &D);
 		double from_clf(std::vector<double> &u, std::vector<double> &v, std::vector<bool> &bu, std::vector<bool> &bv, double &D);
 		double bin_similarity(std::vector<bool> &bu, std::vector<bool> &bv);
+		double bin_similarity_2(std::vector<bool> &bu, std::vector<bool> &bv, int &i, int &j);
 };
 
 simquest::simquest(
@@ -123,7 +128,7 @@ std::vector<std::vector<double> > simquest::calculate_nodesim_matrix(
 	for (int i=0; i < N; i++) {
 		for (int j=i; j < N; j++) {
 			if (i == j) continue;
-			node_sim_matrix[i][j] = similarity_index(matrix[i], matrix[j], bmatrix[i], bmatrix[j], D[i][j], index);
+			node_sim_matrix[i][j] = similarity_index(matrix[i], matrix[j], bmatrix[i], bmatrix[j], D[i][j], i, j, index);
 			node_sim_matrix[j][i] = node_sim_matrix[i][j];
 		}
 	}
@@ -207,6 +212,12 @@ double simquest::jacw(
 	return maximus / N;
 }
 
+double simquest::dist_sim(
+	double &d
+) {
+	return 1 / (1 + d);
+}
+
 double simquest::simple(
 	std::vector<double> &u, std::vector<double> &v
 ) {
@@ -231,10 +242,6 @@ double simquest::simple2(
 		if (p != 0) JACP += std::log(2.) / p;
 		else std::cout << "Vectors in jaccardp  are both zero\n";
 	}
-	// if (JACP > 1) {
-	// 	JACP = 1 - 1e-8;
-	// 	std::cout << "\n\tSimilarity greater than one.\n";
-	// }
 	return JACP;
 }
 
@@ -243,20 +250,22 @@ double simquest::simple2_2(
 ) {
 	int N = u.size();
 	double JACP = 0.;
-	double p;
+	double p, pu = 0. , pv = 0.;
+
+	for (int i=0; i < N; i++) {
+		pu += u[i];
+		pv += v[i];
+	}
 	for (int i=0; i < N; i++){
 		p = 0;
 		for (int j=0; j < N; j++){
-			p += std::max((1 + u[j]) / (1 + u[i]), (1 + v[j]) / (1 + v[i]));
+			if (u[i] == 0 || v[i] == 0) continue;
+			p += std::max((u[j] / pu) / (v[i] / pv), (v[j] / pv) / (u[i] / pu));
 		}
-		if (p != 0) JACP += 1 / (log(p)/log(N)) / N;
-		else std::cout << "Vectors in jaccardp  are both zero\n";
+		if (p != 0) JACP += 1 / (1 - 2 * log(p));
+		// else std::cout << "Vectors in jaccardp  are both zero\n";
 	}
-	// if (JACP > 1) {
-	// 	JACP = 1 - 1e-8;
-	// 	std::cout << "\n\tSimilarity greater than one.\n";
-	// }
-	return JACP;
+	return 1 / (1 + JACP / N) ;
 }
 
 double simquest::simple3(
@@ -295,10 +304,6 @@ double simquest::simple5(
 		if (p != 0) JACP += 1 / p;
 		else std::cout << "Vectors in jaccardp  are both zero\n";
 	}
-	// if (JACP > 1) {
-	// 	JACP = 1 - 1e-8;
-	// 	std::cout << "\n\tSimilarity greater than one.\n";
-	// }
 	return JACP;
 }
 
@@ -317,10 +322,6 @@ double simquest::simple6(
 		if (p != 0) JACP += 1 / p;
 		else std::cout << "Vectors in jaccardp  are both zero\n";
 	}
-	// if (JACP > 1) {
-	// 	JACP = 1 - 1e-8;
-	// 	std::cout << "\n\tSimilarity greater than one.\n";
-	// }
 	return JACP;
 }
 
@@ -360,6 +361,29 @@ double simquest::D1(
 	return JACP;
 }
 
+double simquest::D1b(
+	std::vector<double> &u, std::vector<double> &v
+) {
+	int N = u.size();
+	double JACP = 0.;
+	double p = 0, q=0, pu = 0, pv = 0;
+	for (int j=0; j < N; j++){
+			pu += u[j];
+			pv += v[j];
+	}
+	for (int i=0; i < N; i++){
+		// D1
+		// if (u[i] == 0 || v[i] == 0) continue;
+		p += ((u[i]) / pu) * log(((u[i]) / pu) * (pv / (v[i])));
+		q += ((v[i]) / pv) * log(((v[i]) / pv) * (pu / (u[i])));
+	}
+	if (p >= 0)
+		JACP = 1 /(1 + p / 2.);
+	else
+		JACP = 0.;
+	return JACP;
+}
+
 double simquest::D1_2(
 	std::vector<double> &u, std::vector<double> &v
 ) {
@@ -395,8 +419,38 @@ double simquest::D1_2_2(
 		p += sqrt(((u[i]) / pu) * ((v[i]) / pv));
 	}
 	// D1/2
-	 p = - 2 * log(p);
-	JACP = 1 / (1 + p);
+  if (p > 0) {
+    p = - 2 * log(p);
+    JACP = 1 / (1 + p);
+  }
+  else
+    JACP = 0;
+	return JACP;
+}
+
+double simquest::D1_2_3(
+	std::vector<double> &u, std::vector<double> &v, int &ii, int &jj
+) {
+	int N = u.size();
+	double JACP = 0.;
+	double p = 0, pu = 0, pv = 0;
+	for (int j=0; j < N; j++){
+		pu += u[j];
+		pv += v[j];
+	}
+	for (int i=0; i < N; i++){
+		// D1/2
+		if (i == ii | i == jj) continue;
+		p += sqrt(((u[i]) / pu) * ((v[i]) / pv));
+	}
+	p += sqrt((u[jj]) / pu * ((v[ii]) / pv));
+	// D1/2
+  if (p > 0) {
+    p = - 2 * log(p);
+    JACP = 1 / (1 + p);
+  }
+  else
+    JACP = 0;
 	return JACP;
 }
 
@@ -457,8 +511,8 @@ double simquest::Dalpha(
 		q += pow((1 + v[i]) / pv, alpha) / pow((1 + u[i]) / pu, alpha - 1);
 	}
 	// Dalpha
-	JACP = log(p) / (alpha - 1) + log(q) / (alpha - 1);
-	JACP = 1 /(1 + JACP / 2.);
+	JACP = std::min(log(p) / (alpha - 1), log(q) / (alpha - 1));
+	JACP = 1 /(1 + JACP);
 	return JACP;
 }
 
@@ -478,15 +532,34 @@ double simquest::bin_similarity(
 	return uv - 1 + uu + vv - (2 * uu * vv);
 }
 
+double simquest::bin_similarity_2(
+	std::vector<bool> &bu, std::vector<bool> &bv, int &ii, int &jj
+) {
+	int N = bu.size();
+	double uv=0., uu=0., vv=0.;
+	for (int i=0; i < N; i++) {
+		if (i == ii | i == jj) continue;
+		if ((bu[i] && bv[i]) || (!bu[i] && !bv[i])) uv++;
+		if (bu[i]) uu++;
+		if (bv[i]) vv++;
+	}
+	if ((bu[jj] && bv[ii]) || (!bu[jj] && !bv[ii])) uv++;
+	if (bu[jj]) uu++;
+	if (bv[ii]) vv++;
+	uv /= N;
+	uu /= N;
+	vv /= N;
+	return uv - 1 + uu + vv - (2 * uu * vv);
+}
+
 double simquest::jacp(
-	std::vector<double> &u, std::vector<double> &v, std::vector<bool> &bu, std::vector<bool> &bv)
+	std::vector<double> &u, std::vector<double> &v)
 {
 	int N = u.size();
 	double JACP = 0;
 	double p;
 	for (int i=0; i < N; i++){
-		if (bu[i] && bv[i]){
-			if (u[i] == 0 || v[i] == 0) std::cout << "\n\tWeight-topology ambiguity: Connection exists with zero weigth\n";
+		if (u[i] > 0 && v[i] > 0){
 			p = 0;
 			for (int j=0; j < N; j++) {
 				p += std::max(u[j]/u[i], v[j]/v[i]);
@@ -500,20 +573,55 @@ double simquest::jacp(
 	return JACP;
 }
 
+double simquest::jacp_2(
+	std::vector<double> &u, std::vector<double> &v, int &ii, int &jj)
+{
+	int N = u.size();
+	double JACP = 0;
+	double p;
+	for (int i=0; i < N; i++){
+		if ((u[i] > 0 && v[i] > 0) && (i != ii || i != jj)){
+			p = 0;
+			for (int j=0; j < N; j++) {
+				if (j == ii || j == jj) continue;
+				p += std::max(u[j]/u[i], v[j]/v[i]);
+			}
+			p += std::max(u[jj]/u[i], v[ii]/v[i]);
+			if (p != 0)
+				JACP += 1 / p;
+			else
+				std::cout << "Vectors in jaccardp are both zero\n";
+		}
+	}
+	if (u[jj] > 0 && v[ii] > 0) {
+		p = 0;
+		for (int j=0; j < N; j++) {
+			if (j == ii || j == jj) continue;
+			p += std::max(u[j]/u[jj], v[j]/v[ii]);
+		}
+		p += 1;
+		if (p != 0)
+			JACP += 1 / p;
+		else
+			std::cout << "Vectors in jaccardp are both zero\n";
+	}
+	return JACP;
+}
+
 double simquest::from_reg(std::vector<double> &u, std::vector<double> &v, std::vector<bool> &bu, std::vector<bool> &bv, double &D) {
-	double simr = jacp(u, v, bu, bv);
+	double simr = jacp(u, v);
 	return -2.36160354e-04 * D + 1.15750346e+01 * simr - 8.46048913e-02 * (simr * D)  - 2.66552556e+00;
 }
 
 double simquest::from_clf(std::vector<double> &u, std::vector<double> &v, std::vector<bool> &bu, std::vector<bool> &bv, double &D) {
-	double simr = jacp(u, v, bu, bv);
+	double simr = jacp(u, v);
 	return 1 / (1 + exp(0.02036713 * D - 8.61685212 * simr - 0.02094556 * (simr * D) + 2.27301252));
 }
 
-double simquest::similarity_index(std::vector<double> &u, std::vector<double> &v, std::vector<bool> &bu, std::vector<bool> &bv, double &D, const int &index) {
+double simquest::similarity_index(std::vector<double> &u, std::vector<double> &v, std::vector<bool> &bu, std::vector<bool> &bv, double &D, int &ii, int &jj, const int &index) {
 	// Jaccard probability index
   if (index == 0) {
-    return jacp(u, v, bu, bv);
+    return jacp(u, v);
   }
 	// Tanimoto coefficient
   else if (index == 1) {
@@ -584,6 +692,21 @@ double simquest::similarity_index(std::vector<double> &u, std::vector<double> &v
 	else if (index == 21) {
 		return D1_2_2(u, v);
 	}
+	else if (index == 22) {
+		return D1b(u, v);
+	}
+	else if (index == 23) {
+		return dist_sim(D);
+	}
+	else if (index == 24) {
+		return D1_2_3(u, v, ii, jj);
+	}
+	else if (index == 25) {
+		return bin_similarity_2(bu, bv, ii, jj);
+	}
+	else if (index == 26) {
+		return jacp_2(u, v, ii, jj);
+	}
   else {
     std::range_error("Similarity index must be a integer from 0 to 5\n");
   }
@@ -620,26 +743,5 @@ PYBIND11_MODULE(simquest, m) {
         )
         .def("get_linksim_matrix", &simquest::get_linksim_matrix)
         .def("get_source_matrix", &simquest::get_source_matrix)
-				.def("get_target_matrix", &simquest::get_target_matrix)
-				.def("jacp", &simquest::jacp)
-        .def("jacw", &simquest::jacw)
-				.def("simple", &simquest::simple)
-				.def("simple2", &simquest::simple2)
-				.def("simple2_2", &simquest::simple2_2)
-				.def("simple3", &simquest::simple3)
-				.def("simple4", &simquest::simple4)
-				.def("simple5", &simquest::simple5)
-				.def("simple6", &simquest::simple6)
-				.def("D1", &simquest::D1)
-				.def("D1_2", &simquest::D1_2)
-				.def("D1_2_2", &simquest::D1_2_2)
-				.def("D2", &simquest::D2)
-				.def("Dinf", &simquest::Dinf)
-				.def("Dalpha", &simquest::Dalpha)
-				.def("logcos", &simquest::logcos)
-				.def("from_reg", &simquest::from_reg)
-				.def("from_clf", &simquest::from_clf)
-				.def("cosine_similarity", &simquest::cosine_similarity)
-			  .def("tanimoto_coefficient", &simquest::tanimoto_coefficient)
-        .def("bin_similarity", &simquest::bin_similarity);
+				.def("get_target_matrix", &simquest::get_target_matrix);
 }

@@ -14,15 +14,15 @@ from plotting_modules.plotting_serial import PLOT_S
 from plotting_modules.plotting_o_serial import PLOT_OS
 from various.network_tools import read_class
 # Declare iter variables ----
-topologies = ["MIX", "TARGET", "SOURCE"]
+topologies = ["MIX"]
 bias = [0]
-mode = ["ALPHA"]
+mode = ["ZERO"]
 list_of_lists = itertools.product(
   *[topologies, bias, mode]
 )
 list_of_lists = np.array(list(list_of_lists))
 # Declare global variables NET ----
-MAXI = 500
+MAXI = 10
 linkage = "single"
 nlog10 = T
 lookup = F
@@ -33,9 +33,9 @@ structure = "LN"
 distance = "tracto16"
 nature = "original"
 mapping = "trivial"
-index = "D1_2"
+index = "D1_2_3"
 imputation_method = ""
-opt_score = ["_maxmu", "_X"]
+opt_score = ["_maxmu_6", "_maxmu_20", "_X"]
 # Declare global variables DISTBASE ----
 total_nodes = 106
 __inj__ = 57

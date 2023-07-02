@@ -71,7 +71,7 @@ def sim_1_1(F, path):
 
    # Derive xtick labels
 
-   loc = np.arange(ZZ["cos"].shape[0], step=N)
+   loc = np.arange(ZZ["jacp"].shape[0], step=N)
 
    zz = [f"{l:.2f},-1" for l in Lx]
 
@@ -83,7 +83,7 @@ def sim_1_1(F, path):
       y="score",
       hue="label",
       linewidth=1,
-      alpha=0.6
+      alpha=0.7
    )
    plt.xticks(loc, zz, rotation=45)
    fig = plt.gcf()
@@ -170,7 +170,7 @@ def sim_x_0_0_x(F, path):
       y="score",
       hue="label",
       linewidth=1,
-      alpha=0.5
+      alpha=0.7
    )
    ax = plt.gca()
    # ax.set_xscale("log")
@@ -214,7 +214,7 @@ def sim_rot_scl(F, path):
 
    # Derive tick labels and positions ----
 
-   loc = np.arange(ZZ["cos"].shape[0], step=labda.shape[0])
+   loc = np.arange(ZZ["jacp"].shape[0], step=labda.shape[0])
 
    zz = [f"{t:.2f}"+r"$\pi$"+",0" for t in theta/np.pi]
 
@@ -224,7 +224,7 @@ def sim_rot_scl(F, path):
       y="similarity score",
       hue="label",
       linewidth=1,
-      alpha=0.6
+      alpha=0.7
    )
    plt.xticks(loc, zz, rotation=45)
    ax = plt.gca()
@@ -305,19 +305,19 @@ def Data_sims(path):
    prob = F
    cut = F
    structure = "LN"
-   mode = "ALPHA"
+   mode = "BETA"
    distance = "tracto16"
    nature = "original"
    imputation_method = ""
    topology = "MIX"
    mapping = "trivial"
-   bias = 0
-   alpha = 1/3
+   bias = 0.
+   alpha = 0.
    version = "57d106"
    __nodes__ = 57
    __inj__ = 57
 
-   sims = ["simple2", "simple3", "logcos", "simple5", "D1", "D1_2", "D2", "Dinf", "Dalpha"]
+   sims = ["simple2", "D1_2_2"]
    for index in sims:
       # Load structure ----
       NET = MAC57(
@@ -356,7 +356,7 @@ def Data_sims(path):
    prob = T
    cut = F
    structure = "FLN"
-   mode = "ALPHA"
+   mode = "BETA"
    distance = "tracto16"
    nature = "original"
    imputation_method = ""
@@ -408,15 +408,11 @@ def Data_sims(path):
 
    G = {
       "simple2" : "jaclog_LN",
-      "simple3" : "jacw_LN",
       "jacw" : "jacw_FLNe",
-      "logcos" : "logcos_LN",
-      "simple5" : "jacsqrt_LN",
-      "D1" : "D1_LN",
-      "D1_2" : "D1_2_LN",
-      "D2" : "D2_LN",
-      "Dinf" : "Dinf_LN",
-      "Dalpha" : "Dalpha_LN"
+      # "D1b" : "D1_LN",
+      # "D1" : "D1_LN",
+      # "D1_2" : "D1_2_LN",
+      "D1_2_2" : "D1_2_2_LN"
    }
    data = pd.DataFrame()
 
@@ -461,7 +457,7 @@ def Data_sims(path):
       y="y",
       lowess=True,
       #  scatter=False,
-      scatter_kws={"s": 3, "alpha":0.4},
+      scatter_kws={"s": 3, "alpha":0.7},
       # line_kws={"linewidth" : 1, "alpha" : 0.6},
       sharex=False,
       sharey=False
@@ -509,7 +505,7 @@ def Data_sims(path):
       lowess=True,
       scatter=False,
       #  scatter_kws={"s": 2, "alpha":0.4},
-      line_kws={"linewidth" : 1, "alpha" : 0.6}
+      line_kws={"linewidth" : 1, "alpha" : 0.7}
    )
    
    plt.savefig(path+"/sim_dist.png", dpi=300)
@@ -518,22 +514,24 @@ def Data_sims(path):
 plot_path = "../plots/TOY/learning_jaclog"
 
 F = {
-   "cos" : {"feat": cos, "args" : []},
+   # "cos" : {"feat": cos, "args" : []},
    "jacp" : {"feat": ct.jacp, "args" : []},
    "jaclog" : {"feat": ct.jaclog, "args" : []},
-   "jacsqrt" : {"feat": ct.jacsqrt, "args" : []},
-   "D1" : {"feat": ct.D1, "args" : []},
-   "D1_2" : {"feat": ct.D1_2, "args" : []},
-   "D2" : {"feat": ct.D2, "args" : []},
-   "Dinf": {"feat": ct.Dinf, "args" : []},
-   "Dalpha" : {"feat": ct.Dalpha, "args" : [1/3]},
+   # "jacsqrt" : {"feat": ct.jacsqrt, "args" : []},
+   # "D1b" : {"feat": ct.D1b, "args" : []},
+   # "D1" : {"feat": ct.D1, "args" : []},
+   "D1_2" : {"feat": ct.D1_2_2, "args" : []},
+   # "D1_2" : {"feat": ct.D1_2, "args" : []},
+   # "D2" : {"feat": ct.D2, "args" : []},
+   # "Dinf": {"feat": ct.Dinf, "args" : []},
+   # "Dalpha" : {"feat": ct.Dalpha, "args" : [1/3]},
    # "simbin" : ct.simbin
 }
 
-# sim_1_1(F, plot_path)
-# sim_0_x(F, plot_path)
-# sim_rot_scl(F, plot_path)
-# sim_x_0_0_x(F, plot_path)
+sim_1_1(F, plot_path)
+sim_0_x(F, plot_path)
+sim_rot_scl(F, plot_path)
+sim_x_0_0_x(F, plot_path)
 # hist_sim_theta_lambda(F, plot_path)
 Data_sims(plot_path)
 

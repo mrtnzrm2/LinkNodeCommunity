@@ -68,18 +68,18 @@ class PLOT_S:
       print("Plot clustering similarity histogram!!!")
       subdata = self.data.copy()
       # Average score ----
-      mean_results = subdata.groupby(["sim", "score"]).mean().reset_index()
-      ## MAXMU
-      mean_nmi = mean_results["values"].loc[(mean_results.sim == "NMI") & (mean_results.score == "_maxmu")].to_numpy()
-      mean_nmi = np.round(mean_nmi, 3)[0]
-      mean_omega = mean_results["values"].loc[(mean_results.sim == "OMEGA") & (mean_results.score == "_maxmu")].to_numpy()
-      mean_omega = np.round(mean_omega, 3)[0]
-      ## X
-      mean_nmi_x = mean_results["values"].loc[(mean_results.sim == "NMI") & (mean_results.score == "_X")].to_numpy()
-      mean_nmi_x = np.round(mean_nmi_x, 3)[0]
-      mean_omega_x = mean_results["values"].loc[(mean_results.sim == "OMEGA") & (mean_results.score == "_X")].to_numpy()
-      mean_omega_x = np.round(mean_omega_x, 3)[0]
-      subdata["sim"] = subdata["sim"].map({"NMI" : f"NMI -> maxmu: {mean_nmi}     X: {mean_nmi_x}", "OMEGA" : f"OMEGA -> maxmu: {mean_omega}      X: {mean_omega_x}"})
+      # mean_results = subdata.groupby(["sim", "score"]).mean().reset_index()
+      # ## MAXMU
+      # mean_nmi = mean_results["values"].loc[(mean_results.sim == "NMI") & (mean_results.score == "_maxmu")].to_numpy()
+      # mean_nmi = np.round(mean_nmi, 3)[0]
+      # mean_omega = mean_results["values"].loc[(mean_results.sim == "OMEGA") & (mean_results.score == "_maxmu")].to_numpy()
+      # mean_omega = np.round(mean_omega, 3)[0]
+      # ## X
+      # mean_nmi_x = mean_results["values"].loc[(mean_results.sim == "NMI") & (mean_results.score == "_X")].to_numpy()
+      # mean_nmi_x = np.round(mean_nmi_x, 3)[0]
+      # mean_omega_x = mean_results["values"].loc[(mean_results.sim == "OMEGA") & (mean_results.score == "_X")].to_numpy()
+      # mean_omega_x = np.round(mean_omega_x, 3)[0]
+      # subdata["sim"] = subdata["sim"].map({"NMI" : f"NMI -> maxmu: {mean_nmi}     X: {mean_nmi_x}", "OMEGA" : f"OMEGA -> maxmu: {mean_omega}      X: {mean_omega_x}"})
       # print(mean_results)
       # Create figure ----
       if c:
@@ -402,25 +402,29 @@ class PLOT_S:
   def plot_measurements_mu(self, on=False, **kwargs):
     if on:
       print("Plot mu iterations")
-      data = self.measures[["K", "mu", "data", "iter"]]
+      data = self.measures[["K", "alpha", "mu", "data", "iter"]]
+      al = np.sort(np.unique(data.alpha))
+      nal = al.shape[0]
       # Create figure ----
-      fig, ax = plt.subplots(1, 1)
-      sns.lineplot(
-        data=data.loc[data.data == "0"],
-        x="K",
-        y="mu",
-        errorbar="sd",
-        ax=ax
-      )
-      sns.lineplot(
-        data=data.loc[data.data == "1"],
-        x="K",
-        y="mu",
-        color="#C70039",
-        ax=ax
-      )
-      plt.legend([],[], frameon=False)
-      plt.xscale("log")
+      fig, ax = plt.subplots(1, nal)
+      for i, a in enumerate(al):
+        sns.lineplot(
+          data=data.loc[(data.data == "0") & (data.alpha == a)],
+          x="K",
+          y="mu",
+          errorbar="sd",
+          ax=ax[i]
+        )
+        sns.lineplot(
+          data=data.loc[(data.data == "1") & (data.alpha == a)],
+          x="K",
+          y="mu",
+          color="#C70039",
+          ax=ax[i]
+        )
+        ax[i].set_title(r"$\alpha = $" + f"{a}")
+        ax[i].set_xscale("log")
+      fig.set_figwidth(12)
       fig.tight_layout()
       # Arrange path ----
       plot_path = join(
@@ -588,7 +592,7 @@ class PLOT_S:
   def plot_measurements_D_noodle(self, on=False, **kwargs):
     if on:
       print("Plot D noodle iterations")
-      data = self.measures[["K", "D", "data", "iter"]]
+      data = self.measures.groupby(["K", "data", "iter"])["D"].max().reset_index()
       data.iter.loc[data.data == "0"] = [int(i) for i in data.iter.loc[data.data == "0"]]
       # Create figure ----
       fig, ax = plt.subplots(1, 1)
@@ -635,7 +639,7 @@ class PLOT_S:
   def plot_measurements_X_noodle(self, on=False, **kwargs):
     if on:
       print("Plot X noodle iterations")
-      data = self.measures[["K", "X", "data", "iter"]]
+      data = self.measures.groupby(["K", "data", "iter"])["X"].max().reset_index()
       data.iter.loc[data.data == "0"] = [int(i) for i in data.iter.loc[data.data == "0"]]
       # Create figure ----
       fig, ax = plt.subplots(1, 1)
@@ -682,31 +686,36 @@ class PLOT_S:
   def plot_measurements_mu_noodle(self, on=False, **kwargs):
     if on:
       print("Plot mu noodle iterations")
-      data = self.measures[["K", "mu", "data", "iter"]]
+      data = self.measures[["K", "alpha", "mu", "data", "iter"]]
       data.iter.loc[data.data == "0"] = [int(i) for i in data.iter.loc[data.data == "0"]]
+      al = np.sort(np.unique(data.alpha))
+      nal = al.shape[0]
       # Create figure ----
-      fig, ax = plt.subplots(1, 1)
-      sns.lineplot(
-        data=data.loc[data.data == "0"],
-        x="K",
-        y="mu",
-        hue="iter",
-        alpha=0.4,
-        lw=0.5,
-        palette=sns.color_palette("viridis", as_cmap=True),
-        estimator=None,
-        ax=ax
-      )
-      sns.lineplot(
-        data=data.loc[data.data == "1"],
-        x="K",
-        y="mu",
-        lw=1,
-        color="#C70039",
-        ax=ax
-      )
-      plt.legend([],[], frameon=False)
-      plt.xscale("log")
+      fig, ax = plt.subplots(1, nal)
+      for i in np.arange(nal):
+        sns.lineplot(
+          data=data.loc[(data.data == "0") & (data.alpha == al[i])],
+          x="K",
+          y="mu",
+          hue="iter",
+          alpha=0.4,
+          lw=0.5,
+          palette=sns.color_palette("viridis", as_cmap=True),
+          estimator=None,
+          ax=ax[i]
+        )
+        sns.lineplot(
+          data=data.loc[(data.data == "1") & (data.alpha == al[i])],
+          x="K",
+          y="mu",
+          lw=1,
+          color="#C70039",
+          ax=ax[i]
+        )
+        ax[i].set_title(r"$\alpha = $" + f"{al[i]}")
+        ax[i].get_legend().remove()
+        ax[i].set_xscale("log")
+      fig.set_figwidth(12)
       fig.tight_layout()
       # Arrange path ----
       plot_path = join(
@@ -729,7 +738,7 @@ class PLOT_S:
   def plot_measurements_ntrees_noodle(self, on=False, **kwargs):
     if on:
       print("Plot ntrees noodle iterations")
-      data = self.measures[["K", "ntrees", "data", "iter"]]
+      data = self.measures.groupby(["K", "data", "iter"])["ntrees"].max().reset_index()
       data.iter.loc[data.data == "0"] = [int(i) for i in data.iter.loc[data.data == "0"]]
       # Create figure ----
       fig, ax = plt.subplots(1, 1)
@@ -776,7 +785,7 @@ class PLOT_S:
   def plot_measurements_ordp_noodle(self, on=False, **kwargs):
     if on:
       print("Plot order parameter noodle iterations")
-      data = self.measures[["K", "m", "data", "iter"]]
+      data = self.measures.groupby(["K", "data", "iter"])["m"].max().reset_index()
       data.iter.loc[data.data == "0"] = [int(i) for i in data.iter.loc[data.data == "0"]]
       # Create figure ----
       fig, ax = plt.subplots(1, 1)

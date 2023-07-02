@@ -102,7 +102,8 @@ def worker_scalefree(
     RAND_H.set_colregion(L)
     #  Update entropy ----
     data.update_entropy(
-      [RAND_H.node_entropy, RAND_H.node_entropy_H, RAND_H.link_entropy, RAND_H.link_entropy_H],  
+      [RAND_H.node_entropy, RAND_H.node_entropy_H,
+       RAND_H.link_entropy, RAND_H.link_entropy_H],  
     )
     rlabels = zeros(1)
     for score in opt_score:

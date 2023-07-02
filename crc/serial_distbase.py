@@ -11,7 +11,6 @@ import numpy as np
 # Import network libraries ----
 from modules.hierarmerge import Hierarchy
 from modules.colregion import colregion
-from modules.hierarentropy import Hierarchical_Entropy
 from networks_serial.hrh import HRH
 from networks.structure import MAC
 from networks.distbase import DISTBASE
@@ -146,21 +145,25 @@ def worker_distbase(
       [RAND_H.node_entropy, RAND_H.node_entropy_H,
        RAND_H.link_entropy, RAND_H.link_entropy_H],  
     )
+    ial = 0
     for score in opt_score:
       # Get k from RAND_H ----
-      K, R = get_best_kr(score, RAND_H)
-      r = R[K == np.min(K)][0]
-      k = K[K == np.min(K)][0]
-      RAND_H.set_kr(k, r, score)
-      data.set_kr_zero(RAND_H)
-      rlabels = get_labels_from_Z(RAND_H.Z, r)
-      # Overlap ----
-      ocn, subcover = RAND_H.get_ocn_discovery(k, rlabels)
-      cover = omega_index_format(
-        rlabels, subcover, RAND_H.colregion.labels[:RAND_H.nodes]
-      )
-      data.set_clustering_similarity(rlabels, cover, score)
-      data.set_overlap_data_zero(ocn, score)
+      K, R = get_best_kr_equivalence(score, RAND_H)
+      for k, r in zip(K, R):
+        if score == "_maxmu":
+          SCORE = f"{score}_{RAND.Alpha[ial]}"
+          ial += 1
+        else: SCORE = score
+        RAND_H.set_kr(k, r, SCORE)
+        data.set_kr_zero(RAND_H)
+        rlabels = get_labels_from_Z(RAND_H.Z, r)
+        # Overlap ----
+        ocn, subcover = RAND_H.get_ocn_discovery_2(k, rlabels)
+        cover = omega_index_format(
+          rlabels, subcover, RAND_H.colregion.labels[:RAND_H.nodes]
+        )
+        data.set_clustering_similarity(rlabels, cover, SCORE)
+        data.set_overlap_data_zero(ocn, SCORE)
   if isinstance(RAND_H, Hierarchy):
     data.set_subfolder(RAND_H.subfolder)
     data.set_plot_path(RAND_H, bias=bias)

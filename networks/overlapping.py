@@ -271,7 +271,7 @@ class OVERLAPPING(SCALEFREE):
     if on:
       if K == 1: return np.nan, np.nan
       # Ground-truth partition prep. ----
-      gt = [k for k, v in self.overlap.items() if len(v) == 1]
+      gt = [k for k, v in self.overlap.items() if len(v) > 1]
       GT = set([str(g) for g in gt])
       ## Sensitivity/Specificity ----
       ALL = set(labels)

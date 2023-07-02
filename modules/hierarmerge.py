@@ -31,13 +31,14 @@ class Hierarchy(Sim):
     # Compute similarity matrix ----
     self.similarity_by_feature_cpp()
     # Compute distance matrix ----
-    self.dist_mat = self.linksim_matrix
-    ###
-    self.dist_mat[self.dist_mat != 0] -= np.nanmax(self.dist_mat[self.dist_mat != 0]) + 0.01
-    ##
-    self.dist_mat[self.dist_mat == 0] = np.nan
-    self.dist_mat = np.nanmax(self.dist_mat) - self.dist_mat
-    self.dist_mat[np.isnan(self.dist_mat)] = np.nanmax(self.dist_mat) + 1
+    self.dist_mat = 1 - self.linksim_matrix
+    # self.dist_mat = self.linksim_matrix
+    # ###
+    # self.dist_mat[self.dist_mat != 0] -= np.nanmax(self.dist_mat[self.dist_mat != 0]) + 0.001
+    # ##
+    # self.dist_mat[self.dist_mat == 0] = np.nan
+    # self.dist_mat = np.nanmax(self.dist_mat) - self.dist_mat
+    # self.dist_mat[np.isnan(self.dist_mat)] = np.nanmax(self.dist_mat) + 1
     # Compute hierarchy ----
     self.H = self.get_hierarchy()
     # Network to edgelist of EC ----
@@ -466,6 +467,59 @@ class Hierarchy(Sim):
     for key in NOCS:
       NOCS[key] = list(np.unique(NOCS[key]))
     return NOCS
+  
+  def discover_overlap_nodes_2(self, K : int, Cr, labels):
+    nocs = {}
+    overlap = np.zeros(self.nodes)
+    skimCr = skim_partition(Cr)
+    from scipy.cluster.hierarchy import cut_tree
+    #######################
+    # Without -1 ----
+    dA = self.dA.copy()
+    ## Cut tree ----
+    dA["id"] = cut_tree(self.H, n_clusters=K).reshape(-1)
+    minus_one_Dc(dA)
+    aesthetic_ids(dA)
+    # dA_ = dA.loc[dA["id"] != -1]
+    # ## linkcom ids from 0 to k-1 ----
+    # dA_.id.loc[dA_.id > 0] = dA_.id.loc[dA_.id > 0] - 1
+    ## Single nodes ----
+    single_nodes = [np.where(Cr == i)[0][0] for i in np.unique(Cr) if np.sum(Cr == i) == 1]
+    ## Nodes with single community membership ----
+    NSC = [(set(np.where(skimCr == i)[0]), i) for i in np.unique(skimCr) if i != -1]
+    for sn in single_nodes:
+      dsn_src = dA.loc[dA.source == sn]
+      dsn_tgt = dA.loc[dA.target == sn]
+      for lc in np.unique(dsn_src.id):
+        lc_nodes = dsn_src.target.loc[dsn_src.id == lc]
+        lc_nodes = set([i for i in lc_nodes])
+        for ii, nsc in enumerate(NSC):
+          if len(nsc[0].intersection(lc_nodes)) > 0:
+            if labels[sn] not in nocs.keys(): nocs[labels[sn]] = [nsc[1]]
+            else: nocs[labels[sn]].append(nsc[1])
+            overlap[sn] += 1
+      for lc in np.unique(dsn_tgt.id):
+        lc_nodes = dsn_tgt.source.loc[dsn_tgt.id == lc]
+        lc_nodes = set([i for i in lc_nodes])
+        for ii, nsc in enumerate(NSC):
+          if len(nsc[0].intersection(lc_nodes)) > 0:
+            if labels[sn] not in nocs.keys(): nocs[labels[sn]] = [nsc[1]]
+            else: nocs[labels[sn]].append(nsc[1])
+            overlap[sn] += 1
+    for k in nocs.keys():
+      nocs[k] = list(np.unique(nocs[k]))
+    #######################
+    # Max -1 ----
+    ## Get lc sizes for each node ----
+    data = bar_data(dA, self.nodes, labels, norm=True)
+    ## Geta stats ----
+    tree_nodes = tree_dominant_nodes(data, labels)
+    if len(tree_nodes) > 0:
+      for x in tree_nodes:
+        if labels[x] in nocs.keys(): print("\n Warning: type I & II nocs collide\n")
+        else: nocs[labels[x]] = [-1]
+      overlap[tree_nodes] += 1
+    return np.where(overlap > 0)[0], nocs
 
   def discover_overlap_nodes(self, K : int, Cr, labels, s=2.):
     nocs = {}
@@ -545,6 +599,14 @@ class Hierarchy(Sim):
   def get_ocn_discovery(self, K : int, Cr, s=2.):
     labels = self.colregion.labels[:self.nodes]
     overlap, noc_covers = self.discover_overlap_nodes(K, Cr, labels, s=s)
+    if len(overlap) > 0:
+      return np.array([labels[i] for i in overlap]), noc_covers
+    else:
+      return np.array([]), noc_covers
+    
+  def get_ocn_discovery_2(self, K : int, Cr, s=2.):
+    labels = self.colregion.labels[:self.nodes]
+    overlap, noc_covers = self.discover_overlap_nodes_2(K, Cr, labels)
     if len(overlap) > 0:
       return np.array([labels[i] for i in overlap]), noc_covers
     else:
