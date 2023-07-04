@@ -23,7 +23,7 @@ def worker_ECoG(
   lookup = lookup
   prob = F
   mapping = mapping
-  opt_score = ["_maxmu", "_X"]
+  opt_score = ["_X", "_S"]
   # Load structure ----
   NET = WAVES[nature](
     linkage, mode,
@@ -48,7 +48,7 @@ def worker_ECoG(
     NET.nodes, linkage, mode, lookup=lookup
   )
   ## Compute features ----
-  H.BH_features_parallel()
+  H.BH_features_cpp_no_mu()
   ## Compute link entropy ----
   H.link_entropy_cpp("short", cut=cut)
   ## Compute lq arbre de merde ----
@@ -66,14 +66,14 @@ def worker_ECoG(
   for score in opt_score:
     print(f"Find node partition using {score}")
     # Get best K and R ----
-    K, R = get_best_kr(score, H)
+    K, R = get_best_kr_equivalence(score, H)
     r = R[K == np.min(K)][0]
     k = K[K == np.min(K)][0]
     H.set_kr(k, r, score=score)
     print("\n\tBest K: {}\nBest R: {}\n".format(k, r))
     rlabels = get_labels_from_Z(H.Z, r)
     # Overlap ----
-    NET.overlap, NET.data_nocs = H.get_ocn_discovery(k, rlabels)
+    NET.overlap, NET.data_nocs = H.discovery_2(k, rlabels, rho=1.2, sig=0.8, fun=np.log)
     H.set_overlap_labels(NET.overlap, score)
     print("\n\tAreas with predicted overlapping communities:\n",  NET.data_nocs, "\n")
     cover = omega_index_format(rlabels,  NET.data_nocs, NET.struct_labels[:NET.nodes])

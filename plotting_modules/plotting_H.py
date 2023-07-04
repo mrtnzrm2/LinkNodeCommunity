@@ -352,6 +352,36 @@ class Plot_H:
       plt.close()
     else: print("No D iterations")
 
+  def plot_measurements_S(self, on=False, **kwargs):
+    if on:
+      print("Plot S iterations")
+      # Create figure ----
+      fig, ax = plt.subplots(1, 1)
+      sns.lineplot(
+        data=self.BH[0],
+        x="K",
+        y="S",
+        ax=ax
+      )
+      plt.legend([],[], frameon=False)
+      plt.xscale("log")
+      fig.tight_layout()
+      # Arrange path ----
+      plot_path = join(self.path, "Features")
+      # Crate path ----
+      Path(
+        plot_path
+      ).mkdir(exist_ok=True, parents=True)
+      # Save plot ----
+      plt.savefig(
+        join(
+          plot_path, "S_logK.png"
+        ),
+        dpi=300
+      )
+      plt.close()
+    else: print("No S iterations")
+
   def X_plotly(self, on=True, **kwargs):
     if on:
       import plotly.express as px

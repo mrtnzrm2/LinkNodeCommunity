@@ -31,7 +31,7 @@ mapping = "R4"
 index  = "simple"
 __mode__ = "ALPHA"
 imputation_method = ""
-opt_score = ["_maxmu", "_X"]
+opt_score = ["_X", "_S"]
 __nodes__ = 57
 __version__ = 220830
 bias = float(0)
@@ -77,7 +77,7 @@ if __name__ == "__main__":
       NET.D, __nodes__, linkage, __mode__, lookup=lookup, alpha=alpha
     )
     ## Compute features ----
-    H.BH_features_parallel()
+    H.BH_features_cpp_no_mu()
     ## Compute link entropy ----
     H.link_entropy_cpp("short", cut=cut)
     ## Compute lq arbre de merde ----
@@ -118,13 +118,13 @@ if __name__ == "__main__":
   )
   for score in opt_score:
     print(f"Find node partition using {score}")
-    K, R = get_best_kr(score, H)
+    K, R = get_best_kr_equivalence(score, H)
     r = R[K == np.min(K)]
     k = K[K == np.min(K)]
     print("Best K: {}\nBest R: {}\t Score: {}".format(k, r, score))
     ## Take a look in case of SLN ----
     rlabels = get_labels_from_Z(H.Z, r)
-    NET.overlap, _ = H.get_ocn_discovery(k, rlabels)
+    NET.overlap, _ = H.discovery_2(k, rlabels, rho=1.1, sig=0.5)
     H.set_overlap_labels(NET.overlap, score)
     ## Single linkage ----
     plot_h.core_dendrogram([r], on=F)

@@ -166,6 +166,20 @@ class Plot_H:
     plt.xscale("log")
     fig.tight_layout()
 
+  def plot_measurements_S(self, **kwargs):
+    print("Plot S iterations")
+    # Create figure ----
+    fig, ax = plt.subplots(1, 1)
+    sns.lineplot(
+      data=self.BH[0],
+      x="K",
+      y="S",
+      ax=ax
+    )
+    plt.legend([],[], frameon=False)
+    plt.xscale("log")
+    fig.tight_layout()
+
   def plot_measurements_ntrees(self, **kwargs):
     print("Plot ntrees iterations")
     # Create figure ----

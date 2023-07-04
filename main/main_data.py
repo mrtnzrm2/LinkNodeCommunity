@@ -31,8 +31,8 @@ mapping = "trivial"
 index  = "D1_2_3"
 bias = 0.
 alpha = 0.
-opt_score = ["_maxmu", "_X"]
-save_data = T
+opt_score = ["_X", "_S"]
+save_data = F
 version = "57d106"
 __nodes__ = 57
 __inj__ = 57
@@ -56,7 +56,6 @@ if __name__ == "__main__":
     b = bias,
     alpha = alpha
   )
-  NET.set_alpha([6, 20])
   NET.create_pickle_directory()
   NET.create_plot_directory()
   # Transform data for analysis ----
@@ -73,7 +72,7 @@ if __name__ == "__main__":
       __nodes__, linkage, mode, lookup=lookup, alpha=alpha
     )
     ## Compute features ----
-    H.BH_features_parallel()
+    H.BH_features_cpp_no_mu()
     ## Compute link entropy ----
     H.link_entropy_cpp("short", cut=cut)
     ## Compute lq arbre de merde ----
@@ -101,49 +100,50 @@ if __name__ == "__main__":
     )
   # # Picasso ----
   plot_h = Plot_H(NET, H)
-  HS = Hierarchical_Entropy(H.Z, H.nodes, H.colregion.labels[:H.nodes])
-  HS.Z2dict("short")
-  HS.zdict2newick(HS.tree, weighted=F, on=T)
-  plot_h.plot_newick_R(HS.newick, weighted=F, on=T)
-  HS.zdict2newick(HS.tree, weighted=T, on=T)
-  plot_h.plot_newick_R(HS.newick, weighted=T, on=T)
-  plot_h.plot_measurements_Entropy(on=T)
-  plot_h.plot_measurements_D(on=T)
-  plot_h.plot_measurements_mu(on=T)
-  plot_h.plot_measurements_X(on=T)
+  # HS = Hierarchical_Entropy(H.Z, H.nodes, H.colregion.labels[:H.nodes])
+  # HS.Z2dict("short")
+  # HS.zdict2newick(HS.tree, weighted=F, on=T)
+  # plot_h.plot_newick_R(HS.newick, weighted=F, on=T)
+  # HS.zdict2newick(HS.tree, weighted=T, on=T)
+  # plot_h.plot_newick_R(HS.newick, weighted=T, on=T)
+  # plot_h.plot_measurements_Entropy(on=T)
+  # plot_h.plot_measurements_D(on=T)
+  # plot_h.plot_measurements_S(on=T)
+  # plot_h.plot_measurements_X(on=T)
   plot_n = Plot_N(NET, H)
-  plot_n.A_vs_dis(np.log(1 + NET.C), s=5, on=F, reg=T)
-  plot_n.projection_probability(
-    NET.CC, "EXPMLE" , bins=12, on=T
-  )
-  plot_n.histogram_dist(on=F)
-  plot_n.plot_akis(NET.D, s=5, on=T)
+  # plot_n.A_vs_dis(np.log(1 + NET.C), s=5, on=F, reg=T)
+  # plot_n.projection_probability(
+  #   NET.CC, "EXPMLE" , bins=12, on=T
+  # )
+  # plot_n.histogram_dist(on=F)
+  # plot_n.plot_akis(NET.D, s=5, on=T)
   ial = 0
-  for score in opt_score:
+  for SCORE in opt_score:
     # Get best K and R ----
-    K, R = get_best_kr_equivalence(score, H)
+    K, R = get_best_kr_equivalence(SCORE, H)
     for k, r in zip(K, R):
-      if score == "_maxmu":
-        SCORE = f"{score}_{NET.Alpha[ial]}"
-        ial += 1
-      else: SCORE = score
-      print(f"Find node partition using {score}")
+      print(f"Find node partition using {SCORE}")
       H.set_kr(k, r, score=SCORE)
       print("Best K: {}\nBest R: {}\t Score: {}".format(k, r, SCORE))
       rlabels = get_labels_from_Z(H.Z, r)
       # Overlap ----
-      NET.overlap, NET.data_nocs = H.get_ocn_discovery_2(k, rlabels)
+      NET.overlap, NET.data_nocs = H.discovery_2(k, rlabels, rho=1.1, sig=0.5)
       H.set_overlap_labels(NET.overlap, SCORE)
       print(NET.overlap)
       print("\n\tAreas with predicted overlapping communities:\n",  NET.data_nocs, "\n")
       cover = omega_index_format(rlabels,  NET.data_nocs, NET.struct_labels[:NET.nodes])
       H.set_cover(cover, SCORE)
       # Plot H ----
-      plot_h.core_dendrogram([r], on=T) #
-      plot_h.lcmap_pure([k], labels = rlabels, on=T)
-      plot_h.heatmap_pure(r, np.log10(1+NET.C), on=T, labels = rlabels, score='LN') #
-      plot_h.heatmap_dendro(r, np.log10(1+NET.C), on=T, score="LN")
-      plot_h.lcmap_dendro(k, r, on=T) #
+      plot_n.plot_network_covers(
+        k, np.log(1 + NET.C[:__nodes__, :]), rlabels,
+        NET.data_nocs, H.colregion.labels[:H.nodes],
+        score=SCORE, cmap_name="husl", on=T
+      )
+      # plot_h.core_dendrogram([r], on=T) #
+      # plot_h.lcmap_pure([k], labels = rlabels, on=T)
+      # plot_h.heatmap_pure(r, np.log10(1+NET.C), on=T, labels = rlabels, score='LN') #
+      # plot_h.heatmap_dendro(r, np.log10(1+NET.C), on=T, score="LN")
+      # plot_h.lcmap_dendro(k, r, on=T) #
       plot_h.flatmap_dendro(
         NET, [k], [r], on=T, EC=T #
       )

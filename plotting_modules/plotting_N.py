@@ -16,6 +16,7 @@ class Plot_N:
     self.path = NET.plot_path
     # from Hierarchy ----
     self.nodes = H.nodes
+    self.edges = H.leaves
     self.linkage = H.linkage
     self.A = H.A
     self.dA = H.dA
@@ -23,6 +24,7 @@ class Plot_N:
     self.BH = H.BH
     self.R = H.R
     self.index = H.index
+    self.H = H.H
     # Data transformed ----
     self.aik = H.source_sim_matrix
     self.aki = H.target_sim_matrix
@@ -584,6 +586,81 @@ class Plot_N:
       plt.savefig(
         os.path.join(
           plot_path, f"kk{score}.png"
+        ),
+        dpi=300
+      )
+  
+  def plot_network_covers(self, k, R, partition, nocs : dict, labels, ang=0, score="", cmap_name="hls", on=True):
+    if on:
+      print("Printing network space")
+      from scipy.cluster import hierarchy
+      # from matplotlib.colors import to_hex
+      # Skim partition ----
+      new_partition = skim_partition(partition)
+      unique_clusters_id = np.unique(new_partition)
+      keff = len(unique_clusters_id)
+      # Generate all the colors in the color map -----
+      save_colors = sns.color_palette(cmap_name, keff - 1)
+      cmap_heatmap = [[]] * keff
+      cmap_heatmap[0] = [199/ 255.0, 0, 57/ 255.0]
+      cmap_heatmap[1:] = save_colors
+      # Assign memberships to nodes ----
+      nodes_memberships = {k : [0] * keff for k in np.arange(len(partition))}
+      for i, id in enumerate(new_partition):
+        if id == -1: continue
+        nodes_memberships[i][id + 1] = 1
+      for i, key in enumerate(nocs.keys()):
+        index_key = np.where(labels == key)[0][0]
+        for id in nocs[key]:
+          if id == -1:
+            nodes_memberships[index_key][0] = 1
+          else: nodes_memberships[index_key][id + 1] = 1
+      # Get edges colors ----
+      dA = self.dA.copy()
+      dA["id"] = hierarchy.cut_tree(self.H, k).reshape(-1)
+      minus_one_Dc(dA)
+      aesthetic_ids(dA)
+      dA = df2adj(dA, var="id")
+      # Generate graph ----
+      G = nx.DiGraph(R)
+      r_min = np.min(R[R>0])
+      r_max = np.max(R)
+      edge_color = [""] * self.edges
+      for i, dat in enumerate(G.edges(data=True)):
+        u, v, a = dat
+        G[u][v]["kk_weight"] = - (a["weight"] - r_min) / (r_max - r_min) + r_max
+        if dA[u, v] == -1: edge_color[i] = cmap_heatmap[0]
+        else: edge_color[i] = "gray"
+      pos = nx.kamada_kawai_layout(G, weight="kk_weight")
+      ang = ang * np.pi/ 180
+      rot = np.array([[np.cos(ang), np.sin(ang)],[-np.sin(ang), np.cos(ang)]])
+      pos = {k : np.matmul(rot, pos[k]) for k in pos.keys()}
+      labs = {k : lab for k, lab in zip(G.nodes, labels)}
+      plt.figure(figsize=(12,12))
+      nx.draw_networkx_edges(G, pos=pos, edge_color=edge_color, alpha=0.2, arrowsize=20, connectionstyle="arc3,rad=-0.1")
+      nx.draw_networkx_labels(G, pos=pos, labels=labs)
+      for node in G.nodes:
+        a = plt.pie(
+          [1 for id in nodes_memberships[node] if id != 0], # s.t. all wedges have equal size
+          center=pos[node], 
+          colors = [cmap_heatmap[i] for i, id in enumerate(nodes_memberships[node]) if id != 0],
+          radius=0.05
+        )
+      array_pos = np.array([list(pos[v]) for v in pos.keys()])
+      plt.xlim(-0.1 + np.min(array_pos, axis=0)[0], np.max(array_pos, axis=0)[0]+0.1)
+      plt.ylim(-0.1 + np.min(array_pos, axis=0)[1], np.max(array_pos, axis=0)[1]+0.1)
+      # Arrange path ----
+      plot_path = os.path.join(
+        self.path, "Network"
+      )
+      # Crate path ----
+      Path(
+        plot_path
+      ).mkdir(exist_ok=True, parents=True)
+      # Save plot ----
+      plt.savefig(
+        os.path.join(
+          plot_path, f"net_cover_{score}.png"
         ),
         dpi=300
       )

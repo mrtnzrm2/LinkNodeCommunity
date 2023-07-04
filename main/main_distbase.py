@@ -33,7 +33,7 @@ topology = "MIX"
 mapping = "R2"
 index  = "jacw"
 imputation_method = ""
-opt_score = ["_maxmu", "_X"]
+opt_score = ["_X", "_S"]
 save_datas = T
 # Declare global variables DISTBASE ----
 __model__ = "EXPMLE"
@@ -109,7 +109,7 @@ if __name__ == "__main__":
       lookup=lookup, alpha=alpha
     )
     ## Compute quality functions ----
-    H.BH_features_parallel()
+    H.BH_features_cpp_no_mu()
     ## Compute link entropy ----
     H.link_entropy_cpp("short", cut=cut)
     ## Compute lq arbre de merde ----
@@ -159,13 +159,13 @@ if __name__ == "__main__":
   )
   plot_n.plot_akis(D, s=5, on=T)
   for score in opt_score:
-    K, R = get_best_kr(score, H)
+    K, R = get_best_kr_equivalence(score, H)
     r = R[K == np.min(K)]
     k = K[K == np.min(K)]
     print("Best K: {}\nBest R: {}\t Score: {}".format(k, r, score))
     rlabels = get_labels_from_Z(H.Z, r)
     # Overlap ----
-    ocn, _ = H.get_ocn_discovery(k, rlabels)
+    ocn, _ = H.discovery_2(k, rlabels, rho=1.1, sig=0.5)
     NET.set_overlap(ocn)
     H.set_overlap_labels(ocn, score)
     plot_h.core_dendrogram([r], on=T)

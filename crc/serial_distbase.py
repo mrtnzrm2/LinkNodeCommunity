@@ -33,7 +33,7 @@ def worker_distbase(
   mode = mode
   alpha = 0.
   imputation_method = ""
-  opt_score = ["_maxmu", "_X"]  
+  opt_score = ["_X", "_S"]  
   # Statistic test ----
   alternative = "less"
   # Declare global variables DISTBASE ----
@@ -127,7 +127,7 @@ def worker_distbase(
       __nodes__, linkage, mode, lookup=lookup, alpha=alpha
     )
     ## Compute features ----
-    RAND_H.BH_features_parallel()
+    RAND_H.BH_features_cpp_no_mu()
     ## Compute link entropy ----
     RAND_H.link_entropy_cpp("short", cut=cut)
     ## Compute lq arbre de merde ----
@@ -158,7 +158,7 @@ def worker_distbase(
         data.set_kr_zero(RAND_H)
         rlabels = get_labels_from_Z(RAND_H.Z, r)
         # Overlap ----
-        ocn, subcover = RAND_H.get_ocn_discovery_2(k, rlabels)
+        ocn, subcover = RAND_H.discovery_2(k, rlabels, rho=1.1, sig=0.5)
         cover = omega_index_format(
           rlabels, subcover, RAND_H.colregion.labels[:RAND_H.nodes]
         )

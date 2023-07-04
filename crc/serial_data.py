@@ -19,8 +19,8 @@ from various.network_tools import *
 cut = [F]
 topologies = ["MIX"]
 bias = [0]
-indices = ["D1_2_2"]
-modes = ["ALPHA", "BETA"]
+indices = ["D1_2_3", "D1_2_2"]
+modes = ["ZERO", "BETA", "gBETA", "ALPHA", "gALPHA"]
 list_of_lists = itertools.product(
   *[cut, modes, topologies, indices, bias]
 )
@@ -36,7 +36,7 @@ nature = "original"
 mapping = "trivial"
 alpha = 0.
 imputation_method = ""
-opt_score = ["_maxmu", "_X"]
+opt_score = ["_X", "_S"]
 version = "57d106"
 __nodes__ = 57
 __inj__ = 57
@@ -47,6 +47,11 @@ if __name__ == "__main__":
     if _cut_ == "True":
       cut = T
     else: cut = F
+    if mode == "ZERO" and index == "D1_2_2": continue
+    if mode == "BETA" and index == "D1_2_3": continue
+    if mode == "gBETA" and index == "D1_2_3": continue
+    if mode == "ALPHA" and index == "D1_2_3": continue
+    if mode == "gALPHA" and index == "D1_2_3": continue
     # Load structure ----
     NET = MAC[f"MAC{__inj__}"](
       linkage, mode,
@@ -74,7 +79,7 @@ if __name__ == "__main__":
       __nodes__, linkage, mode, lookup=lookup, alpha=alpha
     )
     ## Compute features ----
-    H.BH_features_parallel()
+    H.BH_features_cpp_no_mu()
     ## Compute link entropy ----
     H.link_entropy_cpp("short", cut=cut)
     ## Compute lq arbre de merde ----
@@ -93,21 +98,25 @@ if __name__ == "__main__":
     HS.Z2dict("short")
     HS.zdict2newick(HS.tree, weighted=F, on=T)
     HS.zdict2newick(HS.tree, weighted=T, on=T)
+    ial = 0
     for score in opt_score:
-      print(f"Find node partition using {score}")
       # Get best K and R ----
-      K, R = get_best_kr(score, H)
-      r = R[K == np.min(K)][0]
-      k = K[K == np.min(K)][0]
-      H.set_kr(k, r, score=score)
-      print("\n\tBest K: {}\nBest R: {}\n".format(k, r))
-      rlabels = get_labels_from_Z(H.Z, r)
-      # Overlap ----
-      NET.overlap, NET.data_nocs = H.get_ocn_discovery_2(k, rlabels)
-      H.set_overlap_labels(NET.overlap, score)
-      print("\n\tAreas with predicted overlapping communities:\n",  NET.data_nocs, "\n")
-      cover = omega_index_format(rlabels,  NET.data_nocs, NET.struct_labels[:NET.nodes])
-      H.set_cover(cover, score)
+      K, R = get_best_kr_equivalence(score, H)
+      for k, r in zip(K, R):
+        if score == "_maxmu":
+          SCORE = f"{score}_{NET.Alpha[ial]}"
+          ial += 1
+        else: SCORE = score
+        print(f"Find node partition using {SCORE}")
+        H.set_kr(k, r, score=SCORE)
+        print("\n\tBest K: {}\nBest R: {}\n".format(k, r))
+        rlabels = get_labels_from_Z(H.Z, r)
+        # Overlap ----
+        NET.overlap, NET.data_nocs = H.discovery_2(k, rlabels, rho=1.1, sig=0.5)
+        H.set_overlap_labels(NET.overlap, SCORE)
+        print("\n\tAreas with predicted overlapping communities:\n",  NET.data_nocs, "\n")
+        cover = omega_index_format(rlabels,  NET.data_nocs, NET.struct_labels[:NET.nodes])
+        H.set_cover(cover, SCORE)
     save_class(
       H, NET.pickle_path,
       "hanalysis"

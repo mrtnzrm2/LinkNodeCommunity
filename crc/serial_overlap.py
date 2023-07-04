@@ -29,7 +29,7 @@ def worker_overlap(
   linkage = "single"
   __mode__ = mode
   alpha = 0.
-  opt_score = ["_maxmu", "_X", "_D"]
+  opt_score = ["_maxmu", "_X", "_D", "_S"]
   # Overlapping WDN paramters ----
   opar = {
     "-N" : "{}".format(
@@ -80,8 +80,8 @@ def worker_overlap(
       index=index,
       parameters = opar
     )
-    RAND.set_alpha([6, 50, 100])
-    RAND.set_beta([0.1, 0.2, 0.4])
+    RAND.set_alpha([6, 20])
+    # RAND.set_beta([0.1, 0.2, 0.4])
     # Create network ----
     print("Create random graph")
     RAND.random_WDN_overlap_cpp(
@@ -120,13 +120,17 @@ def worker_overlap(
       )
       for score in opt_score:
         # Get best k, r for given score ----
-        K, R = get_best_kr(score, RAND_H)
+        K, R = get_best_kr_equivalence(score, RAND_H)
         for ii, kr in enumerate(zip(K, R)):
           k, r = kr
+          if score == "_maxmu":
+            SCORE = f"{score}_{RAND.Alpha[ii]}"
+          else: SCORE = score
+          print("Score: {}".format(SCORE))
           # Single linkage part ----
           print("Best K: {}\nBest R: {}".format(k, r))
           rlabels = get_labels_from_Z(RAND_H.Z, r)
-          nocs, noc_covers = RAND_H.get_ocn_discovery(k, rlabels)
+          nocs, noc_covers = RAND_H.discovery_2(k, rlabels, rho=0.9, sig=0.5)
           sen, sep = RAND.overlap_score_discovery(
             k, nocs, RAND_H.colregion.labels[:RAND_H.nodes], on=T
           )
@@ -134,22 +138,13 @@ def worker_overlap(
             rlabels, noc_covers, RAND_H.colregion.labels[:RAND_H.nodes], on=T
           )
           # NMI between ground-truth and pred labels ----
-          if score == "_maxmu":
-            data.set_nmi_nc_overlap(
-              RAND.labels, rlabels, RAND.overlap, noc_covers, omega,
-              score = score+f"_{RAND.Alpha[ii]}"
-            )
-            data.set_overlap_scores(
-              omega, sen, sep, score = score+f"_{RAND.Alpha[ii]}"
-            )
-          else:
-            data.set_nmi_nc_overlap(
-              RAND.labels, rlabels, RAND.overlap, noc_covers, omega,
-              score = score
-            )
-            data.set_overlap_scores(
-              omega, sen, sep, score = score
-            )
+          data.set_nmi_nc_overlap(
+            RAND.labels, rlabels, RAND.overlap, noc_covers, omega,
+            score = SCORE
+          )
+          data.set_overlap_scores(
+            omega, sen, sep, score = SCORE
+          )
     i += 1
   # Save ----
   if isinstance(RAND_H, Hierarchy):

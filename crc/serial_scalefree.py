@@ -28,7 +28,7 @@ def worker_scalefree(
   linkage = "single"
   __mode__ =  mode
   alpha = 0.
-  opt_score = ["_maxmu", "_X", "_D"]
+  opt_score = ["_maxmu", "_X", "_D", "_S"]
   # WDN paramters ----
   par = {
     "-N" : f"{__nodes__}",
@@ -75,8 +75,8 @@ def worker_scalefree(
       index=index,
       parameters = par
     )
-    RAND.set_alpha([6, 50, 100])
-    RAND.set_beta([0.1, 0.2, 0.4])
+    RAND.set_alpha([6, 20, 50])
+    # RAND.set_beta([0.1, 0.2, 0.4])
     # Create network ----
     print("Create random graph")
     RAND.random_WDN_cpp(run=run, on_save_pickle=F)     #*****
@@ -109,19 +109,20 @@ def worker_scalefree(
     for score in opt_score:
       print("Score: {}".format(score))
       # Get best k, r for given score ----
-      K, R = get_best_kr(score, RAND_H)
+      K, R = get_best_kr_equivalence(score, RAND_H)
       for ii, kr in enumerate(zip(K, R)):
         k, r = kr
+        if score == "_maxmu":
+          SCORE = f"{score}_{RAND.Alpha[ii]}"
+        else: SCORE = score
+        print("Score: {}".format(SCORE))
         # Single linkage part ----
         print("Best K: {}\nBest R: {}".format(k, r))
         rlabels = get_labels_from_Z(RAND_H.Z, r)
         if np.nan in rlabels:
           print("*** BAD dendrogram")
           break
-        if score == "_maxmu":
-          data.set_nmi_nc(RAND.labels, rlabels, score = score+f"_{RAND.Alpha[ii]}")
-        else:
-          data.set_nmi_nc(RAND.labels, rlabels, score = score)
+        data.set_nmi_nc(RAND.labels, rlabels, score = SCORE)
     if np.sum(np.isnan(rlabels)) == 0: i += 1
   # Save ----
   if isinstance(RAND_H, Hierarchy):

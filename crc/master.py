@@ -26,8 +26,8 @@ cut = [F]
 topology = ["MIX"]
 bias = [0]
 bins = [12]
-mode = ["ZERO"]
-indices = ["D1_2_3"]
+mode = ["ZERO", "BETA", "ALPHA"]
+indices = ["D1_2_2", "D1_2_3"]
 list_of_lists = itertools.product(
   *[distbases, cut, topology, indices, bias, bins, mode]
 )
@@ -44,18 +44,26 @@ array_distbase = pd.DataFrame(
     "mode" : list_of_lists[:, 6].astype(str)
   }
 )
+array_distbase = array_distbase.loc[
+  ~((array_distbase["mode"] == "ZERO" ) & (array_distbase["index"] == "D1_2_2")) &
+  ~((array_distbase["mode"] == "BETA" ) & (array_distbase["index"] == "D1_2_3")) &
+  ~((array_distbase["mode"] == "gBETA" ) & (array_distbase["index"] == "D1_2_3")) &
+  ~((array_distbase["mode"] == "ALPHA" ) & (array_distbase["index"] == "D1_2_3")) &
+  ~((array_distbase["mode"] == "gALPHA" ) & (array_distbase["index"] == "D1_2_3"))
+]
+
 ## scalefree -----------------
 worker = ["scalefree"]
 cut = [F]
-number_of_nodes = [1000]
-topology = ["SOURCE"]
-indices = ["bsim_2", "D1_2_3"]
-mode = ["ZERO"]
-kav = [10]
-mut = [0.1, 0.3, 0.5]
+number_of_nodes = [100, 150]
+topology = ["MIX"]
+indices = ["D1_2_3", "D1_2_2"]
+mode = ["ZERO", "ALPHA", "BETA", "gALPHA", "gBETA"]
+kav = [7]
+mut = [0.1, 0.3]
 muw = [0.01]
-nmin = [10, 50]
-nmax = [20, 100]
+nmin = [5]
+nmax = [25]
 list_of_lists = itertools.product(
   *[cut, mode, topology, indices, kav, mut, muw, number_of_nodes, nmin, nmax]
 )
@@ -75,23 +83,29 @@ array_scalefree = pd.DataFrame(
     "nmax" : list_of_lists[:, 9].astype(int)
   }
 )
+
 array_scalefree = array_scalefree.loc[
-  (array_scalefree.nmax > array_scalefree.nmin)
+  (array_scalefree.nmax > array_scalefree.nmin) &
+  ~((array_scalefree["mode"] == "ZERO" ) & (array_scalefree["index"] == "D1_2_2")) &
+  ~((array_scalefree["mode"] == "BETA" ) & (array_scalefree["index"] == "D1_2_3")) &
+  ~((array_scalefree["mode"] == "gBETA" ) & (array_scalefree["index"] == "D1_2_3")) &
+  ~((array_scalefree["mode"] == "ALPHA" ) & (array_scalefree["index"] == "D1_2_3")) &
+  ~((array_scalefree["mode"] == "gALPHA" ) & (array_scalefree["index"] == "D1_2_3"))
 ]
 ## overlap -----------------
 worker = ["overlap"]
 cut = [F]
-number_of_nodes = [1000]
-topology = ["SOURCE"]
-indices = ["D1_2_3"]
-mode = ["ZERO"]
-kav = [10]
-mut = [0.1, 0.3, 0.5]
+number_of_nodes = [100, 150]
+topology = ["MIX"]
+indices = ["D1_2_2", "D1_2_3"]
+mode = ["ZERO", "BETA", "gBETA", "ALPHA", "gALPHA"]
+kav = [7]
+mut = [0.1, 0.3]
 muw = [0.01]
 on = [0.1, 0.3]
-om = [2, 5, 8]
-nmin = [10, 50]
-nmax = [20, 100]
+om = [2, 3]
+nmin = [5]
+nmax = [25]
 list_of_lists = itertools.product(
   *[cut, mode, topology, indices, kav, mut, muw, on, om, number_of_nodes, nmin, nmax]
 )
@@ -115,15 +129,21 @@ array_overlap = pd.DataFrame(
 )
 ## Overlapping condition -----------------
 array_overlap = array_overlap.loc[
-  (array_overlap.nmax > array_overlap.nmin)
+  (array_overlap.nmax > array_overlap.nmin) &
+  ~((array_overlap["mode"] == "ZERO" ) & (array_overlap["index"] == "D1_2_2")) &
+  ~((array_overlap["mode"] == "BETA" ) & (array_overlap["index"] == "D1_2_3")) &
+  ~((array_overlap["mode"] == "gBETA" ) & (array_overlap["index"] == "D1_2_3")) &
+  ~((array_overlap["mode"] == "ALPHA" ) & (array_overlap["index"] == "D1_2_3")) &
+  ~((array_overlap["mode"] == "gALPHA" ) & (array_overlap["index"] == "D1_2_3"))
 ]
+
 ## swaps -----------------
 worker = ["swaps"]
 cut = [F]
 topology = ["MIX"]
 bias = [0]
-mode = ["ZERO"]
-indices = ["D1_2_3"]
+mode = ["ZERO", "BETA", "ALPHA"]
+indices = ["D1_2_3", "D1_2_2"]
 list_of_lists = itertools.product(
   *[cut, topology, indices, bias, mode]
 )
@@ -138,11 +158,19 @@ array_swaps = pd.DataFrame(
     "mode" : list_of_lists[:, 4].astype(str)
   }
 )
+array_swaps = array_swaps.loc[
+  ~((array_swaps["mode"] == "ZERO" ) & (array_swaps["index"] == "D1_2_2")) &
+  ~((array_swaps["mode"] == "BETA" ) & (array_swaps["index"] == "D1_2_3")) &
+  ~((array_swaps["mode"] == "gBETA" ) & (array_swaps["index"] == "D1_2_3")) &
+  ~((array_swaps["mode"] == "ALPHA" ) & (array_swaps["index"] == "D1_2_3")) &
+  ~((array_swaps["mode"] == "gALPHA" ) & (array_swaps["index"] == "D1_2_3"))
+]
+
 ## ER -----------------
 worker = ["ER"]
 topology = ["MIX"]
-index = ["jacp"]
-number_of_nodes = [100, 200]
+index = ["D1_2_3"]
+number_of_nodes = [100, 150]
 Rho = [0.2, 0.6]
 list_of_lists = itertools.product(*[topology, index, number_of_nodes, Rho])
 list_of_lists = np.array(list(list_of_lists))
@@ -158,7 +186,7 @@ array_ER = pd.DataFrame(
 ## HRG -----------------
 worker = ["HRG"]
 topology = ["MIX"]
-index = ["D1_2_3", "bsim_2"]
+index = ["D1_2_3"]
 list_of_lists = itertools.product(*[topology, index])
 list_of_lists = np.array(list(list_of_lists))
 array_HRG = pd.DataFrame(
@@ -238,7 +266,7 @@ def NoGodsNoMaster(number_of_iterations, network, t):
     lookup = F
     prob = F
     run = T
-    maxk = 50
+    maxk = 20
     beta = 3
     t1 = 2
     t2 = 1
@@ -257,7 +285,7 @@ def NoGodsNoMaster(number_of_iterations, network, t):
     lookup = F
     prob = F
     run = T
-    maxk = 50
+    maxk = 20
     beta = 3
     t1 = 2
     t2 = 1
@@ -335,11 +363,12 @@ def NoGodsNoMaster(number_of_iterations, network, t):
 
 if __name__ == "__main__":
   number_of_iterations = int(sys.argv[1])
-  t = int(sys.argv[2])
-  network = sys.argv[3]
+  # t = int(sys.argv[2])
+  network = sys.argv[2]
   ###
   print(DARRAY[network].shape)
   from collections import Counter
   print(Counter(DARRAY[network].worker))
-  print(DARRAY[network].iloc[t - 1])
-  NoGodsNoMaster(number_of_iterations, network, t)
+  for t in np.arange(1, 4):
+    print(DARRAY[network].iloc[t - 1])
+    NoGodsNoMaster(number_of_iterations, network, t)

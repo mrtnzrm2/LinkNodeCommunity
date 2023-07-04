@@ -22,7 +22,7 @@ list_of_lists = itertools.product(
 )
 list_of_lists = np.array(list(list_of_lists))
 # Declare global variables NET ----
-MAXI = 10
+MAXI = 500
 linkage = "single"
 nlog10 = T
 lookup = F

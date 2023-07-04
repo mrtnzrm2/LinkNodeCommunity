@@ -26,7 +26,7 @@ mode = "BETA"
 topology = "MIX"
 mapping = "trivial"
 index  = "D1_2_2"
-opt_score = ["_maxmu", "_X"]
+opt_score = ["_X", "_S"]
 save_data = T
 # Start main ----
 if __name__ == "__main__":
@@ -56,7 +56,7 @@ if __name__ == "__main__":
       NET.nodes, linkage, mode, lookup=lookup
     )
     ## Compute features ----
-    H.BH_features_parallel()
+    H.BH_features_cpp_no_mu()
     ## Compute link entropy ----
     H.link_entropy_cpp("short", cut=cut)
     ## Compute lq arbre de merde ----
@@ -102,31 +102,31 @@ if __name__ == "__main__":
   plot_n.histogram_weight(logC, on=T, label="logGC")
   plot_n.histogram_dist(on=F)
   plot_n.plot_akis(NET.D, s=1, on=T)
-  # for score in opt_score:
-  #   print(f"Find node partition using {score}")
-  #   # Get best K and R ----
-  #   K, R = get_best_kr(score, H)
-  #   r = R[K == np.min(K)][0]
-  #   k = K[K == np.min(K)][0]
-  #   H.set_kr(k, r, score=score)
-  #   print("Best K: {}\nBest R: {}\t Score: {}".format(k, r, score))
-  #   rlabels = get_labels_from_Z(H.Z, r)
-  #   # Overlap ----
-  #   NET.overlap, NET.data_nocs = H.get_ocn_discovery(k, rlabels)
-  #   H.set_overlap_labels(NET.overlap, score)
-  #   print(NET.overlap)
-  #   print("\n\tAreas with predicted overlapping communities:\n",  NET.data_nocs, "\n")
-  #   cover = omega_index_format(rlabels,  NET.data_nocs, NET.struct_labels[:NET.nodes])
-  #   H.set_cover(cover, score)
-  #   # Plot H ----
-  #   plot_h.core_dendrogram([r], on=T) #
-  #   plot_h.lcmap_pure([k], labels = rlabels, on=F)
-  #   plot_h.heatmap_pure(r, C, on=T, labels = rlabels) #
-  #   plot_h.heatmap_dendro(r, C, on=T)
-  #   plot_h.lcmap_dendro(k, r, on=T) #
-  #   plot_h.flatmap_dendro(
-  #     NET, [k], [r], on=T, EC=T #
-  #   )
+  for score in opt_score:
+    print(f"Find node partition using {score}")
+    # Get best K and R ----
+    K, R = get_best_kr_equivalence(score, H)
+    r = R[K == np.min(K)][0]
+    k = K[K == np.min(K)][0]
+    H.set_kr(k, r, score=score)
+    print("Best K: {}\nBest R: {}\t Score: {}".format(k, r, score))
+    rlabels = get_labels_from_Z(H.Z, r)
+    # Overlap ----
+    NET.overlap, NET.data_nocs = H.discovery_2(k, rlabels, rho=1.2, sig=0.8, fun=np.log)
+    H.set_overlap_labels(NET.overlap, score)
+    print(NET.overlap)
+    print("\n\tAreas with predicted overlapping communities:\n",  NET.data_nocs, "\n")
+    cover = omega_index_format(rlabels,  NET.data_nocs, NET.struct_labels[:NET.nodes])
+    H.set_cover(cover, score)
+    # Plot H ----
+    plot_h.core_dendrogram([r], on=T) #
+    plot_h.lcmap_pure([k], labels = rlabels, on=F)
+    plot_h.heatmap_pure(r, C, on=T, labels = rlabels) #
+    plot_h.heatmap_dendro(r, C, on=T)
+    plot_h.lcmap_dendro(k, r, on=T) #
+    plot_h.flatmap_dendro(
+      NET, [k], [r], on=T, EC=T #
+    )
   save_class(
     H, NET.pickle_path,
     "hanalysis"

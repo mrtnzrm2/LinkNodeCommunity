@@ -109,6 +109,10 @@ def get_best_kr_equivalence(score, H):
     k = get_k_from_X(
       get_H_from_BH(H), order=0
     )
+  elif score == "_S":
+    k = get_k_from_S(
+      get_H_from_BH(H)
+    )
   else: raise ValueError(f"Unexpected score: {score}")
   r = get_r_from_equivalence(k, H)
   # print(k)
@@ -218,7 +222,10 @@ def reverse_partition(Cr, labels):
 def nocs2parition(partition: dict, nocs: dict):
   for noc in nocs.keys():
     for cover in nocs[noc]:
-      if cover == -1: continue
+      if cover == -1: 
+        if cover not in partition.keys():
+          partition[cover] = [str(noc)]
+        else: partition[cover].append(str(noc))
       if cover not in partition.keys(): continue
       if str(noc) not in partition[cover]: partition[cover].append(str(noc))
 
@@ -319,7 +326,16 @@ def get_k_from_D(H):
   if (len(r) > 1):
     print("warning: more than one k")
     r = r.iloc[0]
-  return r
+  return int(r)
+
+def get_k_from_S(H):
+  r = H["K"].loc[
+    H["S"] == np.nanmax(H["S"])
+  ]
+  if (len(r) > 1):
+    print("warning: more than one k")
+    r = r.iloc[0]
+  return int(r)
 
 def get_r_from_avmu(H):
   avH = H.groupby(["K"]).mean()

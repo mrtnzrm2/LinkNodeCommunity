@@ -61,7 +61,7 @@ def worker_ER(
       N, linkage, mode
     )
     ## Compute features ----
-    H.BH_features_parallel()
+    H.BH_features_cpp_no_mu()
     ## Compute link entropy ----
     H.link_entropy_cpp("short", cut=cut)
     ## Compute lq arbre de merde ----
