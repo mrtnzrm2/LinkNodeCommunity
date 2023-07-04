@@ -121,8 +121,8 @@ if __name__ == "__main__":
     # Plot H ----
     plot_h.core_dendrogram([r], on=T) #
     plot_h.lcmap_pure([k], labels = rlabels, on=F)
-    plot_h.heatmap_pure(r, C, on=T, labels = rlabels) #
-    plot_h.heatmap_dendro(r, C, on=T)
+    plot_h.heatmap_pure(r, np.log(NET.C), on=T, labels = rlabels) #
+    plot_h.heatmap_dendro(r, np.log(NET.C), on=T)
     plot_h.lcmap_dendro(k, r, on=T) #
     plot_h.flatmap_dendro(
       NET, [k], [r], on=T, EC=T #
