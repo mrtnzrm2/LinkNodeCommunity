@@ -123,6 +123,7 @@ if __name__ == "__main__":
     ]
     # Add labels ----
     H.set_colregion(L)
+    H.delete_dist_matrix()
     save_class(
       H, NET.pickle_path,
       "hanalysis",
@@ -165,7 +166,7 @@ if __name__ == "__main__":
     print("Best K: {}\nBest R: {}\t Score: {}".format(k, r, score))
     rlabels = get_labels_from_Z(H.Z, r)
     # Overlap ----
-    ocn, _ = H.discovery_2(k, rlabels, rho=1.1, sig=0.5)
+    ocn, _ = H.discovery_3(k, rlabels)
     NET.set_overlap(ocn)
     H.set_overlap_labels(ocn, score)
     plot_h.core_dendrogram([r], on=T)

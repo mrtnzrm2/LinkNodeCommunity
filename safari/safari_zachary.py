@@ -33,11 +33,11 @@ nlog10 = F
 lookup = F
 prob = F
 cut = F
-mode = "BETA"
+mode = "ZERO"
 topology = "MIX"
 mapping="trivial"
-index = "jacp"
-opt_score = ["_maxmu", "_X", "_D"]
+index = "D1_2_4"
+opt_score = ["_S", "_D"]
 
 properties = {
   "structure" : "Zachary",
@@ -53,66 +53,65 @@ properties = {
 
 NET = TOY(A, linkage, **properties)
 NET.set_labels(np.arange(nodes))
-NET.set_alpha([10, 20])
-NET.set_beta([0.3, 0.4])
 H = Hierarchy(
   NET, A, A, np.zeros((34, 34)),
   nodes, linkage, mode,
-  lookup=lookup
+  lookup=lookup, undirected=T
 )
-
 # # Compute quality functions ----
-H.BH_features_cpp()
+H.BH_features_cpp_no_mu()
 ## Compute link entropy ----
 H.link_entropy_cpp("short", cut=cut)
 ## Compute la arbre de merde ----
 H.la_abre_a_merde_cpp(H.BH[0])
+## Compute node entropy ----
+H.node_entropy_cpp("short", cut=cut)
 # Set labels to network ----
 L = colregion(NET, labels=NET.labels)
 L.get_regions()
 H.set_colregion(L)
-HS = Hierarchical_Entropy(H.Z, H.nodes, list(range(H.nodes)))
+HS = Hierarchical_Entropy(H.Z, H.nodes, H.colregion.labels)
 HS.Z2dict("short")
-node_entropy = HS.S(HS.tree)
-node_entropy_H = HS.S_height(HS.tree)
 H.entropy = [
-  node_entropy, node_entropy_H,
+  H.node_entropy, H.node_entropy_H,
   H.link_entropy, H.link_entropy_H
 ]
-
-# Plot H ----
+# Picasso ----
 plot_h = Plot_H(NET, H)
-HS.zdict2newick(HS.tree, weighted=F, on=T)
-plot_h.plot_newick_R(HS.newick, weighted=F, on=T)
-plot_h.plot_measurements_Entropy(on=T)
-plot_h.plot_measurements_D(on=T)
-plot_h.plot_measurements_mu(on=T)
-plot_h.plot_measurements_X(on=T)
-# Plot N ----
 plot_n = Plot_N(NET, H)
-plot_n.histogram_weight(H.source_sim_matrix, on=T, label="SS")
-plot_n.histogram_weight(H.target_sim_matrix, on=T, label="TS")
+# Plot H ----
+# HS.zdict2newick(HS.tree, weighted=F, on=T)
+# plot_h.plot_newick_R(HS.newick, weighted=F, on=T)
+# plot_h.plot_measurements_Entropy(on=T)
+# plot_h.plot_measurements_D(on=T)
+# plot_h.plot_measurements_S(on=T)
+# plot_h.plot_measurements_SD(on=T)
+# plot_h.plot_measurements_X(on=T)
+# # # # # Plot N ----
+# plot_n.histogram_weight(H.source_sim_matrix, on=T, label="SS")
+# plot_n.histogram_weight(H.target_sim_matrix, on=T, label="TS")
 for score in opt_score:
     print(f"Find node partition using {score}")
     # Get best K and R ----
-    K, R = get_best_kr(score, H)
+    # K, R = get_best_kr(score, H, undirected=T, mapping="modularity")
+    K, R = get_best_kr_equivalence(score, H)
     r = R[K == np.min(K)][0]
     k = K[K == np.min(K)][0]
     H.set_kr(k, r, score=score)
     print("Best K: {}\nBest R: {}\t Score: {}".format(k, r, score))
     rlabels = get_labels_from_Z(H.Z, r)
     # Overlap ----
-    NET.overlap, NET.data_nocs = H.get_ocn_discovery(k, rlabels)
+    NET.overlap, NET.data_nocs = H.discovery_3(k, rlabels, undirected=T)
     H.set_overlap_labels(NET.overlap, score)
     print("\n\tAreas with predicted overlapping communities:\n",  NET.data_nocs, "\n")
     cover = omega_index_format(rlabels,  NET.data_nocs, NET.struct_labels[:NET.nodes])
     H.set_cover(cover, score)
     # Plot H ----
-    plot_h.core_dendrogram([r], on=T) #
-    plot_h.lcmap_pure([k], labels = rlabels, on=F)
-    plot_h.heatmap_pure(r, on=T, labels = rlabels) #
-    plot_h.heatmap_dendro(r, on=T)
-    plot_h.lcmap_dendro(k, r, on=T) #
-    plot_n.plot_network_kk(H, rlabels, ang=80, score=score, on=T)
-
+    # plot_h.core_dendrogram([r], on=T) #
+    # plot_h.heatmap_dendro(r, NET.A, on=T)
+    # plot_h.lcmap_dendro(k, r, undirected=T, on=T) #
+    plot_n.plot_network_kk(
+      H, rlabels, NET.data_nocs, H.colregion.labels,
+      ang=80, score=score, undirected=T, on=T
+    )
 

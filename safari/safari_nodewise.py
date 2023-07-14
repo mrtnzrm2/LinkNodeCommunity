@@ -28,7 +28,7 @@ nature = "original"
 imputation_method = ""
 topology = "MIX"
 mapping = "trivial"
-index  = "dist_sim"
+index  = "D1_2_4"
 bias = 0.
 alpha = 0.
 opt_score = ["_S", "_X", "_SD"]
@@ -69,14 +69,15 @@ if __name__ == "__main__":
     ## Hierarchy object!! ----
     H = Hierarchy(
       NET, NET.C, R, NET.D,
-      __nodes__, linkage, mode, lookup=lookup
+      __nodes__, linkage, mode, lookup=lookup, alpha=alpha
     )
-    ## Compute features ----
-    H.BH_features_cpp_no_mu()
+    H.delete_linksim_matrix()
+    ## Compute lq arbre de merde ----
+    H.la_abre_a_merde_cpp_no_feat()
+    ## Compute features nodewise ----
+    H.BH_features_cpp_nodewise()
     ## Compute link entropy ----
     H.link_entropy_cpp("short", cut=cut)
-    ## Compute lq arbre de merde ----
-    H.la_abre_a_merde_cpp(H.BH[0])
     ## Compute node entropy ----
     H.node_entropy_cpp("short", cut=cut)
     ## Update entropy ----
@@ -101,24 +102,24 @@ if __name__ == "__main__":
     )
   # # Picasso ----
   plot_h = Plot_H(NET, H)
+  HS = Hierarchical_Entropy(H.Z, H.nodes, H.colregion.labels[:H.nodes])
+  HS.Z2dict("short")
+  HS.zdict2newick(HS.tree, weighted=F, on=T)
+  plot_h.plot_newick_R(HS.newick, weighted=F, on=T)
+  HS.zdict2newick(HS.tree, weighted=T, on=T)
+  plot_h.plot_newick_R(HS.newick, weighted=T, on=T)
+  plot_h.plot_measurements_Entropy(on=T)
+  plot_h.plot_measurements_D(on=T)
+  plot_h.plot_measurements_S(on=T)
+  plot_h.plot_measurements_SD(on=T)
+  plot_h.plot_measurements_X(on=T)
   plot_n = Plot_N(NET, H)
-  # HS = Hierarchical_Entropy(H.Z, H.nodes, H.colregion.labels[:H.nodes])
-  # HS.Z2dict("short")
-  # HS.zdict2newick(HS.tree, weighted=F, on=T)
-  # plot_h.plot_newick_R(HS.newick, weighted=F, on=T)
-  # HS.zdict2newick(HS.tree, weighted=T, on=T)
-  # plot_h.plot_newick_R(HS.newick, weighted=T, on=T)
-  # plot_h.plot_measurements_Entropy(on=T)
-  # plot_h.plot_measurements_D(on=T)
-  # plot_h.plot_measurements_S(on=T)
-  # plot_h.plot_measurements_SD(on=T)
-  # plot_h.plot_measurements_X(on=T)
-  # plot_n.A_vs_dis(np.log(1 + NET.C), s=5, on=F, reg=T)
-  # plot_n.projection_probability(
-  #   NET.CC, "EXPMLE" , bins=12, on=T
-  # )
-  # plot_n.histogram_dist(on=F)
-  # plot_n.plot_akis(NET.D, s=5, on=T)
+  plot_n.A_vs_dis(np.log(1 + NET.C), s=5, on=F, reg=T)
+  plot_n.projection_probability(
+    NET.CC, "EXPMLE" , bins=12, on=T
+  )
+  plot_n.histogram_dist(on=F)
+  plot_n.plot_akis(NET.D, s=5, on=T)
   for SCORE in opt_score:
     # Get best K and R ----
     K, R = get_best_kr_equivalence(SCORE, H)
@@ -141,17 +142,17 @@ if __name__ == "__main__":
         score=SCORE, cmap_name="husl", on=T
       )
       # Plot H ----
-      # plot_h.core_dendrogram([r], on=T) #
-      # plot_h.lcmap_pure([k], labels = rlabels, on=T)
-      # plot_h.heatmap_pure(r, np.log10(1+NET.C), on=T, labels = rlabels, score='LN') #
-      # plot_h.heatmap_dendro(r, np.log(NET.A), on=T, score="FLN", font_size=15)
-      # plot_h.lcmap_dendro(k, r, on=T, font_size = 15) #
-      # plot_h.flatmap_dendro(
-      #   NET, [k], [r], on=T, EC=T #
-      # )
+      plot_h.core_dendrogram([r], on=T) #
+      plot_h.lcmap_pure([k], labels = rlabels, on=T)
+      plot_h.heatmap_pure(r, np.log10(1+NET.C), on=T, labels = rlabels, score='LN') #
+      plot_h.heatmap_dendro(r, np.log10(1+NET.C), on=T, score="LN")
+      plot_h.lcmap_dendro(k, r, on=T) #
+      plot_h.flatmap_dendro(
+        NET, [k], [r], on=T, EC=T #
+      )
   save_class(
     H, NET.pickle_path,
-    "hanalysis", on=T
+    "hanalysis"
   )
   print("End!")
   # #@@ Todo:

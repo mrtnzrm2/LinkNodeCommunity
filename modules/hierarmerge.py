@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 #  Personal libs ----
 from various.network_tools import *
-from modules.colregion import colregion
+import copy
 from modules.simanalysis import Sim
 from process_hclust import ph
 from la_arbre_a_merde import noeud_arbre
@@ -11,13 +11,13 @@ from h_entropy import h_entropy as HE
 
 class Hierarchy(Sim):
   def __init__(
-    self, G, A, R, D, nodes, linkage, mode, lookup=0, alpha=1/2
+    self, G, A, R, D, nodes, linkage, mode, lookup=0, alpha=0, undirected=False
   ):
     # Initialize Sim ---
     super().__init__(
       nodes, A, R, D, mode,
       topology=G.topology, index=G.index,
-      lookup=lookup, alpha=alpha
+      lookup=lookup, alpha=alpha, undirected=undirected
     )
     # Set parameters
     self.linkage = linkage
@@ -41,12 +41,26 @@ class Hierarchy(Sim):
     # self.dist_mat[np.isnan(self.dist_mat)] = np.nanmax(self.dist_mat) + 1
     # Compute hierarchy ----
     self.H = self.get_hierarchy()
+    self.delete_linksim_matrix()
     # Network to edgelist of EC ----
-    self.dA = adj2df(
-      self.A.copy()[:self.nodes, :]
-    )
-    ## Take out zeros ----
-    self.dA = self.dA.loc[self.dA.weight != 0]
+    non_x, non_y = np.where(self.nonzero[:self.nodes, :self.nodes])
+    if not undirected:
+       self.dA = pd.DataFrame(
+        {
+          "source" : list(non_x),
+          "target" : list(non_y),
+          "weight" : list(R[non_x, non_y])
+        }
+      )
+    else:
+      self.dA = pd.DataFrame(
+        {
+          "source" : list(non_x) + list(non_y),
+          "target" : list(non_y) + list(non_x),
+          "weight" : list(R[non_x, non_y]) * 2
+        }
+      )
+      
     ## Stats ----
     self.stat_cor()
     # Overlaps ----
@@ -57,6 +71,12 @@ class Hierarchy(Sim):
     self.kr = pd.DataFrame()
     # Entropy ----
     self.entropy = []
+
+  def delete_linksim_matrix(self):
+    self.linksim_matrix = 0
+    
+  def delete_dist_matrix(self):
+    self.dist_mat = 0
 
   def set_kr(self, k, r, score=""):
     self.kr = pd.concat(
@@ -73,13 +93,9 @@ class Hierarchy(Sim):
     )
 
   def get_hierarchy(self):
+    print("Compute link hierarchical agglomeration ----")
     from scipy.cluster.hierarchy import linkage
-    return linkage(
-      condense_madtrix(
-        self.dist_mat
-      ),
-      self.linkage
-    )
+    return linkage(self.dist_mat, self.linkage)
 
   def area(self, x, y):
     x_1 = x[1:]
@@ -94,37 +110,36 @@ class Hierarchy(Sim):
   
   def H_features_cpp(self, linkage, alpha, beta, cut=False):
     # Get network dataframe ----
-    dA =  self.dA.copy()
     # Run process_hclust_fast.cpp ----
     features = ph(
       self.leaves,
       self.dist_mat,
-      dA["source"].to_numpy(),
-      dA["target"].to_numpy(),
+      self.dA["source"].to_numpy()[:self.leaves],
+      self.dA["target"].to_numpy()[:self.leaves],
       self.nodes,
       linkage,
       cut,
       alpha,
-      beta
+      beta,
+      self.undirected
     )
     # features.bene("long")
     features.vite()
     return features
   
   def H_features_cpp_no_mu(self, linkage, alpha, beta, cut=False):
-    # Get network dataframe ----
-    dA =  self.dA.copy()
     # Run process_hclust_fast.cpp ----
     features = ph(
       self.leaves,
       self.dist_mat,
-      dA["source"].to_numpy(),
-      dA["target"].to_numpy(),
+      self.dA["source"].to_numpy()[:self.leaves],
+      self.dA["target"].to_numpy()[:self.leaves],
       self.nodes,
       linkage,
       cut,
       alpha,
-      beta
+      beta,
+      self.undirected
     )
     # features.bene("long")
     features.vite()
@@ -139,20 +154,68 @@ class Hierarchy(Sim):
     )
     return result
   
-  def H_features_parallel_no_mu(self, listargs):
-    # Get network dataframe ----
-    dA =  self.dA.copy()
+  def H_features_cpp_nodewise(self, linkage, alpha, beta, cut=False):
     # Run process_hclust_fast.cpp ----
     features = ph(
       self.leaves,
       self.dist_mat,
-      dA["source"].to_numpy(),
-      dA["target"].to_numpy(),
+      self.dA["source"].to_numpy()[:self.leaves],
+      self.dA["target"].to_numpy()[:self.leaves],
+      self.nodes,
+      linkage,
+      cut,
+      alpha,
+      beta,
+      self.undirected
+    )
+    # features.bene("long")
+    k_equivalence = []
+    k_equivalence.append(self.equivalence[0, 0])
+    k_equivalence.append(1)
+    for i in np.arange(self.equivalence.shape[0]-1):
+      if self.equivalence[i, 1] != self.equivalence[i+1, 1]:
+        k_equivalence.append(self.equivalence[i, 0])
+    old = self.equivalence[0, 1]
+    for i in np.arange(1, self.equivalence.shape[0]):
+      if self.equivalence[i, 1] < old:
+        k_equivalence.append(self.equivalence[i, 0])
+        old = self.equivalence[i, 1]
+    from collections import Counter
+    count_r = dict(Counter(self.equivalence[:, 1]))
+    count_r = {k : count_r[k] for k in -np.sort(-np.array(list(count_r.keys())))}
+    t = 0
+    for v in count_r.values():
+      k_equivalence.append(self.equivalence[t + int(v/2), 0])
+      t += int(v/2)
+    k_equivalence = np.array(k_equivalence)
+    k_equivalence = -np.sort(-np.unique(k_equivalence))
+    features.vite_nodewise(
+      k_equivalence, self.H[self.leaves - k_equivalence - 2, 2], k_equivalence.shape[0]
+    )
+    result = np.array(
+      [
+        features.get_K(), features.get_Height(),
+        features.get_NEC(),
+        features.get_D(), features.get_ntrees(),
+        features.get_X(), features.get_OrP(), features.get_XM(),
+        features.get_S()
+      ]
+    )
+    return result
+  
+  def H_features_parallel_no_mu(self, listargs):
+    # Run process_hclust_fast.cpp ----
+    features = ph(
+      self.leaves,
+      self.dist_mat,
+      self.dA["source"].to_numpy()[:self.leaves],
+      self.dA["target"].to_numpy()[:self.leaves],
       self.nodes,
       listargs[0],
       listargs[3],
       listargs[1],
-      listargs[2]
+      listargs[2],
+      self.undirected
     )
     # features.bene("long")
     features.vite()
@@ -168,19 +231,18 @@ class Hierarchy(Sim):
     return result, listargs[1], listargs[2]
   
   def H_features_parallel_mu(self, listargs):
-    # Get network dataframe ----
-    dA =  self.dA.copy()
     # Run process_hclust_fast.cpp ----
     features = ph(
       self.leaves,
       self.dist_mat,
-      dA["source"].to_numpy(),
-      dA["target"].to_numpy(),
+      self.dA["source"].to_numpy()[:self.leaves],
+      self.dA["target"].to_numpy()[:self.leaves],
       self.nodes,
       listargs[0],
       listargs[3],
       listargs[1],
-      listargs[2]
+      listargs[2],
+      self.undirected
     )
     # features.bene("long")
     features.vite_mu()
@@ -227,7 +289,8 @@ class Hierarchy(Sim):
             "X" : results_no_mu[5, :],
             "m" : results_no_mu[6, :],
             "xm" : results_no_mu[7, :],
-            "S" : results_no_mu[8, :]
+            "S" : results_no_mu[8, :],
+            "SD" : (results_no_mu[3, :] / np.nansum(results_no_mu[3, :])) *  (results_no_mu[8, :] / np.nansum(results_no_mu[8, :])) 
           }
         )
       )
@@ -259,7 +322,40 @@ class Hierarchy(Sim):
           "X" : results_no_mu[5, :],
           "m" : results_no_mu[6, :],
           "xm" : results_no_mu[7, :],
-          "S" : results_no_mu[8, :]
+          "S" : results_no_mu[8, :],
+          "SD" : (results_no_mu[3, :] / np.nansum(results_no_mu[3, :])) * (results_no_mu[8, :] / np.nansum(results_no_mu[8, :]))
+        }
+      )
+    )
+
+  def BH_features_cpp_nodewise(self):
+    print("Mu-free nodewise")
+    # Set up linkage ----
+    if self.linkage == "single":
+      linkage = 0
+    elif self.linkage == "average":
+      linkage = 2
+    else:
+      linkage = -1
+      raise ValueError("Link community model has not been tested with the input linkage.")
+    # Create BH ----
+    self.BH = []
+    results_nodewise = self.H_features_cpp_nodewise(linkage, 0, 0, self.cut)
+    self.BH.append(
+      pd.DataFrame(
+        {
+          "alpha" : np.zeros(results_nodewise.shape[1]),
+          "beta" : np.zeros(results_nodewise.shape[1]),
+          "K" : results_nodewise[0, :],
+          "height" : results_nodewise[1, :],
+          "NEC" : results_nodewise[2, :],
+          "mu" : np.zeros(results_nodewise.shape[1]),
+          "D" : results_nodewise[3, :],
+          "ntrees": results_nodewise[4, :],
+          "X" : results_nodewise[5, :],
+          "m" : results_nodewise[6, :],
+          "xm" : results_nodewise[7, :],
+          "S" : results_nodewise[8, :]
         }
       )
     )
@@ -318,19 +414,18 @@ class Hierarchy(Sim):
     else:
       linkage = -1
       raise ValueError("Link community model has not been tested with the input linkage.")
-    # Get network dataframe ----
-    dA =  self.dA.copy()
     # Run process_hclust_fast.cpp ----
     entropy = ph(
       self.leaves,
       self.dist_mat,
-      dA["source"].to_numpy(),
-      dA["target"].to_numpy(),
+      self.dA["source"].to_numpy()[:self.leaves],
+      self.dA["target"].to_numpy()[:self.leaves],
       self.nodes,
       linkage,
       cut,
       3,
-      0.1
+      0.1,
+      self.undirected
     )
 
     # link_matrix = np.zeros((self.leaves, self.leaves))
@@ -394,7 +489,8 @@ class Hierarchy(Sim):
     print(f"\n\tNode entropy H: Sh : {sh:.4f}, and Sv : {sv:.4f}\n")
 
 
-  def la_abre_a_merde_cpp(self, features):
+  def la_abre_a_merde_cpp(self, features, sp=25):
+    print("Compute node hierarchy ----")
     # Get network dataframe ----
     dA =  self.dA.copy()
      # Set up linkage ----
@@ -436,7 +532,41 @@ class Hierarchy(Sim):
       self.nodes,
       self.leaves,
       linkage,
-      features.shape[0]
+      features.shape[0],
+      sp,
+      self.undirected
+    )
+    self.Z = NH.get_node_hierarchy()
+    self.Z = np.array(self.Z)
+    self.equivalence = NH.get_equivalence()
+    self.equivalence = np.array(self.equivalence)
+
+  def la_abre_a_merde_cpp_no_feat(self, sp=25):
+    print("Compute node hierarchy no feat ----")
+    # Get network dataframe ----
+    dA =  self.dA.copy()
+     # Set up linkage ----
+    if self.linkage == "single":
+      linkage = 0
+    elif self.linkage == "average":
+      linkage = 1
+    else:
+      linkage = -1
+      raise ValueError("Link community model has not been tested with the input linkage.")
+    # Run la_abre_a_merde_vite ----
+    NH = noeud_arbre(
+      self.dist_mat,
+      dA["source"].to_numpy(),
+      dA["target"].to_numpy(),
+      np.arange(self.leaves - 1, 0, -1, dtype=int),
+      self.H[:, 2].ravel(),
+      np.array([1] * (self.leaves - 1)),
+      self.nodes,
+      self.leaves,
+      linkage,
+      self.leaves - 1,
+      sp,
+      self.undirected
     )
     self.Z = NH.get_node_hierarchy()
     self.Z = np.array(self.Z)
@@ -531,7 +661,7 @@ class Hierarchy(Sim):
     n = dA.shape[0]
     return 2 * iqr(dA) * np.power(n, -1/3)
 
-  def set_colregion(self, colregion : colregion):
+  def set_colregion(self, colregion):
     self.colregion = colregion
 
   def get_NOC_covers(self, overlap, Cr, labels, data_bar, dA):
@@ -552,7 +682,9 @@ class Hierarchy(Sim):
     return NOCS
   
   def discover_overlap_nodes_2(self, K : int, Cr, labels, **kwargs):
-    if "rho" in kwargs.keys(): rho = kwargs["rho"]
+    if "rho" in kwargs.keys():
+      rho = kwargs["rho"]
+      rho_state = rho
     else: rho=1.1
     if "sig" in kwargs.keys(): sig = kwargs["sig"]
     else: sig=0.5
@@ -569,9 +701,6 @@ class Hierarchy(Sim):
     dA["id"] = cut_tree(self.H, n_clusters=K).reshape(-1)
     minus_one_Dc(dA)
     aesthetic_ids(dA)
-    # dA_ = dA.loc[dA["id"] != -1]
-    # ## linkcom ids from 0 to k-1 ----
-    # dA_.id.loc[dA_.id > 0] = dA_.id.loc[dA_.id > 0] - 1
     ## Single nodes ----
     single_nodes = [np.where(Cr == i)[0][0] for i in np.unique(Cr) if np.sum(Cr == i) == 1]
     ## Nodes with single community membership ----
@@ -580,24 +709,50 @@ class Hierarchy(Sim):
       dsn_src = dA.loc[dA.source == sn]
       wt_src = np.nanmean(fun(dsn_src.weight))
       dsn_tgt = dA.loc[dA.target == sn]
-      wt_tgt = np.nansum(fun(dsn_tgt.weight))
+      wt_tgt = np.nanmean(fun(dsn_tgt.weight))
+      # if labels[sn] == "5":
+      #       print("SOURCE", wt_src)
       for lc in np.unique(dsn_src.id):
         lc_nodes = dsn_src.loc[dsn_src.id == lc]
         wc = np.nanmean(fun(lc_nodes.weight))
         lc_nodes = lc_nodes.target
         lc_nodes = set([i for i in lc_nodes])
         for ii, nsc in enumerate(NSC):
-          if len(nsc[0].intersection(lc_nodes)) >= len(nsc[0]) * sig and wc > rho * wt_src:
+          if isinstance(rho_state, str):
+            if "char" in rho_state:
+              x = float(rho_state.split("r")[1])
+              rho = np.nanstd(fun(dsn_src.weight)) / x
+              rho = (wt_src + rho) / wt_src
+            if "nchar" in rho_state:
+              x = float(rho_state.split("r")[1])
+              rho = np.nanstd(fun(dsn_src.weight)) / x
+              rho = (wt_src - rho) / wt_src
+          # if labels[sn] == "5":
+          #   print(labels[list(nsc[0])], len(nsc[0].intersection(lc_nodes))/ len(nsc[0]), wc, rho * wt_src)
+          if len(nsc[0].intersection(lc_nodes)) >= len(nsc[0]) * sig and wc >= rho * wt_src:
             if labels[sn] not in nocs.keys(): nocs[labels[sn]] = [nsc[1]]
             else: nocs[labels[sn]].append(nsc[1])
             overlap[sn] += 1
+      # if labels[sn] == "5":
+      #       print("TARGET", wt_tgt)
       for lc in np.unique(dsn_tgt.id):
         lc_nodes = dsn_tgt.loc[dsn_tgt.id == lc]
         wc = np.nanmean(fun(lc_nodes.weight))
-        lc_nodes = dsn_tgt.source
+        lc_nodes = lc_nodes.source
         lc_nodes = set([i for i in lc_nodes])
         for ii, nsc in enumerate(NSC):
-          if len(nsc[0].intersection(lc_nodes)) >= len(nsc[0]) * sig and wc > rho * wt_tgt:
+          if isinstance(rho_state, str):
+            if "char" in rho_state:
+              x = float(rho_state.split("r")[1])
+              rho = np.nanstd(fun(dsn_tgt.weight)) / x
+              rho = (wt_tgt + rho) / wt_tgt
+            if "nchar" in rho_state:
+              x = float(rho_state.split("r")[1])
+              rho = np.nanstd(fun(dsn_tgt.weight)) / x
+              rho = (wt_tgt - rho) / wt_tgt
+          # if labels[sn] == "5":
+          #   print(labels[list(nsc[0])], len(nsc[0].intersection(lc_nodes))/ len(nsc[0]), wc, rho * wt_tgt)
+          if len(nsc[0].intersection(lc_nodes)) >= len(nsc[0]) * sig and wc >= rho * wt_tgt:
             if labels[sn] not in nocs.keys(): nocs[labels[sn]] = [nsc[1]]
             else: nocs[labels[sn]].append(nsc[1])
             overlap[sn] += 1
@@ -605,7 +760,7 @@ class Hierarchy(Sim):
       nocs[k] = list(np.unique(nocs[k]))
     #######################
     # Max -1 ----
-    ## Get lc sizes for each node ----
+    # Get lc sizes for each node ----
     data = bar_data(dA, self.nodes, labels, norm=True)
     ## Geta stats ----
     tree_nodes = tree_dominant_nodes(data, labels)
@@ -618,6 +773,94 @@ class Hierarchy(Sim):
     for sn in single_nodes:
       if labels[sn] not in nocs.keys():
         nocs[labels[sn]] = [-1]
+        overlap[sn] += 1
+    return np.where(overlap > 0)[0], nocs
+  
+
+  def discover_overlap_nodes_3(self, K : int, Cr, labels, undirected=False, **kwargs):
+    from scipy.stats import skew
+    from scipy.cluster.hierarchy import cut_tree
+    nocs = {}
+    overlap = np.zeros(self.nodes)
+    skimCr = skim_partition(Cr)
+    #######################
+    # Without -1 ----
+    dA = self.dA.copy()
+    ## Cut tree ----
+    if not undirected:
+      dA["id"] = cut_tree(self.H, n_clusters=K).ravel()
+    else:
+      dA["id"] = np.tile(cut_tree(self.H, n_clusters=K).ravel(), 2)
+    minus_one_Dc(dA, undirected)
+    aesthetic_ids(dA)
+    # Sim matrix to Dist ---
+    Dsource = self.source_sim_matrix
+    Dsource[Dsource == 0] = np.nan
+    Dsource = 1/Dsource + 1
+    sk = np.abs(skew(Dsource[np.isnan(Dsource)]))
+    if not np.isnan(sk) and sk > 1:
+      Dsource[np.isnan(Dsource)] = np.nanmax(Dsource) + np.nanstd(Dsource) * sk
+    else: 
+      Dsource[np.isnan(Dsource)] = np.nanmax(Dsource) + np.nanstd(Dsource)
+    np.fill_diagonal(Dsource, np.nan)
+    Dtarget = self.target_sim_matrix
+    Dtarget[Dtarget == 0] = np.nan
+    Dtarget = 1/Dtarget + 1
+    sk = np.abs(skew(Dtarget[np.isnan(Dtarget)]))
+    if not np.isnan(sk) and sk > 1:
+      Dtarget[np.isnan(Dtarget)] = np.nanmax(Dtarget) + np.nanstd(Dtarget) * sk
+    else: 
+      Dtarget[np.isnan(Dtarget)] = np.nanmax(Dtarget) + np.nanstd(Dtarget)
+    np.fill_diagonal(Dtarget, np.nan)
+    ## Single nodes ----
+    single_nodes = [np.where(Cr == i)[0][0] for i in np.unique(Cr) if np.sum(Cr == i) == 1]
+    ## Nodes with single community membership ----
+    NSC = [(set(np.where(skimCr == i)[0]), i) for i in np.unique(skimCr) if i != -1]
+    # print(NSC)
+    for sn in single_nodes:
+      dsn_src = dA.loc[dA.source == sn]
+      dsn_tgt = dA.loc[dA.target == sn]
+      Dsn = np.zeros((len(NSC), 4)) * np.nan
+      # if sn == 24:
+      #   print(dsn_src)
+      #   print(dsn_tgt)
+      for ii, nsc in enumerate(NSC):
+        neighbor_nodes_src = list(set(dsn_src.target).intersection(nsc[0]))
+        neighbor_nodes_tgt = list(set(dsn_tgt.source).intersection(nsc[0]))
+        # if sn == 24:
+        #   print(neighbor_nodes_tgt)
+          # print(neighbor_nodes_src)
+        if len(neighbor_nodes_src) > 0:
+          Dsn[ii, 0] = np.nanmean(Dsource[sn, neighbor_nodes_src])
+          Dsn[ii, 1] = np.nanmean(Dtarget[sn, neighbor_nodes_src])
+        if len(neighbor_nodes_tgt) > 0:
+          Dsn[ii, 2] = np.nanmean(Dtarget[sn, neighbor_nodes_tgt])
+          Dsn[ii, 3] = np.nanmean(Dsource[sn, neighbor_nodes_tgt])
+      Dsn = np.nanmean(Dsn, axis=1)
+      # if sn == 24:
+      #   print(Dsn)
+      # Dsn[np.isnan(Dsn)] = np.sqrt(2) * np.nanmax(Dsn)
+      # if sn == 24:
+      #   print(Dsn)
+      dsn = np.exp(np.nanmean(np.log(Dsn)))
+      scale = np.exp(np.nanstd(np.log(Dsn)))
+      rev = np.abs(np.exp(skew(np.log(Dsn[~np.isnan(Dsn)]))))
+      if not np.isnan(rev) and rev < 1/2:
+        dsn = dsn + rev * scale
+      else:
+        dsn = dsn + scale / 2
+      # dsn = np.nanmean(Dsn)
+      if ~np.isnan(dsn):
+        for ii, nsc in enumerate(NSC):
+          if ~np.isnan(Dsn[ii]) :
+            if Dsn[ii] < dsn:
+              if labels[sn] not in nocs.keys(): nocs[labels[sn]] = [nsc[1]]
+              else: nocs[labels[sn]].append(nsc[1])
+              overlap[sn] += 1
+    for k in nocs.keys(): nocs[k] = list(np.unique(nocs[k]))
+    for sn in single_nodes:
+      if labels[sn] not in nocs.keys():
+        # nocs[labels[sn]] = [-1]
         overlap[sn] += 1
     return np.where(overlap > 0)[0], nocs
 
@@ -707,6 +950,14 @@ class Hierarchy(Sim):
   def discovery_2(self, K : int, Cr, **kwargs):
     labels = self.colregion.labels[:self.nodes]
     overlap, noc_covers = self.discover_overlap_nodes_2(K, Cr, labels, **kwargs)
+    if len(overlap) > 0:
+      return np.array([labels[i] for i in overlap]), noc_covers
+    else:
+      return np.array([]), noc_covers
+    
+  def discovery_3(self, K : int, Cr, undirected=False, **kwargs):
+    labels = self.colregion.labels[:self.nodes]
+    overlap, noc_covers = self.discover_overlap_nodes_3(K, Cr, labels, undirected=undirected, **kwargs)
     if len(overlap) > 0:
       return np.array([labels[i] for i in overlap]), noc_covers
     else:

@@ -63,21 +63,21 @@ def worker_ECoG(
   # Set labels to network ----
   L = colECoG(NET)
   H.set_colregion(L)
+  H.delete_dist_matrix()
   for score in opt_score:
     print(f"Find node partition using {score}")
     # Get best K and R ----
     K, R = get_best_kr_equivalence(score, H)
-    r = R[K == np.min(K)][0]
-    k = K[K == np.min(K)][0]
-    H.set_kr(k, r, score=score)
-    print("\n\tBest K: {}\nBest R: {}\n".format(k, r))
-    rlabels = get_labels_from_Z(H.Z, r)
-    # Overlap ----
-    NET.overlap, NET.data_nocs = H.discovery_2(k, rlabels, rho=1.2, sig=0.8, fun=np.log)
-    H.set_overlap_labels(NET.overlap, score)
-    print("\n\tAreas with predicted overlapping communities:\n",  NET.data_nocs, "\n")
-    cover = omega_index_format(rlabels,  NET.data_nocs, NET.struct_labels[:NET.nodes])
-    H.set_cover(cover, score)
+    for k, r in zip(K, R):
+      H.set_kr(k, r, score=score)
+      print("\n\tBest K: {}\nBest R: {}\n".format(k, r))
+      rlabels = get_labels_from_Z(H.Z, r)
+      # Overlap ----
+      NET.overlap, NET.data_nocs = H.discovery_3(k, rlabels)
+      H.set_overlap_labels(NET.overlap, score)
+      print("\n\tAreas with predicted overlapping communities:\n",  NET.data_nocs, "\n")
+      cover = omega_index_format(rlabels,  NET.data_nocs, NET.struct_labels[:NET.nodes])
+      H.set_cover(cover, score)
   save_class(
     H, NET.pickle_path,
     "hanalysis"

@@ -15,7 +15,7 @@ from numpy import zeros
 from various.network_tools import *
 # Declare global variables ----
 __iter__ = 0
-__nodes__ = 100
+__nodes__ = 150
 linkage = "single"
 nlog10 = F
 lookup = F
@@ -24,17 +24,17 @@ cut = F
 run = T
 topology = "MIX"
 mapping = "trivial"
-index  = "D1_2_3"
+index  = "D1_2_4"
 __mode__ = "ZERO"
 alpha = 0.
-opt_score = ["_maxmu" , "_X" ,"_D", "_S"]
+opt_score = ["_maxmu" , "_X" ,"_D", "_S", "_SD"]
 save_datas = T
 # Overlapping WDN paramters ----
 opar = {
   "-N" : "{}".format(
     str(__nodes__)
   ),
-  "-k" : "10",
+  "-k" : "7",
   "-maxk" : "20",
   "-mut" : "0.1",
   "-muw" : "0.01",
@@ -42,9 +42,9 @@ opar = {
   "-t1" : "2",
   "-t2" : "1",
   "-nmin" : "5",
-  "-nmax" : "25",
+  "-nmax" : "10",
   "-on" : "10",
-  "-om" : "2"
+  "-om" : "4"
 }
 if __name__ == "__main__":
   # Create EDR network ----
@@ -94,6 +94,7 @@ if __name__ == "__main__":
     ## Compute node entropy ----
     H.node_entropy_cpp("short", cut=cut)
     H.set_colregion(L)
+    H.delete_dist_matrix()
     save_class(
       H, NET.pickle_path, "hanalysis_{}".format(H.subfolder),
       on=F
@@ -104,14 +105,14 @@ if __name__ == "__main__":
     )
   # Plot H ----
   plot_h = Plot_H(NET, H)
-  plot_h.plot_measurements_D(on=T)
-  plot_h.plot_measurements_S(on=T)
+  # plot_h.plot_measurements_D(on=T)
+  # plot_h.plot_measurements_S(on=T)
   # plot_h.plot_measurements_mu(on=T)
   # plot_h.plot_measurements_X(on=T)
-  plot_h.heatmap_pure(
-     0, np.log(1 + NET.A), score = "_GT_{}".format(number_of_communities),
-    labels = NET.labels, on=T
-  )
+  # plot_h.heatmap_pure(
+  #    0, np.log(1 + NET.A), score = "_GT_{}".format(number_of_communities),
+  #   labels = NET.labels, on=T
+  # )
   for score in opt_score:
     # Find best k partition ----
     K, R = get_best_kr_equivalence(score, H)
@@ -122,7 +123,7 @@ if __name__ == "__main__":
       if np.nan in rlabels:
           print("Warning: Impossible node dendrogram")
           break
-      nocs, noc_covers = H.discovery_2(k, rlabels, rho=0.9, sig=0.5)
+      nocs, noc_covers = H.discovery_3(k, rlabels)
       #Prints ----
       nmi = AD_NMI_overlap(
         NET.labels, rlabels, NET.overlap, noc_covers, on=T
@@ -134,13 +135,13 @@ if __name__ == "__main__":
         rlabels, noc_covers, H.colregion.labels[:H.nodes], on=T
       )
       ## Plots ---
-      plot_h.core_dendrogram(
-        [r], on=T, score="_"+score
-      )
+      # plot_h.core_dendrogram(
+      #   [r], on=T, score="_"+score
+      # )
       # plot_h.heatmap_pure(
       #    r, np.log(1+NET.A), on=T, labels = rlabels, name=f"{r}_{nmi:.4f}"
       # )
-      plot_h.lcmap_dendro(
-         k, np.log(1+NET.A), score="_"+score, on=T
-      )
+      # plot_h.lcmap_dendro(
+      #    k, np.log(1+NET.A), score="_"+score, on=T
+      # )
   print("End!")

@@ -18,7 +18,7 @@ source_network <- function() {
     edge.arrow.size=3,
     edge.label = c(TeX("$n_{XA}$"), TeX("$n_{XB}$"), TeX("$n_{XC}$"), TeX("$n_{YA}$"), TeX("$n_{YB}$"), TeX("$n_{YC}$")),
     edge.label.family = "Arial",
-    edge.label.cex = 1.6,
+    edge.label.cex = 2.1,
     edge.label.x = c(-0.95, -0.52, 0.23, -0.23, 0.52, 0.95),
     edge.label.y = c(0.2, 0.2, 0.1, 0.1, 0.2, 0.2),
     # edge.curved = -0.2,
@@ -32,7 +32,7 @@ target_network <- function() {
   E <- matrix(c("A", "X", "B", "X", "C", "X", "A", "Y", "B", "Y", "C", "Y"), ncol = 2, byrow=TRUE)
   netA <- graph_from_edgelist(E)
   coordA <- matrix(c(-0.75, -0.5, -0.5, 0,  0, -0.5, 0.75, -0.5,  0.5, 0), ncol = 2, byrow = TRUE)
-  print(E(netA))
+  # print(E(netA))
   png(file="/Users/jmarti53/Documents/Projects/LINKPROJECT/plots/TOY/cortex_letter/target_network.png")
   par(mar=c(0,0,0,0)+.1)
   plot.igraph(
@@ -44,13 +44,12 @@ target_network <- function() {
     edge.arrow.size=3,
     edge.label = c(TeX("$n_{AX}$"), TeX("$n_{BX}$"), TeX("$n_{CX}$"), TeX("$n_{AY}$"), TeX("$n_{BY}$"), TeX("$n_{CY}$")),
     edge.label.family = "Arial",
-    edge.label.cex = 1.6,
+    edge.label.cex = 2.1,
     edge.label.x = c(-1, -0.25, 0.52, -0.52, 0.25, 1),
     edge.label.y = c(-0.2, 0.1, -0.2, -0.2, 0.1, -0.2),
     edge.curved = 0,
     vertex.label.family = "Arial"
   )
-
   dev.off()
 }
 
@@ -264,7 +263,38 @@ simple_4_step5 <- function() {
   )
 }
 
-simple_4_step2()
+renyi_subtlety <- function() {
+  E <- matrix(c("X", "Y", "Y", "Z", "Z", "X", "X", "Z", "Z", "Y", "Y", "X"), ncol = 2, byrow=TRUE)
+  netA <- graph_from_edgelist(E)
+  coordA <- matrix(c(-0.5, 0, 0.5, 0, 0, 1), ncol = 2, byrow = TRUE)
+  # print(E(netA))
+  # print(V(netA))
+  png(file="/Users/jmarti53/Documents/Projects/LINKPROJECT/plots/TOY/cortex_letter/renyi_subtlety.png")
+  par(mar=c(0,0,0,0)+.1)
+  plot.igraph(
+    netA, layout = coordA,
+    vertex.size = 30,
+    vertex.label.cex = 3,
+    edge.color = c("green", "red", "red", "red", "red", "green"),
+    edge.width=5,
+    edge.arrow.size=3,
+    edge.label = c(
+      16, 8, 8, 8, 8, 16
+    ),
+    edge.label.family = "Arial",
+    edge.label.cex = 3,
+    # edge.label.x = c(-1, -0.25, 0.52, -0.52, 0.25, 1),
+    # edge.label.y = c(-0.2, 0.1, -0.2, -0.2, 0.1, -0.2),
+    edge.curved = -0.3,
+    vertex.label.family = "Arial"
+  )
+  dev.off()
+}
+
+# renyi_subtlety()
+# simple_4_step2()
 # simple_4_step3()
 # simple_4_step4()
 # simple_4_step5()
+target_network()
+source_network()

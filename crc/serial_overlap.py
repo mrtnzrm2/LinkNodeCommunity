@@ -29,7 +29,7 @@ def worker_overlap(
   linkage = "single"
   __mode__ = mode
   alpha = 0.
-  opt_score = ["_maxmu", "_X", "_D", "_S"]
+  opt_score = ["_maxmu", "_X", "_D", "_S", "_SD"]
   # Overlapping WDN paramters ----
   opar = {
     "-N" : "{}".format(
@@ -111,6 +111,7 @@ def worker_overlap(
       RAND_H.node_entropy_cpp("short", cut=cut)
       # Set colregion ----
       RAND_H.set_colregion(L)
+      RAND_H.delete_dist_matrix()
       # Save stats ----
       data.set_data_measurements(RAND_H, i)
       # Update entropy ----
@@ -130,7 +131,7 @@ def worker_overlap(
           # Single linkage part ----
           print("Best K: {}\nBest R: {}".format(k, r))
           rlabels = get_labels_from_Z(RAND_H.Z, r)
-          nocs, noc_covers = RAND_H.discovery_2(k, rlabels, rho=0.9, sig=0.5)
+          nocs, noc_covers = RAND_H.discovery_3(k, rlabels)
           sen, sep = RAND.overlap_score_discovery(
             k, nocs, RAND_H.colregion.labels[:RAND_H.nodes], on=T
           )

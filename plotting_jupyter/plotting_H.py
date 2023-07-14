@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 # Personal libs ----
+from modules.hierarmerge import Hierarchy
 from various.network_tools import *
 from modules.flatmap import FLATMAP
 
@@ -180,6 +181,22 @@ class Plot_H:
     plt.xscale("log")
     fig.tight_layout()
 
+  def plot_measurements_SD(self, **kwargs):
+    print("Plot SD iterations")
+    if "SD" not in self.BH[0].columns:
+        self.BH[0]["SD"] = (self.BH[0].D / np.nansum(self.BH[0].D)) * (self.BH[0].S / np.nansum(self.BH[0].S))
+    # Create figure ----
+    fig, ax = plt.subplots(1, 1)
+    sns.lineplot(
+      data=self.BH[0],
+      x="K",
+      y="SD",
+      ax=ax
+    )
+    plt.legend([],[], frameon=False)
+    plt.xscale("log")
+    fig.tight_layout()
+
   def plot_measurements_ntrees(self, **kwargs):
     print("Plot ntrees iterations")
     # Create figure ----
@@ -193,6 +210,70 @@ class Plot_H:
     plt.legend([],[], frameon=False)
     plt.xscale("log")
     fig.tight_layout()
+
+  def plot_network_kk(self, H : Hierarchy, partition, nocs : dict, labels, ang=0, score="", front_edges=False, log_data=False, font_size=0.1, undirected=False, cmap_name="hls"):
+    print("Printing network space")
+    new_partition = skim_partition(partition)
+    unique_clusters_id = np.unique(new_partition)
+    keff = len(unique_clusters_id)
+    save_colors = sns.color_palette(cmap_name, keff - 1)
+    cmap_heatmap = [[]] * keff
+    cmap_heatmap[0] = [199/ 255.0, 0, 57/ 255.0]
+    cmap_heatmap[1:] = save_colors
+    # Assign memberships to nodes ----
+    nodes_memberships = {k : [0] * keff for k in np.arange(H.nodes)}
+    for i, id in enumerate(new_partition):
+      if id == -1: continue
+      nodes_memberships[i][id + 1] = 1
+    for i, key in enumerate(nocs.keys()):
+      index_key = np.where(labels == key)[0][0]
+      for id in nocs[key]:
+        if id == -1: nodes_memberships[index_key][0] = 1
+        else: nodes_memberships[index_key][id + 1] = 1
+    # Check unassigned ----
+    for i in np.arange(H.nodes):
+      if np.sum(np.array(nodes_memberships[i]) == 0) == keff:
+        nodes_memberships[i][0] = 1
+      # elif np.sum(np.array(nodes_memberships[i]) != 0) > 2:
+      #   print(nodes_memberships[i])
+    if not log_data:
+      A = H.A
+    else:
+      A = np.log(1 + H.A)
+    if not undirected:
+      G = nx.DiGraph(A)
+    else:
+      G = nx.Graph(A, directed=False)
+    pos = nx.kamada_kawai_layout(G)
+    ang = ang * np.pi/ 180
+    rot = np.array([[np.cos(ang), np.sin(ang)],[-np.sin(ang), np.cos(ang)]])
+    pos = {k : np.matmul(rot, pos[k]) for k in pos.keys()}
+    fig, ax = plt.subplots(1, 1)
+    # Create labels ---
+    labs = {n : labels[n] for n in G.nodes}
+    nx.draw_networkx_labels(G, pos=pos, labels=labs, font_size=font_size, ax=ax)
+    if not front_edges:
+      if undirected:
+        nx.draw_networkx_edges(G, pos=pos, arrows=False, ax=ax)
+      else:
+        nx.draw_networkx_edges(G, pos=pos, arrows=True, ax=ax)
+    for node in G.nodes:
+      plt.pie(
+        [1 for id in nodes_memberships[node] if id != 0], # s.t. all wedges have equal size
+        center=pos[node], 
+        colors = [cmap_heatmap[i] for i, id in enumerate(nodes_memberships[node]) if id != 0],
+        radius=0.05
+      )
+    if front_edges:
+      if undirected:
+        nx.draw_networkx_edges(G, pos=pos, arrows=False, ax=ax)
+      else:
+        nx.draw_networkx_edges(G, pos=pos, arrows=True, ax=ax)
+    array_pos = np.array([list(pos[v]) for v in pos.keys()])
+    plt.xlim(-0.1 + np.min(array_pos, axis=0)[0], np.max(array_pos, axis=0)[0] + 0.1)
+    plt.ylim(-0.1 + np.min(array_pos, axis=0)[1], np.max(array_pos, axis=0)[1] + 0.1)
+    fig.set_figheight(9)
+    fig.set_figwidth(9)
   
   def core_dendrogram(self, R, cmap_name="hls", remove_labels=False, figwidth=10, figheight=7):
     print("Visualize node-community dendrogram!!!")
@@ -373,7 +454,7 @@ class Plot_H:
     ]
 
   def lcmap_pure(
-    self, K, cmap_name="husl", figwidth=10, figheight=10, remove_labels=False, **kwargs
+    self, K, cmap_name="husl", figwidth=10, figheight=10, remove_labels=False, undirected=False, **kwargs
   ):
     print("Visualize pure LC memberships!!!")
     # Get labels ----
@@ -394,11 +475,17 @@ class Plot_H:
       dFLN = self.dA.copy()
       # Add id with aesthethis ----
       from scipy.cluster.hierarchy import cut_tree
-      dFLN["id"] =  cut_tree(
-        self.H,
-        n_clusters = k
-      ).reshape(-1)
-      minus_one_Dc(dFLN)
+      if not undirected:
+          dFLN["id"] =  cut_tree(
+            self.H,
+            n_clusters = k
+          ).ravel()
+      else:
+        dFLN["id"] = np.tile(cut_tree(
+          self.H,
+          n_clusters = k
+        ).ravel(), 2)
+      minus_one_Dc(dFLN, undirected)
       aesthetic_ids(dFLN)
       keff = np.unique(
         dFLN["id"].to_numpy()
@@ -469,7 +556,7 @@ class Plot_H:
     
   def lcmap_dendro(
     self, K, cmap_name="hls", remove_labels= False,
-    figwidth=18, figheight=15,**kwargs
+    figwidth=18, figheight=15, undirected=False, **kwargs
   ):
     print("Visualize k LCs!!!")
     # K loop ----
@@ -481,14 +568,20 @@ class Plot_H:
       dFLN = self.dA.copy()
       # Add id with aesthethis ----
       from scipy.cluster.hierarchy import cut_tree
-      dFLN["id"] =  cut_tree(
-        self.H,
-        n_clusters = k
-      ).reshape(-1)
+      if not undirected:
+        dFLN["id"] =  cut_tree(
+          self.H,
+          n_clusters = K
+        ).ravel()
+      else:
+        dFLN["id"] =  np.tile(cut_tree(
+          self.H,
+          n_clusters = K
+        ).ravel(), 2)
       ##
       dFLN["source_label"] = labels[dFLN.source]
       dFLN["target_label"] = labels[dFLN.target]
-      minus_one_Dc(dFLN)
+      minus_one_Dc(dFLN, undirected=undirected)
       aesthetic_ids(dFLN)
       keff = np.unique(dFLN.id)
       keff = keff.shape[0]

@@ -19,8 +19,8 @@ from various.network_tools import *
 cut = [F]
 topologies = ["MIX"]
 bias = [0]
-indices = ["D1_2_3", "D1_2_2"]
-modes = ["ZERO", "BETA", "gBETA", "ALPHA", "gALPHA"]
+indices = ["D1_2_4"]
+modes = ["ZERO", "ALPHA", "BETA"]
 list_of_lists = itertools.product(
   *[cut, modes, topologies, indices, bias]
 )
@@ -36,7 +36,7 @@ nature = "original"
 mapping = "trivial"
 alpha = 0.
 imputation_method = ""
-opt_score = ["_X", "_S"]
+opt_score = ["_X", "_S", "_SD"]
 version = "57d106"
 __nodes__ = 57
 __inj__ = 57
@@ -47,11 +47,6 @@ if __name__ == "__main__":
     if _cut_ == "True":
       cut = T
     else: cut = F
-    if mode == "ZERO" and index == "D1_2_2": continue
-    if mode == "BETA" and index == "D1_2_3": continue
-    if mode == "gBETA" and index == "D1_2_3": continue
-    if mode == "ALPHA" and index == "D1_2_3": continue
-    if mode == "gALPHA" and index == "D1_2_3": continue
     # Load structure ----
     NET = MAC[f"MAC{__inj__}"](
       linkage, mode,
@@ -93,26 +88,23 @@ if __name__ == "__main__":
     # Set labels to network ----
     L = colregion(NET, labels_name=f"labels{__inj__}")
     H.set_colregion(L)
+    H.delete_dist_matrix()
     # Entropy ----
     HS = Hierarchical_Entropy(H.Z, H.nodes, H.colregion.labels[:H.nodes])
     HS.Z2dict("short")
     HS.zdict2newick(HS.tree, weighted=F, on=T)
     HS.zdict2newick(HS.tree, weighted=T, on=T)
     ial = 0
-    for score in opt_score:
+    for SCORE in opt_score:
       # Get best K and R ----
-      K, R = get_best_kr_equivalence(score, H)
+      K, R = get_best_kr_equivalence(SCORE, H)
       for k, r in zip(K, R):
-        if score == "_maxmu":
-          SCORE = f"{score}_{NET.Alpha[ial]}"
-          ial += 1
-        else: SCORE = score
         print(f"Find node partition using {SCORE}")
         H.set_kr(k, r, score=SCORE)
         print("\n\tBest K: {}\nBest R: {}\n".format(k, r))
         rlabels = get_labels_from_Z(H.Z, r)
         # Overlap ----
-        NET.overlap, NET.data_nocs = H.discovery_2(k, rlabels, rho=1.1, sig=0.5)
+        NET.overlap, NET.data_nocs = H.discovery_3(k, rlabels)
         H.set_overlap_labels(NET.overlap, SCORE)
         print("\n\tAreas with predicted overlapping communities:\n",  NET.data_nocs, "\n")
         cover = omega_index_format(rlabels,  NET.data_nocs, NET.struct_labels[:NET.nodes])

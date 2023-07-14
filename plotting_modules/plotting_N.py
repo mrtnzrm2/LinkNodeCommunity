@@ -551,7 +551,7 @@ class Plot_N:
       )
     else: print("No histoscatter") 
 
-  def plot_network_kk(self, H : Hierarchy, partition, ang=0, score="", cmap_name="hls", on=True):
+  def plot_network_kk(self, H : Hierarchy, partition, nocs : dict, labels, ang=0, score="", undirected=False, cmap_name="hls", on=True):
     if on:
       print("Printing network space")
       new_partition = skim_partition(partition)
@@ -561,19 +561,44 @@ class Plot_N:
       cmap_heatmap = [[]] * keff
       cmap_heatmap[0] = [199/ 255.0, 0, 57/ 255.0]
       cmap_heatmap[1:] = save_colors
-      color_nodes = [[]] * H.nodes
-      for i, r in enumerate(new_partition):
-        if r >= 0:
-          color_nodes[i] = cmap_heatmap[r+1]
-        else: color_nodes[i] = cmap_heatmap[0]
-      G = nx.Graph(H.A)
+      # Assign memberships to nodes ----
+      nodes_memberships = {k : [0] * keff for k in np.arange(H.nodes)}
+      for i, id in enumerate(new_partition):
+        if id == -1: continue
+        nodes_memberships[i][id + 1] = 1
+      for i, key in enumerate(nocs.keys()):
+        index_key = np.where(labels == key)[0][0]
+        for id in nocs[key]:
+          if id == -1:
+            nodes_memberships[index_key][0] = 1
+          else: nodes_memberships[index_key][id + 1] = 1
+      # Check unassigned ----
+      for i in np.arange(H.nodes):
+        if np.sum(np.array(nodes_memberships[i]) == 0) == keff:
+          nodes_memberships[i][0] = 1
+      if not undirected:
+        G = nx.DiGraph(H.A)
+      else:
+        G = nx.Graph(H.A, directed=False)
       pos = nx.kamada_kawai_layout(G)
       ang = ang * np.pi/ 180
       rot = np.array([[np.cos(ang), np.sin(ang)],[-np.sin(ang), np.cos(ang)]])
       pos = {k : np.matmul(rot, pos[k]) for k in pos.keys()}
-      nx.draw_networkx_nodes(G, pos, node_color=color_nodes)
-      nx.draw_networkx_edges(G, pos=pos)
+      if undirected:
+        nx.draw_networkx_edges(G, pos=pos, arrows=False)
+      else:
+        nx.draw_networkx_edges(G, pos=pos)
       nx.draw_networkx_labels(G, pos=pos)
+      for node in G.nodes:
+        plt.pie(
+          [1 for id in nodes_memberships[node] if id != 0], # s.t. all wedges have equal size
+          center=pos[node], 
+          colors = [cmap_heatmap[i] for i, id in enumerate(nodes_memberships[node]) if id != 0],
+          radius=0.05
+        )
+      array_pos = np.array([list(pos[v]) for v in pos.keys()])
+      plt.xlim(-0.1 + np.min(array_pos, axis=0)[0], np.max(array_pos, axis=0)[0] + 0.1)
+      plt.ylim(-0.1 + np.min(array_pos, axis=0)[1], np.max(array_pos, axis=0)[1] + 0.1)
       # Arrange path ----
       plot_path = os.path.join(
         self.path, "Network"
@@ -590,7 +615,7 @@ class Plot_N:
         dpi=300
       )
   
-  def plot_network_covers(self, k, R, partition, nocs : dict, labels, ang=0, score="", cmap_name="hls", on=True):
+  def plot_network_covers(self, k, R, partition, nocs : dict, labels, ang=0, score="", cmap_name="hls", undirected=False, on=True, **kwargs):
     if on:
       print("Printing network space")
       from scipy.cluster import hierarchy
@@ -615,10 +640,17 @@ class Plot_N:
           if id == -1:
             nodes_memberships[index_key][0] = 1
           else: nodes_memberships[index_key][id + 1] = 1
+      # Check unassigned ----
+      for i in np.arange(len(partition)):
+        if np.sum(nodes_memberships[i] == 0) == keff:
+          nodes_memberships[i][0] = 1
       # Get edges colors ----
       dA = self.dA.copy()
-      dA["id"] = hierarchy.cut_tree(self.H, k).reshape(-1)
-      minus_one_Dc(dA)
+      if not undirected:
+        dA["id"] = hierarchy.cut_tree(self.H, k).reshape(-1)
+      else:
+         dA["id"] = np.tile(hierarchy.cut_tree(self.H, k).reshape(-1), 2)
+      minus_one_Dc(dA, undirected)
       aesthetic_ids(dA)
       dA = df2adj(dA, var="id")
       # Generate graph ----
@@ -628,17 +660,25 @@ class Plot_N:
       edge_color = [""] * self.edges
       for i, dat in enumerate(G.edges(data=True)):
         u, v, a = dat
-        G[u][v]["kk_weight"] = - (a["weight"] - r_min) / (r_max - r_min) + r_max
+        if "coords" not in kwargs.keys():
+          G[u][v]["kk_weight"] = - (a["weight"] - r_min) / (r_max - r_min) + r_max
         if dA[u, v] == -1: edge_color[i] = cmap_heatmap[0]
         else: edge_color[i] = "gray"
-      pos = nx.kamada_kawai_layout(G, weight="kk_weight")
+      if "coords" not in kwargs.keys():
+        pos = nx.kamada_kawai_layout(G, weight="kk_weight")
+      else:
+        pos = kwargs["coords"]
       ang = ang * np.pi/ 180
       rot = np.array([[np.cos(ang), np.sin(ang)],[-np.sin(ang), np.cos(ang)]])
       pos = {k : np.matmul(rot, pos[k]) for k in pos.keys()}
       labs = {k : lab for k, lab in zip(G.nodes, labels)}
       plt.figure(figsize=(12,12))
-      nx.draw_networkx_edges(G, pos=pos, edge_color=edge_color, alpha=0.2, arrowsize=20, connectionstyle="arc3,rad=-0.1")
-      nx.draw_networkx_labels(G, pos=pos, labels=labs)
+      if "not_edges" not in kwargs.keys():
+        nx.draw_networkx_edges(G, pos=pos, edge_color=edge_color, alpha=0.2, arrowsize=20, connectionstyle="arc3,rad=-0.1")
+      if "modified_labels" not in kwargs.keys():
+        nx.draw_networkx_labels(G, pos=pos, labels=labs)
+      else:
+        nx.draw_networkx_labels(G, pos=pos, labels=kwargs["modified_labels"])
       for node in G.nodes:
         a = plt.pie(
           [1 for id in nodes_memberships[node] if id != 0], # s.t. all wedges have equal size
@@ -647,8 +687,8 @@ class Plot_N:
           radius=0.05
         )
       array_pos = np.array([list(pos[v]) for v in pos.keys()])
-      plt.xlim(-0.1 + np.min(array_pos, axis=0)[0], np.max(array_pos, axis=0)[0]+0.1)
-      plt.ylim(-0.1 + np.min(array_pos, axis=0)[1], np.max(array_pos, axis=0)[1]+0.1)
+      plt.xlim(-0.1 + np.min(array_pos, axis=0)[0], np.max(array_pos, axis=0)[0] + 0.1)
+      plt.ylim(-0.1 + np.min(array_pos, axis=0)[1], np.max(array_pos, axis=0)[1] + 0.1)
       # Arrange path ----
       plot_path = os.path.join(
         self.path, "Network"

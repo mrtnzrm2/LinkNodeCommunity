@@ -29,7 +29,7 @@ std::vector<std::vector<int> > create_id_matrix(
 
 class simquest {
   private:
-    std::vector<std::vector<double> > linksim_matrix;
+    std::vector<double> linksim_matrix;
     std::vector<std::vector<double> > source_matrix;
     std::vector<std::vector<double> > target_matrix;
 		double alpha;
@@ -48,7 +48,7 @@ class simquest {
 			const double al
     );
     ~simquest(){};
-    std::vector<std::vector<double> > calculate_linksim_matrix(
+    std::vector<double> calculate_linksim_matrix(
       std::vector<std::vector<bool> >& bmatrix, const int& N, const int& leaves
     );
     double similarity_index(
@@ -57,7 +57,7 @@ class simquest {
     std::vector<std::vector<double> > calculate_nodesim_matrix(
       std::vector<std::vector<double> >& matrix, std::vector<std::vector<bool> >& bmatrix, std::vector<std::vector<double> > D, const int& N, const int& index
     );
-		std::vector<std::vector<double> > get_linksim_matrix();
+		std::vector<double> get_linksim_matrix();
 		std::vector<std::vector<double> > get_source_matrix();
 		std::vector<std::vector<double> > get_target_matrix();
 		double jacp(std::vector<double> &u, std::vector<double> &v);
@@ -79,6 +79,7 @@ class simquest {
 		double D1_2(std::vector<double> &u, std::vector<double> &v);
 		double D1_2_2(std::vector<double> &u, std::vector<double> &v);
 		double D1_2_3(std::vector<double> &u, std::vector<double> &v, int &ii, int&jj);
+		double D1_2_4(std::vector<double> &u, std::vector<double> &v, int &ii, int&jj);
 		double D2(std::vector<double> &u, std::vector<double> &v);
 		double Dinf(std::vector<double> &u, std::vector<double> &v);
 		double Dalpha(std::vector<double> &u, std::vector<double> &v);
@@ -135,11 +136,14 @@ std::vector<std::vector<double> > simquest::calculate_nodesim_matrix(
 	return node_sim_matrix;
 }
 
-std::vector<std::vector<double> > simquest::calculate_linksim_matrix(
+std::vector<double> simquest::calculate_linksim_matrix(
 	std::vector<std::vector<bool> >& matrix, const int& N, const int& leaves
 ) {
+	int t;
 	std::vector<std::vector<int> > id_matrix = create_id_matrix(matrix, N, N);
-	std::vector<std::vector<double> > link_similarity_matrix(leaves, std::vector<double>(leaves, 0));
+
+	t = (int) ((leaves - 1.) * leaves / 2.);
+	std::vector<double> link_similarity_matrix(t, 0.);
 	int col_id, row_id;
 	for (int i =0; i < N; i++) {
 		for (int j=0; j < N; j++) {
@@ -148,14 +152,16 @@ std::vector<std::vector<double> > simquest::calculate_linksim_matrix(
 			for (int k=j; k < N; k++) {
 				col_id = id_matrix[i][k];
 				if (k == j || col_id == 0) continue;
-				link_similarity_matrix[row_id-1][col_id-1] = target_matrix[j][k];
-				link_similarity_matrix[col_id-1][row_id-1] = link_similarity_matrix[row_id-1][col_id-1];
+				t = leaves * (row_id - 1) + col_id - 1 - 2 * (row_id -1) - 1;
+				t -= (int) ((row_id - 1.) * (row_id - 2.) / 2);
+				link_similarity_matrix[t] = target_matrix[j][k];
 			}
 			for (int k=i; k < N; k++) {
 				col_id = id_matrix[k][j];
 				if (k == i || col_id == 0) continue;
-				link_similarity_matrix[row_id-1][col_id-1] = source_matrix[i][k];
-				link_similarity_matrix[col_id-1][row_id-1] = link_similarity_matrix[row_id-1][col_id-1];
+				t = leaves * (row_id - 1) + col_id - 1 - 2 * (row_id -1) - 1;
+				t -= (int) ((row_id - 1.) * (row_id - 2.) / 2);
+				link_similarity_matrix[t] = source_matrix[i][k];
 			}
 		}
 	}
@@ -454,6 +460,33 @@ double simquest::D1_2_3(
 	return JACP;
 }
 
+double simquest::D1_2_4(
+	std::vector<double> &u, std::vector<double> &v, int &ii, int &jj
+) {
+	int N = u.size();
+	double JACP = 0.;
+	double p = 0, pu = 0, pv = 0;
+	for (int j=0; j < N; j++){
+		pu += u[j];
+		pv += v[j];
+	}
+	for (int i=0; i < N; i++){
+		// D1/2
+		if (i == ii | i == jj) continue;
+		p += sqrt(((u[i]) / pu) * ((v[i]) / pv));
+	}
+	p += sqrt((u[jj]) / pu * ((v[ii]) / pv));
+	p += sqrt((u[ii]) / pu * ((v[jj]) / pv));
+	// D1/2
+  if (p > 0) {
+    p = - 2 * log(p);
+    JACP = 1 / (1 + p);
+  }
+  else
+    JACP = 0;
+	return JACP;
+}
+
 double simquest::D2(
 	std::vector<double> &u, std::vector<double> &v
 ) {
@@ -707,12 +740,15 @@ double simquest::similarity_index(std::vector<double> &u, std::vector<double> &v
 	else if (index == 26) {
 		return jacp_2(u, v, ii, jj);
 	}
+	else if (index == 27) {
+		return D1_2_4(u, v, ii, jj);
+	}
   else {
     std::range_error("Similarity index must be a integer from 0 to 5\n");
   }
 }
 
-std::vector<std::vector<double> > simquest::get_linksim_matrix() {
+std::vector<double> simquest::get_linksim_matrix() {
 	return linksim_matrix;
 }
 

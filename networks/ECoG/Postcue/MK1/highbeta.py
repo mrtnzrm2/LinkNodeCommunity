@@ -123,7 +123,10 @@ class MK1PostHighBeta(base):
     file = pd.read_table(f"{self.distance_path}/mk1_postcue.txt", sep="\t", header=None)
     file = file.to_numpy()
     D = np.zeros((self.nodes, self.nodes))
+    self.coords = {i : np.zeros(2) for i in np.arange(self.nodes)}
     for i in np.arange(self.nodes):
+      self.coords[i][0] = file[i, 0]
+      self.coords[i][1] = file[i, 1]
       for j in np.arange(i+1, self.nodes):
         D[i, j] = np.sqrt(np.power(file[i, 0] - file[j, 0], 2) + np.power(file[i, 1] - file[j, 1], 2))
         D[j, i] = D[i, j]

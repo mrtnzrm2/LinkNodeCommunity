@@ -28,7 +28,7 @@ def worker_scalefree(
   linkage = "single"
   __mode__ =  mode
   alpha = 0.
-  opt_score = ["_maxmu", "_X", "_D", "_S"]
+  opt_score = ["_maxmu", "_X", "_D", "_S", "_SD"]
   # WDN paramters ----
   par = {
     "-N" : f"{__nodes__}",
@@ -100,6 +100,7 @@ def worker_scalefree(
     # Set labels to network ----
     L = colregion(RAND)
     RAND_H.set_colregion(L)
+    RAND_H.delete_dist_matrix()
     #  Update entropy ----
     data.update_entropy(
       [RAND_H.node_entropy, RAND_H.node_entropy_H,

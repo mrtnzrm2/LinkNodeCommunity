@@ -33,7 +33,7 @@ def worker_swaps(
   distance = "tracto16"
   nature = "original"
   imputation_method = ""
-  opt_score = ["_X", "_S"]
+  opt_score = ["_X", "_S", "_SD"]
   # Declare global variables DISTBASE ----
   __inj__ = number_of_inj
   __nodes__ = number_of_nodes
@@ -137,8 +137,8 @@ def worker_swaps(
     RAND_H.node_entropy_cpp("short", cut=cut)
     # Set colregion ----
     RAND_H.set_colregion(L)
+    RAND_H.delete_dist_matrix()
     # Stats ----
-    data.set_data_homogeneity_zero(RAND_H.R)
     data.set_data_measurements_zero(RAND_H, i)
     data.set_stats(RAND_H)
     # Set entropy ----
@@ -147,24 +147,20 @@ def worker_swaps(
        RAND_H.link_entropy, RAND_H.link_entropy_H],  
     )
     data.set_stats(RAND_H)
-    ial = 0
-    for score in opt_score:
+    for SCORE in opt_score:
       # Get best k, r for given score ----
-      K, R = get_best_kr_equivalence(score, RAND_H)
+      K, R = get_best_kr_equivalence(SCORE, RAND_H)
       for k, r in zip(K, R):
-        if score == "_maxmu":
-          SCORE = f"{score}_{RAND.Alpha[ial]}"
-          ial += 1
-        else: SCORE = score
         RAND_H.set_kr(k, r, SCORE)
         data.set_kr_zero(RAND_H)
         # Add iteartion to data----
         rlabels = get_labels_from_Z(RAND_H.Z, r)
         # Overlap ----
-        ocn, subcover = RAND_H.discovery_2(k, rlabels, rhp=1.1, sig=0.5)
+        ocn, subcover = RAND_H.discovery_3(k, rlabels)
         cover = omega_index_format(
           rlabels, subcover, RAND_H.colregion.labels[:RAND_H.nodes]
         )
+        data.set_association_zero(SCORE, cover)
         data.set_clustering_similarity(rlabels, cover, SCORE)
         data.set_overlap_data_zero(ocn, SCORE)
   # Save ----

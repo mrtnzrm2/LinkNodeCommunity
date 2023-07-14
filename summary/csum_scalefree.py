@@ -22,18 +22,18 @@ def draw_heatmap(*args, **kwargs):
   sns.heatmap(d, **kwargs)
 
 # Declare iter variables ----
-number_of_nodes = [200]
-topologies = ["SOURCE"]
-indices = ["bsim", "D1_2_2"]
-MUT = [0.1, 0.3, 0.5]
-NMIN = [10, 50]
-NMAX = [20, 100]
+number_of_nodes = [100, 150]
+topologies = ["MIX"]
+indices = [ "D1_2_2"]
+MUT = [0.1, 0.3]
+NMIN = [5]
+NMAX = [25]
 list_of_lists = itertools.product(
   *[number_of_nodes, topologies, indices, MUT, NMIN, NMAX]
 )
 list_of_lists = np.array(list(list_of_lists))
 # Constant parameters ---
-MAXI = 100
+MAXI = 50
 linkage = "single"
 nlog10 = F
 lookup = F
@@ -41,14 +41,14 @@ prob = F
 cut = F
 run = T
 mapping = "trivial"
-__mode__ = "ALPHA"
+__mode__ = "BETA"
 l10 = ""
 lup = ""
 _cut = ""
 if nlog10: l10 = "_l10"
 if lookup: lup = "_lup"
 if cut: _cut = "_cut"
-opt_score = ["_maxmu", "_X", "_D"]
+opt_score = ["_maxmu", "_X", "_D", "_S"]
 if __name__ == "__main__":
   # Extract data ----
   THE_DF = pd.DataFrame()
@@ -60,10 +60,10 @@ if __name__ == "__main__":
     # WDN paramters ----
     par = {
       "-N" : "{}".format(str(__nodes__)),
-      "-k" : "10.0",
-      "-maxk" : "50",
+      "-k" : "7.0",
+      "-maxk" : "20",
       "-mut" : f"{mut}",
-      "-muw" : "0.3",
+      "-muw" : "0.01",
       "-beta" : "3",
       "-t1" : "2",
       "-t2" : "1",
@@ -98,10 +98,12 @@ if __name__ == "__main__":
       ], ignore_index=T
     )
   # Comparing feature, index, & score for given kav, mut, and muw
-  for tp in topologies:
+  list_of_lists = itertools.product(*[number_of_nodes, topologies])
+  for __nodes__, tp in list_of_lists:
+    __nodes__ = int(__nodes__)
     print(tp)
     # Prepare path ----
-    IM_ROOT =  "../plots/RAN/scalefree/-N_{}/-k_10.0/-maxk_50/{}/{}{}{}{}".format(
+    IM_ROOT =  "../plots/RAN/scalefree/-N_{}/-k_7.0/-maxk_20/{}/{}{}{}{}".format(
       str(__nodes__), MAXI, linkage.upper(), l10, lup, _cut
     )
     # Prepare data ----
@@ -118,7 +120,7 @@ if __name__ == "__main__":
     Path(IM_ROOT).mkdir(exist_ok=True, parents=True)
     plt.savefig(
       os.path.join(
-        IM_ROOT, f"NMI_{tp}.png"
+        IM_ROOT, f"NMI_{tp}_{__mode__}.png"
       ),
       dpi = 300
     )

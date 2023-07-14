@@ -18,30 +18,35 @@ def skim_partition(partition):
     new_partition[par == c] = i
   return new_partition
 
-def Dc_id(dA, id):
+def Dc_id(dA, id, undirected=False):
   # Filter dataframe ----
-  dAid = dA.loc[dA.id == id]
+  if not undirected:
+    dAid = dA.loc[dA.id == id]
+  else:
+    dAid = dA.loc[(dA.id == id) & (dA.source > dA.target)]
   # Get source nodes ----
-  src = dAid.source.to_numpy()
-  src = set(src)
+  src = set([i for i  in dAid.source])
   # Get target nodes list ----
-  tgt = dAid.target.to_numpy()
-  tgt = set(tgt)
+  tgt = set([i for i in dAid.target])
   # Get number of edges ----
   m = dAid.shape[0]
   # Compute Dc ----
   n = len(tgt.union(src))
-  if n > 1 and m >= n: return (m - n + 1) / (n - 1) ** 2
-  else: return 0
+  if ~undirected:
+    if n > 1 and m >= n: return (m - n + 1) / (n - 1) ** 2
+    else: return 0
+  else:
+   if n > 1 and m >= n: return (m - n + 1) / (n * (n - 1) / 2. - n + 1.)
+   else: return 0
 
-def minus_one_Dc(dA):
+def minus_one_Dc(dA, undirected=False):
   ids = np.sort(
     np.unique(
       dA["id"].to_numpy()
     )
   )
   for id in ids:
-    Dc = Dc_id(dA, id)
+    Dc = Dc_id(dA, id, undirected=undirected)
     if Dc <= 0:
       dA["id"].loc[dA["id"] == id] = -1
 
@@ -73,7 +78,7 @@ def range_and_probs_from_DC(D, C, bins):
   x = d_range[:-1] + delta
   return d_range, x, y
 
-def get_best_kr(score, H):
+def get_best_kr(score, H, undirected=False, mapping="X_diag"):
   k = 1
   if score == "_maxmu":
     k = get_k_from_maxmu(
@@ -89,11 +94,27 @@ def get_best_kr(score, H):
       get_H_from_BH(H), order=0
     )
     k = [k]
+  elif score == "_S":
+    k = get_k_from_S(
+      get_H_from_BH(H)
+    )
+  elif score == "_SD":
+    k = get_k_from_SD(
+      get_H_from_BH(H)
+    )
   else: raise ValueError(f"Unexpected score: {score}")
-  r = get_r_from_X_diag(
-    k, H.H, H.Z, H.A, H.nodes
+  if not isinstance(k, list): k = [k]
+  r = get_r_from[mapping](
+    k, H.H, H.Z, H.A, H.nodes, undirected=undirected
   )
-  return np.array(k), np.array(r)
+  if isinstance(r, list) and isinstance(k, list):
+    return np.array(k), np.array(r)
+  elif isinstance(k, list):
+    return np.array(k), np.array([r])
+  elif isinstance(r, list):
+    return np.array([k]), np.array(r)
+  else:
+    return np.array([k]), np.array([r])
 
 def get_best_kr_equivalence(score, H):
   k = 1
@@ -111,6 +132,10 @@ def get_best_kr_equivalence(score, H):
     )
   elif score == "_S":
     k = get_k_from_S(
+      get_H_from_BH(H)
+    )
+  elif score == "_SD":
+    k = get_k_from_SD(
       get_H_from_BH(H)
     )
   else: raise ValueError(f"Unexpected score: {score}")
@@ -242,12 +267,12 @@ def get_H_from_BH_with_maxmu(H):
   h = pd.DataFrame()
   for i in np.arange(len(H.BH)):
     h = pd.concat([h, H.BH[i]], ignore_index=True)
-  h = h.groupby(["K", "alpha", "D", "m", "ntrees", "X"])["mu"].max().reset_index()
+  h = h.groupby(["K", "D", "X", "S", "SD"])["mu"].max().reset_index()
   return h
 
 def get_k_from_ntrees(H):
   k = H["K"].loc[
-    H["ntrees"] == 0
+  H["ntrees"] == 0
   ]
   if (len(k) > 1):
     print("warning: more than one k")
@@ -337,6 +362,17 @@ def get_k_from_S(H):
     r = r.iloc[0]
   return int(r)
 
+def get_k_from_SD(H):
+  if "SD" in H.columns:
+    r = H["K"].loc[H.SD == np.nanmax(H.SD)]
+  else:
+    best = (H.D / np.nansum(H.D))* (H.S / np.nansum(H.S))
+    r = H.K.loc[best == np.nanmax(best)]
+  if (len(r) > 1):
+    print("warning: more than one k")
+    r = r.iloc[0]
+  return int(r)
+
 def get_r_from_avmu(H):
   avH = H.groupby(["K"]).mean()
   r = avH["NAC"].loc[
@@ -381,7 +417,7 @@ def get_r_from_equivalence(k, H):
   else:
     return H.equivalence[H.equivalence[:, 0] == k, 1][0]
 
-def get_r_from_X_diag(K, H, Z, R, nodes):
+def get_r_from_X_diag(K, H, Z, R, nodes, **kwargs):
   from scipy.cluster.hierarchy import cut_tree, dendrogram
   r = []
   for k in K:
@@ -389,7 +425,7 @@ def get_r_from_X_diag(K, H, Z, R, nodes):
     dR = adj2df(R[:nodes, :])
     dR = dR.loc[(dR.weight != 0)]
     dR["id"] = labels
-    minus_one_Dc(dR)
+    minus_one_Dc(dR, False)
     aesthetic_ids(dR)
     ##
     den_order = np.array(
@@ -413,8 +449,54 @@ def get_r_from_X_diag(K, H, Z, R, nodes):
       else:
         dR = dR.loc[dR.id != label]
     nodes_fair_communities = set(dR.source).intersection(set(dR.target))
-    r.append(nodes - len(nodes_fair_communities) + len_unique_labels)
+    r.append(nodes - len(nodes_fair_communities) + len_between_up_down)
   return r
+
+def get_r_from_modularity(k, H, Z, R, nodes, undirected=False):
+  from collections import Counter
+  from scipy.cluster.hierarchy import cut_tree, dendrogram
+  if not undirected:
+    RR = R.copy()
+    RR[RR != 0] = 1
+    RR = RR[:nodes, :]
+    RR = adj2df(RR)
+    RR = RR.loc[RR.weight != 0]
+    RR["id"] = cut_tree(H, k).ravel()
+  else:
+    RR = np.triu(R)
+    nonzero = RR != 0
+    nonx, nony = np.where(nonzero)
+    RR = pd.DataFrame(
+      {
+        "source" : list(nonx) + list(nony),
+        "target" : list(nony) + list(nonx),
+        "weight" : list(R[nonx, nony]) * 2
+      }
+    )
+    RR["id"] = np.tile(cut_tree(H, k).ravel(), 2)
+  minus_one_Dc(RR, undirected=undirected)
+  aesthetic_ids(RR)
+  RR2 = df2adj(RR, var="id")
+  RR2[RR2 == -1] = 0
+  RR2[RR2 != 0] = 1
+  RR = df2adj(RR)
+  RR = RR * RR2
+  #
+  den_order = np.array(dendrogram(Z, no_plot=True)["ivl"]).astype(int)
+  RR = RR[den_order, :][:, den_order]
+  D = np.zeros(nodes - 1)
+  for i in np.arange(nodes - 1, 0, -1):
+    partition = cut_tree(Z, i).ravel()[den_order]
+    number_nodes = dict(Counter(partition))
+    where_nodes = {k : np.where(partition == k)[0] for k in number_nodes.keys()}
+    d = np.array([(number_nodes[k] / nodes) * np.nansum(RR[where_nodes[k], :][:, where_nodes[k]]) / (number_nodes[k] * (number_nodes[k] - 1)) for k in number_nodes.keys()])
+    D[i-1] = np.nansum(d)
+  return np.argmax(D)
+
+get_r_from = {
+  "modularity" : get_r_from_modularity,
+  "X_diag" : get_r_from_X_diag
+}
 
 def get_r_from_X_diag_2(k, H, Z, R, nodes):
   from scipy.cluster.hierarchy import cut_tree, dendrogram
@@ -538,19 +620,15 @@ def AD_NMI_overlap(gt, pred, cover1, cover2, on=True):
     return -1
 
 def save_class(
-  CLASS, pickle_path, class_name="duck", **kwargs
+  CLASS, pickle_path, class_name="duck", on=True, **kwargs
 ):
   path = join(
     pickle_path, "{}.pk".format(class_name)
   )
   if exists(path): remove(path)
-  if "on" in kwargs.keys():
-    if kwargs["on"]:
-      with open(path, "wb") as f:
-        pk.dump(CLASS, f)
-  else:
+  if on:
     with open(path, "wb") as f:
-        pk.dump(CLASS, f)
+      pk.dump(CLASS, f)
 
 def read_class(pickle_path, class_name="duck", **kwargs):
   path = join(

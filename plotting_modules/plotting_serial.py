@@ -13,7 +13,6 @@ class PLOT_S:
     # Get attributes from hrh ----
     self.data = hrh.data
     self.stats = hrh.stats
-    self.NH = hrh.data_homoegeity
     self.measures = hrh.data_measures
     self.node_entropy = hrh.node_entropy
     self.link_entropy = hrh.link_entropy
@@ -68,7 +67,8 @@ class PLOT_S:
       print("Plot clustering similarity histogram!!!")
       subdata = self.data.copy()
       # Average score ----
-      # mean_results = subdata.groupby(["sim", "score"]).mean().reset_index()
+      mean_results = subdata.groupby(["sim", "score"]).mean().reset_index()
+      print(mean_results)
       # ## MAXMU
       # mean_nmi = mean_results["values"].loc[(mean_results.sim == "NMI") & (mean_results.score == "_maxmu")].to_numpy()
       # mean_nmi = np.round(mean_nmi, 3)[0]
@@ -133,6 +133,7 @@ class PLOT_S:
         ),
         dpi=300
       )
+      plt.close()
     else:
       print("No clustering similarity histogram")
   
@@ -357,6 +358,89 @@ class PLOT_S:
       )
       plt.close()
     else: print("No D iterations")
+
+  def plot_measurements_S(self, on=False, **kwargs):
+    if on:
+      print("Plot S iterations")
+      data = self.measures[["K", "S", "data", "iter"]]
+      # Create figure ----
+      fig, ax = plt.subplots(1, 1)
+      sns.lineplot(
+        data=data.loc[data.data == "0"],
+        x="K",
+        y="S",
+        errorbar="sd",
+        ax=ax
+      )
+      sns.lineplot(
+        data=data.loc[data.data == "1"],
+        x="K",
+        y="S",
+        color="#C70039",
+        ax=ax
+      )
+      plt.legend([],[], frameon=False)
+      plt.xscale("log")
+      fig.tight_layout()
+      # Arrange path ----
+      plot_path = join(
+        self.plot_path, "Features"
+      )
+      # Crate path ----
+      Path(
+        plot_path
+      ).mkdir(exist_ok=True, parents=True)
+      # Save plot ----
+      plt.savefig(
+        join(
+          plot_path, "S_logK.png"
+        ),
+        dpi=300
+      )
+      plt.close()
+    else: print("No S iterations")
+
+  def plot_measurements_SD(self, on=False, **kwargs):
+    if on:
+      print("Plot SD iterations")
+      data = self.measures[["K", "SD", "data", "iter"]]
+
+      # Create figure ----
+      fig, ax = plt.subplots(1, 1)
+      sns.lineplot(
+        data=data.loc[data.data == "0"],
+        x="K",
+        y="SD",
+        errorbar="sd",
+        ax=ax
+      )
+      sns.lineplot(
+        data=data.loc[data.data == "1"],
+        x="K",
+        y="SD",
+        color="#C70039",
+        ax=ax
+      )
+      plt.legend([],[], frameon=False)
+      plt.xscale("log")
+      fig.tight_layout()
+      # Arrange path ----
+      plot_path = join(
+        self.plot_path, "Features"
+      )
+      # Crate path ----
+      Path(
+        plot_path
+      ).mkdir(exist_ok=True, parents=True)
+      # Save plot ----
+      plt.savefig(
+        join(
+          plot_path, "SD_logK.png"
+        ),
+        dpi=300
+      )
+      plt.close()
+    else: print("No SD iterations")
 
   def plot_measurements_X(self, on=False, **kwargs):
     if on:
@@ -635,6 +719,53 @@ class PLOT_S:
       )
       plt.close()
     else: print("No D noodle iterations")
+
+  def plot_measurements_S_noodle(self, on=False, **kwargs):
+    if on:
+      print("Plot S noodle iterations")
+      data = self.measures.groupby(["K", "data", "iter"])["S"].max().reset_index()
+      data.iter.loc[data.data == "0"] = [int(i) for i in data.iter.loc[data.data == "0"]]
+      # Create figure ----
+      fig, ax = plt.subplots(1, 1)
+      sns.lineplot(
+        data=data.loc[data.data == "0"],
+        x="K",
+        y="S",
+        hue="iter",
+        alpha=0.4,
+        lw=0.5,
+        palette=sns.color_palette("viridis", as_cmap=True),
+        estimator=None,
+        ax=ax
+      )
+      sns.lineplot(
+        data=data.loc[data.data == "1"],
+        x="K",
+        y="S",
+        color="#C70039",
+        lw=1,
+        ax=ax
+      )
+      plt.legend([],[], frameon=False)
+      plt.xscale("log")
+      fig.tight_layout()
+      # Arrange path ----
+      plot_path = join(
+        self.plot_path, "Features"
+      )
+      # Crate path ----
+      Path(
+        plot_path
+      ).mkdir(exist_ok=True, parents=True)
+      # Save plot ----
+      plt.savefig(
+        join(
+          plot_path, "S_logK_noodle.png"
+        ),
+        dpi=300
+      )
+      plt.close()
+    else: print("No S noodle iterations")
 
   def plot_measurements_X_noodle(self, on=False, **kwargs):
     if on:

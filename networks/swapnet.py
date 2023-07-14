@@ -118,7 +118,7 @@ class SWAPNET(EDR):
         if not os.path.exists(path):
           from rand_network import swap_one_k
           t = swap_one_k(
-            self.C, self.rows, self.nodes, 100000
+            self.C, self.rows, self.nodes, 1000000
           )
           self.C = np.array(t)
           print(

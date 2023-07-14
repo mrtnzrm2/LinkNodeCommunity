@@ -90,6 +90,7 @@ if __name__ == "__main__":
       H.link_entropy, H.link_entropy_H
     ]
     H.set_colregion(L)
+    H.delete_dist_matrix()
     save_class(
       H, NET.pickle_path,
       "hanalysis",
@@ -124,7 +125,7 @@ if __name__ == "__main__":
     print("Best K: {}\nBest R: {}\t Score: {}".format(k, r, score))
     ## Take a look in case of SLN ----
     rlabels = get_labels_from_Z(H.Z, r)
-    NET.overlap, _ = H.discovery_2(k, rlabels, rho=1.1, sig=0.5)
+    NET.overlap, _ = H.discovery_3(k, rlabels)
     H.set_overlap_labels(NET.overlap, score)
     ## Single linkage ----
     plot_h.core_dendrogram([r], on=F)

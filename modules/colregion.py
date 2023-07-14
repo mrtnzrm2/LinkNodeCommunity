@@ -32,6 +32,7 @@ class colregion:
       self.labels = np.char.lower(self.labels.astype(str))
       # Get regions path ----
       self.regions_path = NET.regions_path
+    self.get_regions()
 
   def MAC_region_colors(self):
     maxc = 255
@@ -49,7 +50,8 @@ class colregion:
           to_hex((0 ,97/maxc, 65/maxc)),
           to_hex((1, 126/maxc, 0)),
           "#800080",
-          "#ffd500",
+          "#fec20c",
+          # "#ffd500",
           to_hex((237/maxc, 28/maxc, 36/maxc)),
           "#2a52be"
         ]
@@ -97,6 +99,7 @@ class colECoG:
       self.labels = NET.struct_labels
       self.regions_path = NET.regions_path
       self.nodes = NET.nodes
+      self.get_regions()
   
   def get_regions(self):
     ## COLOR ----

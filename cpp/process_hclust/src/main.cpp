@@ -185,16 +185,20 @@ std::vector<double> complete_height_to_k(
   return sim_k;
 }
 
-double Dc(int &m, int &n) {
-  double dc = (m - n + 1.) / pow(n - 1., 2.);
+double Dc(int &m, int &n, bool &undirected) {
+  double dc;
+  if (!undirected)
+    dc = (m - n + 1.) / pow(n - 1., 2.);
+  else
+    dc = (m - n + 1.) / ((n * (n - 1.) / 2.) - n + 1.);
   if (dc > 0) return dc;
   else return 0;
 }
 
-double Sc(int &m, int &n, int &M) {
-  double pc = (m - n + 1.) / M;
+double Sc(int &m, int &n, int &M, int& N) {
+  double pc;
+  pc = (m - n + 1.) / (M - N + 1.);
   if (pc > 0) return -pc * log(pc);
-  // if (pc > 0) return pow(pc, 0.5);
   else return 0;
 }
 
@@ -250,7 +254,7 @@ class ph {
     int max_level=0;
 
     int number_of_elements;
-    std::vector<std::vector<double> > distane_matrix;
+    std::vector<double> distane_matrix;
     std::vector<int> source_vertices;
     std::vector<int> target_vertices;
     int total_nodes;
@@ -258,23 +262,26 @@ class ph {
     bool CUT;
     int ALPHA;
     double BETA;
+    bool undirected;
 
   public:
     ph(
       const int n,
-      std::vector<std::vector<double> > distmat,
+      std::vector<double> distmat,
       std::vector<int> source,
       std::vector<int> target,
       const int nodes,
       const int linkage,
       const bool cut,
       const int alpha,
-      const double beta
+      const double beta,
+      const bool uni
     );
     ~ph(){};
 
     void vite();
     void vite_mu();
+    void vite_nodewise(std::vector<int> &equivalence, std::vector<double> &h, int &array_size);
     // std::vector<std::vector<int> > &link_communities, std::vector<double> & H, 
     void arbre(std::string &t_size);
     void bene(std::string &t_size);
@@ -309,14 +316,15 @@ class ph {
 
 ph::ph(
   const int n,
-  std::vector<std::vector<double> > distmat,
+  std::vector<double> distmat,
   std::vector<int> source,
   std::vector<int> target,
   const int nodes,
   const int linkage,
   const bool cut,
   const int alpha,
-  const double beta
+  const double beta,
+  const bool uni
 ) {
   number_of_elements = n;
   distane_matrix = distmat;
@@ -327,6 +335,7 @@ ph::ph(
   CUT = cut;
   ALPHA = alpha;
   BETA = beta;
+  undirected = uni;
 }
 
 template <typename T>
@@ -408,12 +417,8 @@ void ph::bene(std::string &t_size) {
   double* height = new double[number_of_elements-1];
   int* labels = new int[number_of_elements];
   // Get condense matrix ----
-  for (int i = 0, k = 0; i < number_of_elements; i++) {
-    for (int j = i +1 ; j < number_of_elements; j++) {
-      tri_distmat[k] = distane_matrix[i][j];
-      k++;
-    }
-  }
+  for (int i = 0; i < distane_matrix.size(); i++)
+    tri_distmat[i] = distane_matrix[i];
   hclust_fast(
     number_of_elements,
     tri_distmat,
@@ -467,12 +472,8 @@ void ph::arbre(std::string &t_size) {
   int* merge = new int[2 * (number_of_elements - 1)];
   double* height = new double[number_of_elements-1];
   int* labels = new int[number_of_elements];
-  for (int i = 0, k = 0; i < number_of_elements; i++) {
-    for (int j = i +1 ; j < number_of_elements; j++) {
-      tri_distmat[k] = distane_matrix[i][j];
-      k++;
-    }
-  }
+  for (int i = 0; i < distane_matrix.size(); i++)
+    tri_distmat[i] = distane_matrix[i];
   hclust_fast(
     number_of_elements,
     tri_distmat,
@@ -581,7 +582,7 @@ void ph::get_sizes(
 void ph::vite() {
   // Various variables ----
   int nt, nec, length = 0;
-  double dc, mtree=0.;
+  double dc, mtree;
   std::vector<double> sim_k, sim_height, dcv, scv;
   std::vector<int> lcsizes;
   std::map<int, lcprops > sizes;
@@ -592,11 +593,8 @@ void ph::vite() {
   double* height = new double[number_of_elements-1];
   int* labels = new int[number_of_elements];
   // Get condense matrix ----
-  for (int i = 0, k = 0; i < number_of_elements; i++) {
-    for (int j = i +1 ; j < number_of_elements; j++) {
-      tri_distmat[k] = distane_matrix[i][j];
-      k++;
-    }
+  for (int i = 0; i < distane_matrix.size(); i++) {
+    tri_distmat[i] = distane_matrix[i];
   }
   // Get hierarchy!! ----
   hclust_fast(
@@ -638,24 +636,115 @@ void ph::vite() {
     lcsizes = std::vector<int>(unique_labels.size(), 0);
     // Get number of links and number of nodes in link communities in order
     get_sizes(sizes, labels, lcsizes, unique_labels, source_vertices, target_vertices, number_of_elements);
+    // for (std::map<int, lcprops>::iterator it = sizes.begin(); it != sizes.end(); ++it) {
+    //   if (it->second.m - it->second.n + 1 < 0)
+    //     std::cout << it->second.m << "\t" << it->second.n << "\n";
+    // }
+    mtree = 0.;
     nec = 0;
     nt = 0;
     dcv = std::vector<double>(sizes.size(), 0.);
     scv = std::vector<double>(sizes.size(), 0.);
     for (std::map<int, lcprops >::iterator it=sizes.begin(); it != sizes.end(); ++it) {
       if (it->second.m > 1 && it->second.n > 2) {
-        dcv[nec] = Dc(it->second.m, it->second.n) * it->second.m / number_of_elements;
+        dcv[nec] = Dc(it->second.m, it->second.n , undirected) * it->second.m / number_of_elements;
         if (dcv[nec] <= 0) {
           nt++;
         }
-        scv[nec] = Sc(it->second.m, it->second.n, number_of_elements);
+        scv[nec] = Sc(it->second.m, it->second.n, number_of_elements, total_nodes);
         mtree += it->second.m - it->second.n + 1;
         nec++;
       }
     }
-    mtree = number_of_elements * 1. - mtree * 1.;
+    S[i] = sum(scv);
+    // if (mtree < 0 )std::cout << mtree << "\n";
+    mtree = (number_of_elements - total_nodes + 1.) - mtree;
+    mtree = mtree / (number_of_elements  - total_nodes + 1.);
+    if (mtree > 0) S[i] += -mtree * log(mtree);
+    D[i] = sum(dcv);
+    ntrees[i] = nt;
+    // NEC: number of edge compact LCs
+    NEC[i] = nec;
+    OrP[i] = order_parameter(lcsizes, number_of_elements);
+    XM[i] = Xm(sizes);
+    X[i] = Xsus(sizes, number_of_elements, lcsizes[0]);
+    sizes.clear();
+  }
+  // Delete pointers
+  delete[] labels;
+  delete[] merge;
+  delete[] height;
+  delete[] tri_distmat;
+}
+
+void ph::vite_nodewise(std::vector<int> &equivalence, std::vector<double> &h, int &array_size) {
+  // Various variables ----
+  int nt, nec;
+  double mtree;
+  std::vector<double> dcv, scv;
+  std::vector<int> lcsizes;
+  std::map<int, lcprops > sizes;
+  // Condense distance matrix ----
+  double* tri_distmat = new double[(number_of_elements * (number_of_elements - 1)) / 2];
+  // hclust arrays ----
+  int* merge = new int[2 * (number_of_elements - 1)];
+  double* height = new double[number_of_elements-1];
+  int* labels = new int[number_of_elements];
+  // Get condense matrix ----
+  for (int i = 0; i < distane_matrix.size(); i++)
+    tri_distmat[i] = distane_matrix[i];
+  // Get hierarchy!! ----
+  hclust_fast(
+    number_of_elements,
+    tri_distmat,
+    Linkage, // linkage method
+    merge,
+    height
+  );
+  expand_vector(K, array_size);
+  expand_vector(Height, array_size);
+  expand_vector(D, array_size);
+  expand_vector(NEC, array_size);
+  expand_vector(ntrees, array_size);
+  expand_vector(X, array_size);
+  expand_vector(XM, array_size);
+  expand_vector(OrP, array_size);
+  expand_vector(S, array_size);
+  // THE GAME STARTS
+  for (int i=0; i < array_size; i++) {
+    K[i] = equivalence[i];
+    Height[i] = h[i];
+    // Cut tree at given sim_k and get memberships ----
+    cutree_k(
+      number_of_elements,
+      merge,
+      K[i],
+      labels
+    );
+    std::vector<int> unique_labels(labels, labels + number_of_elements);
+    unique(unique_labels);
+    lcsizes = std::vector<int>(unique_labels.size(), 0);
+    // Get number of links and number of nodes in link communities in order
+    get_sizes(sizes, labels, lcsizes, unique_labels, source_vertices, target_vertices, number_of_elements);
+    mtree = 0.;
+    nec = 0;
+    nt = 0;
+    dcv = std::vector<double>(sizes.size(), 0.);
+    scv = std::vector<double>(sizes.size(), 0.);
+    for (std::map<int, lcprops >::iterator it=sizes.begin(); it != sizes.end(); ++it) {
+      if (it->second.m > 1 && it->second.n > 2) {
+        dcv[nec] = Dc(it->second.m, it->second.n , undirected) * it->second.m / number_of_elements;
+        if (dcv[nec] <= 0) {
+          nt++;
+        }
+        scv[nec] = Sc(it->second.m, it->second.n, number_of_elements, total_nodes);
+        mtree += it->second.m - it->second.n + 1;
+        nec++;
+      }
+    }
     S[i] = sum(scv); // - ((number_of_elements- mtree * 1.)/ number_of_elements) * log((number_of_elements - mtree * 1.)/ number_of_elements);
-    mtree = mtree / number_of_elements * 1.;
+    mtree = number_of_elements * 1. - total_nodes + 1 - mtree;
+    mtree = mtree / (number_of_elements * 1. - total_nodes + 1);
     if (mtree > 0) S[i] += -mtree * log(mtree);
     D[i] = sum(dcv);
     ntrees[i] = nt;
@@ -686,12 +775,8 @@ void ph::vite_mu() {
   double* height = new double[number_of_elements-1];
   int* labels = new int[number_of_elements];
   // Get condense matrix ----
-  for (int i = 0, k = 0; i < number_of_elements; i++) {
-    for (int j = i +1 ; j < number_of_elements; j++) {
-      tri_distmat[k] = distane_matrix[i][j];
-      k++;
-    }
-  }
+  for (int i = 0; i < distane_matrix.size(); i++)
+    tri_distmat[i] = distane_matrix[i];
   // Get hierarchy!! ----
   hclust_fast(
     number_of_elements,
@@ -736,18 +821,20 @@ PYBIND11_MODULE(process_hclust, m) {
         .def(
           py::init<
             const int,
-            std::vector<std::vector<double> >,
+            std::vector<double>,
             std::vector<int>,
             std::vector<int>,
             const int,
             const int,
             const bool,
             const int,
-            const double
+            const double,
+            const bool
           >()
         )
         .def("vite", &ph::vite)
         .def("vite_mu", &ph::vite_mu)
+        .def("vite_nodewise", &ph::vite_nodewise)
         .def("arbre", &ph::arbre)
         .def("bene", &ph::bene)
         .def("get_K", &ph::get_K)

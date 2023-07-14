@@ -6,7 +6,6 @@ from os.path import join
 from various.omega import Omega
 # Personal libs ----
 from various.network_tools import *
-from various.similarity_indices import NT
 from modules.hierarmerge import Hierarchy
 from modules.colregion import colregion
 
@@ -18,6 +17,7 @@ class HRH:
     self.Z = H.Z
     self.dA = H.dA
     self.R = H.R
+    self.rcover = H.cover
     self.subfolder = H.subfolder
     # Get labels from L ----
     self.labels = L.labels[:self.nodes]
@@ -31,9 +31,6 @@ class HRH:
     self.data_overlap = pd.DataFrame()
     # Partition, labels, & covers ----
     self.set_various_labels(H)
-    # Homonegenity ----
-    self.data_homoegeity = pd.DataFrame()
-    self.set_data_homogeneity_one()
     # Measurements ----
     self.data_measures = pd.DataFrame()
     self.set_data_measurements_one(H)
@@ -44,6 +41,12 @@ class HRH:
     self.node_entropy = pd.DataFrame()
     self.link_entropy = pd.DataFrame()
     self.set_entropy_one(H.entropy)
+    # Association matrice ----
+    self.association_one = {}
+    self.association_zero = {}
+    for key in self.rcover.keys():
+      self.set_association_one(key)
+      self.association_zero[key] = np.zeros((self.nodes, self.nodes))
     # Set save_class as method ----
     self.save_class = save_class
     self.read_class = read_class
@@ -53,6 +56,33 @@ class HRH:
 
   def set_subfolder(self, subfolder):
     self.subfolder = subfolder
+
+  def set_association_one(self, score):
+    self.association_one[score] = np.zeros((self.nodes, self.nodes))
+    for key, nodes in self.rcover[score].items():
+      for i in np.arange(len(nodes)):
+        for j in np.arange(i+1, len(nodes)):
+          x = np.where(self.labels == nodes[i])[0][0]
+          y = np.where(self.labels == nodes[j])[0][0]
+          if key != -1:
+            self.association_one[score][x, y] += 1
+            self.association_one[score][y, x] += 1
+          else:
+            self.association_one[score][x, y] -= 1
+            self.association_one[score][y, x] -= 1
+  
+  def set_association_zero(self, score, cover : dict):
+    for key, nodes in cover.items():
+      for i in np.arange(len(nodes)):
+        for j in np.arange(i+1, len(nodes)):
+          x = np.where(self.labels == nodes[i])[0][0]
+          y = np.where(self.labels == nodes[j])[0][0]
+          if key != -1:
+            self.association_zero[score][x, y] += 1
+            self.association_zero[score][y, x] += 1
+          else:
+            self.association_zero[score][x, y] -= 1
+            self.association_zero[score][y, x] -= 1
 
   def set_various_labels(self, NET_H : Hierarchy):
     for i in np.arange(NET_H.kr.shape[0]):
@@ -147,7 +177,7 @@ class HRH:
       [
         self.data_measures,
         get_H_from_BH_with_maxmu(H)[
-          ["K", "alpha", "mu", "X", "D", "m", "ntrees"]
+          ["K", "X", "D", "S", "SD"]
         ]
       ],
       ignore_index=True
@@ -156,48 +186,12 @@ class HRH:
   
   def set_data_measurements_zero(self, HH : Hierarchy, iter : int):
     H = get_H_from_BH_with_maxmu(HH)[
-      ["K", "alpha", "mu", "X", "D", "m", "ntrees"]
+      ["K", "X", "D", "S", "SD"]
     ]
     H["data"] = ["0"] * H.shape[0]
     H["iter"] = [str(iter)] * H.shape[0]
     self.data_measures = pd.concat(
       [self.data_measures, H],
-      ignore_index=True
-    )
-
-  def set_data_homogeneity_one(self):
-    NT_vector = np.zeros(self.nodes)
-    for i in np.arange(self.nodes):
-      NT_vector[i] = NT(self.R, i, axis=1)
-    self.data_homoegeity = pd.concat(
-      [
-        self.data_homoegeity,
-        pd.DataFrame(
-          {
-            "area" : self.labels,
-            "TNH" : NT_vector,
-            "data" : ["1"] * self.nodes
-          }
-        )
-      ],
-      ignore_index=True
-    )
-  
-  def set_data_homogeneity_zero(self, R):
-    NT_vector = np.zeros(self.nodes)
-    for i in np.arange(self.nodes):
-      NT_vector[i] = NT(R, i, axis=1)
-    self.data_homoegeity = pd.concat(
-      [
-        self.data_homoegeity,
-        pd.DataFrame(
-          {
-            "area" : self.labels,
-            "TNH" : NT_vector,
-            "data" : ["0"] * self.nodes
-          }
-        )
-      ],
       ignore_index=True
     )
   

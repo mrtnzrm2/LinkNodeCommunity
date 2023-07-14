@@ -33,7 +33,7 @@ def worker_distbase(
   mode = mode
   alpha = 0.
   imputation_method = ""
-  opt_score = ["_X", "_S"]  
+  opt_score = ["_X", "_S", "_SD"]  
   # Statistic test ----
   alternative = "less"
   # Declare global variables DISTBASE ----
@@ -100,15 +100,15 @@ def worker_distbase(
     # Add iteartion to data ----
     data.set_iter(i)
     RAND = DISTBASE(
-        __inj__, total_number_nodes,
-        linkage, __bin__, mode, i,
-        structure = structure,
-        version = __version__, model=distbase,
-        nlog10=nlog10, lookup=lookup, cut=cut,
-        topology=topology, distance=distance,
-        mapping=mapping, index=index, b=bias,
-        lb=lb
-      )
+      __inj__, total_number_nodes,
+      linkage, __bin__, mode, i,
+      structure = structure,
+      version = __version__, model=distbase,
+      nlog10=nlog10, lookup=lookup, cut=cut,
+      topology=topology, distance=distance,
+      mapping=mapping, index=index, b=bias,
+      lb=lb
+    )
     RAND.rows = NET.rows
     # Create network ----
     print("Create random graph")
@@ -137,7 +137,6 @@ def worker_distbase(
     # Set colregion ----
     RAND_H.set_colregion(L)
     # Stats ----
-    data.set_data_homogeneity_zero(RAND_H.R)
     data.set_data_measurements_zero(RAND_H, i)
     data.set_stats(RAND_H)
     # Set entropy ----
@@ -146,22 +145,19 @@ def worker_distbase(
        RAND_H.link_entropy, RAND_H.link_entropy_H],  
     )
     ial = 0
-    for score in opt_score:
+    for SCORE in opt_score:
       # Get k from RAND_H ----
-      K, R = get_best_kr_equivalence(score, RAND_H)
+      K, R = get_best_kr_equivalence(SCORE, RAND_H)
       for k, r in zip(K, R):
-        if score == "_maxmu":
-          SCORE = f"{score}_{RAND.Alpha[ial]}"
-          ial += 1
-        else: SCORE = score
         RAND_H.set_kr(k, r, SCORE)
         data.set_kr_zero(RAND_H)
         rlabels = get_labels_from_Z(RAND_H.Z, r)
         # Overlap ----
-        ocn, subcover = RAND_H.discovery_2(k, rlabels, rho=1.1, sig=0.5)
+        ocn, subcover = RAND_H.discovery_3(k, rlabels)
         cover = omega_index_format(
           rlabels, subcover, RAND_H.colregion.labels[:RAND_H.nodes]
         )
+        data.set_association_zero(SCORE, cover)
         data.set_clustering_similarity(rlabels, cover, SCORE)
         data.set_overlap_data_zero(ocn, SCORE)
   if isinstance(RAND_H, Hierarchy):

@@ -10,7 +10,7 @@ import simquest as squest
 
 class Sim:
   def __init__(
-    self, nodes : int, A, R, D, mode, topology="MIX", index="jacp", lookup=0, alpha=1/2
+    self, nodes : int, A, R, D, mode, topology="MIX", index="jacp", lookup=0, alpha=1/2, undirected=False
   ):
     # Parameters ----
     self.nodes = nodes
@@ -18,11 +18,18 @@ class Sim:
     self.A = A
     self.R = R
     self.D = D
-    self.nonzero = (A != 0)
+    self.undirected = undirected
+    if not self.undirected:
+      self.nonzero = (A != 0)
+    else:
+      self.nonzero = (np.triu(A) != 0)
     self.lup = lookup
     self.al = alpha
     # Number of connections in the EC component ----
-    self.leaves = np.sum(self.A[:nodes, :nodes] != 0).astype(int)
+    if not self.undirected:
+      self.leaves = np.sum(self.A[:nodes, :nodes] != 0).astype(int)
+    else:
+      self.leaves =  int(np.sum(self.A[:nodes, :nodes] != 0) / 2)
     self.topologies = {
       "MIX" : 0, "SOURCE" : 1, "TARGET" : 2
     }
@@ -31,7 +38,7 @@ class Sim:
       "simple" : 5, "simple2" : 6, "from_reg": 7, "from_clf" : 8, "simple3": 9, "simple4" : 10, "logcos" : 11,
       "simple5": 12, "simple6": 13, "D1" : 14, "D1_2" : 15, "D2" : 16, "Dinf" : 17, "simple7" : 18,
       "Dalpha" : 19, "simple2_2" : 20, "D1_2_2" : 21, "D1b" : 22, "dist_sim" : 23,  "D1_2_3" : 24,
-      "bsim_2" : 25, "jacp_2" : 26
+      "bsim_2" : 25, "jacp_2" : 26, "D1_2_4" : 27
     }
     self.topology = topology
     self.index = index
@@ -131,7 +138,9 @@ class Sim:
     return akid
 
   def get_id_matrix(self):
-    self.id_mat = self.A.copy()[:self.nodes, :]
+    self.id_mat = self.A[:self.nodes, :]
+    if self.undirected:
+      self.id_mat = np.triu(self.id_mat)
     self.id_mat[self.id_mat != 0] = np.arange(1, self.leaves + 1)
     self.id_mat = self.id_mat.astype(int)
 

@@ -91,6 +91,7 @@ if __name__ == "__main__":
     # Set labels to network ----
     L = colregion(NET)
     H.set_colregion(L)
+    H.delete_dist_matrix()
     save_class(
       H, NET.pickle_path,
       "hanalysis_{}".format(H.subfolder),
@@ -123,7 +124,7 @@ if __name__ == "__main__":
           break
       ## Prints ----
       nmi = AD_NMI_label(NET.labels, rlabels, on=T)
-      overlap, data_nocs = H.discovery_2(k, rlabels, rho=0.5, sig=0.9)
+      overlap, data_nocs = H.discovery_3(k, rlabels)
       cover = omega_index_format(rlabels, data_nocs, NET.struct_labels[:NET.nodes])
       gt_cover = reverse_partition(NET.labels, NET.struct_labels[:NET.nodes])
       omega = omega_index(gt_cover, cover)

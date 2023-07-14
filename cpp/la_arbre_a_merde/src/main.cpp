@@ -2,10 +2,12 @@
 #include <string>
 #include <vector>
 #include <math.h>
+#include <stdio.h>
 #include "hclust-cpp/fastcluster.h"
 #include <pybind11/stl.h>
 #include <pybind11/pybind11.h>
 
+using namespace pybind11::literals; 
 namespace py = pybind11;
 
 std::vector<int> NEC_one(std::vector<int>& NEC, int& n) {
@@ -61,9 +63,10 @@ void print_v2(std::vector<int> &v) {
 
 std::vector<double> link_communitiy_Dc(
   int* labels, int& leaves,
-  std::vector<int>& source, std::vector<int>& target
+  std::vector<int>& source, std::vector<int>& target, bool &undirected
 ) {
-  int edg;
+  int edg, N;
+  double dc;
   std::vector<int> nodes_src;
   std::vector<int> nodes_tgt;
   std::vector<int> lc_nodes;
@@ -84,8 +87,11 @@ std::vector<double> link_communitiy_Dc(
       lc_nodes.end(), nodes_tgt.begin(), nodes_tgt.end()
     );
     unique(lc_nodes);
-    int N = lc_nodes.size();
-    double dc = static_cast<double>(edg - N + 1) / static_cast<double>(pow(N - 1, 2.0));
+    N = lc_nodes.size();
+    if (!undirected)
+      dc = (edg - N + 1.) / (pow(N - 1., 2.0));
+    else
+      dc = (edg - N + 1.) / (N * (N - 1.) / 2. - N + 1.);
     Dc[i] = dc;
     nodes_src.clear();
     nodes_tgt.clear();
@@ -135,25 +141,31 @@ class noeud_arbre {
 
   private:
     // vite
-    std::vector<std::vector<double> > distance;
+    std::vector<double> distance;
     std::vector<int> source;
     std::vector<int> target;
     std::vector<int> K;
     std::vector<double> height_feature;
     std::vector<int> NEC;
     int nodes, leaves, linkage, n;
+    bool undirected;
     // return
     std::vector<std::vector<double> > node_hierarchy;
     std::vector<std::vector<int> > equivalence;
   public:
     noeud_arbre(
-      std::vector<std::vector<double> > distance_link_matrix,
+      std::vector<double> distance_link_matrix,
       std::vector<int> source_nodes_edgelist,
       std::vector<int> target_nodes_edgelist,
       std::vector<int> number_link_partitions,
       std::vector<double> K_height,
       std::vector<int> number_non_trees,
-      int N, int M, int linkage_method, int edege_list_size
+      const int N,
+      const int M,
+      const int linkage_method,
+      const int edege_list_size,
+      const int sp,
+      const bool uni
     ) {
       // Set class attributes
       distance = distance_link_matrix;
@@ -166,15 +178,17 @@ class noeud_arbre {
       leaves = M;
       linkage = linkage_method;
       n = edege_list_size;
+      undirected = uni;
       // Initialize node hierarchy;
       for (int i = 0; i < nodes - 1; i++)
         node_hierarchy.push_back(std::vector<double>(4, 0.));
-      vite();
+      vite(sp);
     }
     ~noeud_arbre(){};
-    void vite();
+    void vite(const int &sp);
     std::vector<std::vector<double> > get_node_hierarchy();
     std::vector<std::vector<int> > get_equivalence();
+    void display_progress(int &ini,  const int &total, int &carrier, const int &sp);
 };
 
 std::vector<std::vector<double> > noeud_arbre::get_node_hierarchy() {
@@ -185,8 +199,20 @@ std::vector<std::vector<int> > noeud_arbre::get_equivalence() {
   return equivalence;
 }
 
-void noeud_arbre::vite() {
-  int ct = 0, k;
+void noeud_arbre::display_progress(int &ini,  const int &total, int &carrier, const int &sp) {
+  int true_percent;
+  double percent = (ini * 1.) / (total * 1.);
+  percent *= 100;
+  percent = floor(percent);
+  true_percent = (int) percent;
+  if (true_percent % sp == 0 && carrier != true_percent) {
+    py::print(true_percent, "%", "sep"_a="");
+    carrier = true_percent;
+  }
+}
+
+void noeud_arbre::vite(const int &sp) {
+  int ct = 0, k, t=0;
   // equivalence carrier ----
   bool eq_true = false;
   std::vector<int> eq(2, 0);
@@ -194,11 +220,8 @@ void noeud_arbre::vite() {
   std::cout << "Commencer: la abre a merde\n";
   // From distance matrix to upper triangular array
   double* triangular_matrix = new double[(leaves * (leaves - 1)) / 2];
-  for (int i = 0, k = 0; i < leaves; i++) {
-    for (int j = i + 1; j < leaves; j++) {
-      triangular_matrix[k] = distance[i][j];
-      k++;
-    }
+  for (int i = 0; i < distance.size(); i++) {
+    triangular_matrix[i] = distance[i];
   }
   // hclust
   int* labels = new int[leaves];
@@ -221,6 +244,7 @@ void noeud_arbre::vite() {
   }
   // The loop starts!! - look over link dendrogram - tie 0
   for (int i = 0; i < nec_more_one.size(); i++) {
+    display_progress(i, leaves - 1, t, sp);
     k = K[nec_more_one[i]];
     double h = height_feature[nec_more_one[i]];
     cutree_k(
@@ -235,7 +259,7 @@ void noeud_arbre::vite() {
     // Compute Dc
     std::vector<double> Dcs = link_communitiy_Dc(
       labels, leaves,
-      source, target
+      source, target, undirected
     );
     // Valid DCs
     std::vector<int> valid_DCs = DC_valid(Dcs);
@@ -248,8 +272,15 @@ void noeud_arbre::vite() {
       // Get source and target nodes
       for (int kk = 0; kk < leaves; kk++) {
         if (labels[kk] == unique_labels[valid_DCs[j]]) {
-          node_src_1.push_back(source[kk]);
-          node_tgt_1.push_back(target[kk]);
+          if (!undirected) {
+            node_src_1.push_back(source[kk]);
+            node_tgt_1.push_back(target[kk]);
+          } else {
+            node_src_1.push_back(source[kk]);
+            node_tgt_1.push_back(target[kk]);
+            node_src_1.push_back(target[kk]);
+            node_tgt_1.push_back(source[kk]);
+          }
         }
       }
       unique(node_src_1);
@@ -409,17 +440,22 @@ PYBIND11_MODULE(la_arbre_a_merde, m) {
     py::class_<noeud_arbre>(m, "noeud_arbre")
         .def(
           py::init<
-            std::vector<std::vector<double> >,
+            std::vector<double>,
             std::vector<int>,
             std::vector<int>,
             std::vector<int>,
             std::vector<double>,
             std::vector<int>,
-            int, int, int,
-            int
+            const int,
+            const int,
+            const int,
+            const int,
+            const int,
+            const bool
           >()
         )
         .def("vite", &noeud_arbre::vite)
         .def("get_node_hierarchy", &noeud_arbre::get_node_hierarchy)
-				.def("get_equivalence", &noeud_arbre::get_equivalence);
+        .def("get_equivalence", &noeud_arbre::get_equivalence)
+				.def("display_progress", &noeud_arbre::display_progress);
 }

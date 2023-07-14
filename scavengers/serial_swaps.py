@@ -22,7 +22,7 @@ list_of_lists = itertools.product(
 )
 list_of_lists = np.array(list(list_of_lists))
 # Declare global variables NET ----
-MAXI = 500
+MAXI = 501
 linkage = "single"
 nlog10 = T
 lookup = F
@@ -33,9 +33,9 @@ structure = "LN"
 distance = "tracto16"
 nature = "original"
 mapping = "trivial"
-index = "D1_2_3"
+index = "D1_2_4"
 imputation_method = ""
-opt_score = ["_maxmu_6", "_maxmu_20", "_X"]
+opt_score = ["_X", "_S", "_SD"]
 # Declare global variables DISTBASE ----
 total_nodes = 106
 __inj__ = 57
@@ -94,22 +94,17 @@ if __name__ == "__main__":
     plot_s.plot_measurements_Entropy(on=T)
     plot_s.plot_measurements_Entropy_noodle(on=F)
     plot_s.plot_stats(alternative=alternative, on=T)
-    plot_s.plot_measurements_D_noodle(on=T)
-    plot_s.plot_measurements_X_noodle(on=T)
-    plot_s.plot_measurements_mu_noodle(on=T)
-    plot_s.plot_measurements_ntrees_noodle(on=T)
-    plot_s.plot_measurements_ordp_noodle(on=T)
     plot_s.plot_measurements_D(on=T)
     plot_s.plot_measurements_X(on=T)
-    plot_s.plot_measurements_mu(on=T)
-    plot_s.plot_measurements_ntrees(on=T)
-    plot_s.plot_measurements_ordp(on=T)
+    plot_s.plot_measurements_S(on=T)
+    plot_s.plot_measurements_SD(on=T)
     plot_s.histogram_clustering_similarity(
       on=T, c=T, hue_norm=[s.replace("_", "") for s in opt_score]
     )
     plot_o = PLOT_OS(data)
     for score in opt_score:
       plot_s.histogram_krs(score=score, on=T)
+      plot_o.association_heatmap(score, on=T)
       plot_o.histogram_overlap(score, on=T)
     
   
