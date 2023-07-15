@@ -625,12 +625,21 @@ class Plot_N:
       unique_clusters_id = np.unique(new_partition)
       keff = len(unique_clusters_id)
       # Generate all the colors in the color map -----
-      save_colors = sns.color_palette(cmap_name, keff - 1)
-      cmap_heatmap = [[]] * keff
-      cmap_heatmap[0] = [199/ 255.0, 0, 57/ 255.0]
-      cmap_heatmap[1:] = save_colors
+      if -1 in unique_clusters_id:
+        save_colors = sns.color_palette(cmap_name, keff - 1)
+        cmap_heatmap = [[]] * keff
+        cmap_heatmap[0] = [199/ 255.0, 0, 57/ 255.0]
+        cmap_heatmap[1:] = save_colors
+      else:
+        save_colors = sns.color_palette(cmap_name, keff)
+        cmap_heatmap = [[]] * (keff+1)
+        cmap_heatmap[0] = [199/ 255.0, 0, 57/ 255.0]
+        cmap_heatmap[1:] = save_colors
       # Assign memberships to nodes ----
-      nodes_memberships = {k : [0] * keff for k in np.arange(len(partition))}
+      if -1 in unique_clusters_id:
+        nodes_memberships = {k : [0] * keff for k in np.arange(len(partition))}
+      else:
+        nodes_memberships = {k : [0] * (keff + 1) for k in np.arange(len(partition))}
       for i, id in enumerate(new_partition):
         if id == -1: continue
         nodes_memberships[i][id + 1] = 1

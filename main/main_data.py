@@ -23,19 +23,19 @@ prob = F
 cut = F
 structure = "LN"
 mode = "ZERO"
-distance = "tracto16"
+distance = "MAP3D"
 nature = "original"
 imputation_method = ""
 topology = "MIX"
 mapping = "trivial"
-index  = "dist_sim"
+index  = "D1_2_4"
 bias = 0.
 alpha = 0.
 opt_score = ["_S", "_X", "_SD"]
-save_data = T
-version = "57d106"
-__nodes__ = 57
-__inj__ = 57
+save_data = F
+version = "29d91"
+__nodes__ = 29
+__inj__ = 29
 # Start main ----
 if __name__ == "__main__":
   # Load structure ----
@@ -102,12 +102,12 @@ if __name__ == "__main__":
   # # Picasso ----
   plot_h = Plot_H(NET, H)
   plot_n = Plot_N(NET, H)
-  # HS = Hierarchical_Entropy(H.Z, H.nodes, H.colregion.labels[:H.nodes])
-  # HS.Z2dict("short")
-  # HS.zdict2newick(HS.tree, weighted=F, on=T)
-  # plot_h.plot_newick_R(HS.newick, weighted=F, on=T)
-  # HS.zdict2newick(HS.tree, weighted=T, on=T)
-  # plot_h.plot_newick_R(HS.newick, weighted=T, on=T)
+  HS = Hierarchical_Entropy(H.Z, H.nodes, H.colregion.labels[:H.nodes])
+  HS.Z2dict("short")
+  HS.zdict2newick(HS.tree, weighted=F, on=T)
+  plot_h.plot_newick_R(HS.newick, weighted=F, on=T)
+  HS.zdict2newick(HS.tree, weighted=T, on=T)
+  plot_h.plot_newick_R(HS.newick, weighted=T, on=T)
   # plot_h.plot_measurements_Entropy(on=T)
   # plot_h.plot_measurements_D(on=T)
   # plot_h.plot_measurements_S(on=T)
@@ -115,7 +115,7 @@ if __name__ == "__main__":
   # plot_h.plot_measurements_X(on=T)
   # plot_n.A_vs_dis(np.log(1 + NET.C), s=5, on=F, reg=T)
   # plot_n.projection_probability(
-  #   NET.CC, "EXPMLE" , bins=12, on=T
+  #   NET.C, "EXPMLE" , bins=12, on=T
   # )
   # plot_n.histogram_dist(on=F)
   # plot_n.plot_akis(NET.D, s=5, on=T)
@@ -135,23 +135,23 @@ if __name__ == "__main__":
       cover = omega_index_format(rlabels,  NET.data_nocs, NET.struct_labels[:NET.nodes])
       H.set_cover(cover, SCORE)
       # Plot N ----
-      plot_n.plot_network_covers(
-        k, np.log(1 + NET.C[:__nodes__, :]), rlabels,
-        NET.data_nocs, H.colregion.labels[:H.nodes],
-        score=SCORE, cmap_name="husl", on=T
-      )
+      # plot_n.plot_network_covers(
+      #   k, np.log(1 + NET.C[:__nodes__, :]), rlabels,
+      #   NET.data_nocs, H.colregion.labels[:H.nodes],
+      #   score=SCORE, cmap_name="husl", on=T
+      # )
       # Plot H ----
       # plot_h.core_dendrogram([r], on=T) #
       # plot_h.lcmap_pure([k], labels = rlabels, on=T)
       # plot_h.heatmap_pure(r, np.log10(1+NET.C), on=T, labels = rlabels, score='LN') #
-      # plot_h.heatmap_dendro(r, np.log(NET.A), on=T, score="FLN", font_size=15)
-      # plot_h.lcmap_dendro(k, r, on=T, font_size = 15) #
+      # plot_h.heatmap_dendro(r, np.log(NET.A), on=T, score="FLN", font_size=20)
+      # plot_h.lcmap_dendro(k, r, on=T, font_size = 20) #
       # plot_h.flatmap_dendro(
       #   NET, [k], [r], on=T, EC=T #
       # )
-  save_class(
-    H, NET.pickle_path,
-    "hanalysis", on=T
-  )
+  # save_class(
+  #   H, NET.pickle_path,
+  #   "hanalysis", on=T
+  # )
   print("End!")
   # #@@ Todo:

@@ -970,6 +970,8 @@ class Plot_H:
       # Setting labels colors ----
       [t.set_color(i) for i,t in zip(colors, ax.xaxis.get_ticklabels())]
       [t.set_color(i) for i,t in zip(colors, ax.yaxis.get_ticklabels())]
+      plt.xticks(rotation=90)
+      plt.yticks(rotation=0)
       # Arrange path ----
       plot_path = os.path.join(
         self.path, "Heatmap_single"
