@@ -20,9 +20,10 @@ cut = [F]
 topologies = ["MIX"]
 bias = [0]
 indices = ["D1_2_4"]
-modes = ["ZERO", "ALPHA", "BETA"]
+modes = ["ZERO"]
+discovery = ["discovery_5"]
 list_of_lists = itertools.product(
-  *[cut, modes, topologies, indices, bias]
+  *[cut, modes, topologies, indices, bias, discovery]
 )
 list_of_lists = np.array(list(list_of_lists))
 # Declare global variables ----
@@ -42,7 +43,7 @@ __nodes__ = 57
 __inj__ = 57
 # Start main ----
 if __name__ == "__main__":
-  for _cut_, mode, topology, index, bias in list_of_lists:
+  for _cut_, mode, topology, index, bias, disco in list_of_lists:
     bias = float(bias)
     if _cut_ == "True":
       cut = T
@@ -59,7 +60,8 @@ if __name__ == "__main__":
       inj = __inj__,
       topology=topology,
       index=index, mapping=mapping,
-      cut=cut, b = bias, alpha=alpha
+      cut=cut, b = bias, alpha=alpha,
+      discovery = disco
     )
     NET.create_pickle_directory()
     # Transform data for analysis ----
@@ -100,14 +102,15 @@ if __name__ == "__main__":
       K, R = get_best_kr_equivalence(SCORE, H)
       for k, r in zip(K, R):
         print(f"Find node partition using {SCORE}")
-        H.set_kr(k, r, score=SCORE)
         print("\n\tBest K: {}\nBest R: {}\n".format(k, r))
         rlabels = get_labels_from_Z(H.Z, r)
         # Overlap ----
-        NET.overlap, NET.data_nocs = H.discovery_3(k, rlabels)
-        H.set_overlap_labels(NET.overlap, SCORE)
+        NET.overlap, NET.data_nocs = H.discovery_channel[disco](k, rlabels)
         print("\n\tAreas with predicted overlapping communities:\n",  NET.data_nocs, "\n")
         cover = omega_index_format(rlabels,  NET.data_nocs, NET.struct_labels[:NET.nodes])
+        # Set communitry structure ----
+        H.set_kr(k, r, score=SCORE)
+        H.set_overlap_labels(NET.overlap, SCORE)
         H.set_cover(cover, SCORE)
     save_class(
       H, NET.pickle_path,

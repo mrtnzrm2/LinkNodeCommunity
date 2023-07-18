@@ -15,7 +15,6 @@ from plotting_modules.plotting_N import Plot_N
 from various.data_transformations import maps
 from networks.distbase import DISTBASE
 from networks.structure import MAC
-from networks.MAC.mac40 import MAC40
 from various.network_tools import *
 from various.fit_tools import fitters
 # Declare global variables ----
@@ -25,24 +24,25 @@ nlog10 = T
 lookup = F
 prob = T
 cut = F
-structure = "FLN"
-distance = "MAP3D"
+structure = "LN"
+distance = "tracto16"
 nature = "original"
-__mode__ = "ALPHA"
+__mode__ = "ZERO"
 topology = "MIX"
-mapping = "R2"
-index  = "jacw"
+mapping = "trivial"
+index  = "D1_2_4"
+discovery = "discovery_6"
 imputation_method = ""
-opt_score = ["_X", "_S"]
+opt_score = ["_X", "_S", "_SD"]
 save_datas = T
 # Declare global variables DISTBASE ----
 __model__ = "EXPMLE"
-total_nodes = 91
-__inj__ = 40
-__nodes__ = 40
+total_nodes = 106
+__inj__ = 57
+__nodes__ = 57
 __bin__ = 12
-__version__ = "40d91"
-bias = float(1e-5)
+__version__ = "57d106"
+bias = 0.
 alpha = 0.
 ## Very specific!!! Be careful ----
 if nature == "original":
@@ -55,7 +55,7 @@ if cut: __ex_name__ = f"{__ex_name__}_cut"
 
 if __name__ == "__main__":
   # MAC network as reference ----
-  REF = MAC40(
+  REF = MAC[f"MAC{__inj__}"](
     linkage, __mode__,
     structure = structure,
     nlog10=nlog10, lookup=lookup,
@@ -67,7 +67,8 @@ if __name__ == "__main__":
     topology=topology,
     index=index,
     mapping=mapping,
-    cut=cut, b=bias
+    cut=cut, b=bias,
+    discovery=discovery
   )
   _, _, _, _, est = fitters[__model__](REF.D, REF.CC, REF.nodes, __bin__)
   lb = est.coef_[0]
@@ -79,12 +80,12 @@ if __name__ == "__main__":
     nlog10=nlog10, lookup=lookup, cut=cut,
     topology=topology, distance=distance,
     mapping=mapping, index=index, version = __version__,
-    lb=lb, b=bias, model=__model__
+    lb=lb, b=bias, model=__model__, discovery=discovery
   )
   NET.create_plot_path()
   # NET.create_csv_path()
   # NET.create_pickle_path()
-  L = colregion(REF, labels_name="labels40")
+  L = colregion(REF, labels_name="labels57")
   NET.set_labels(L.labels)
   # Create distance matrix ----
   D = REF.D
@@ -96,7 +97,7 @@ if __name__ == "__main__":
   Ga = column_normalize(Gn)
   # Transform data for analysis ----
   R, lookup, _ = maps[mapping](
-    Ga, nlog10, lookup, prob, b=bias
+    Gn, nlog10, lookup, prob, b=bias
   )
   # Compute Hierarchy ----
   print("Compute Hierarchy")
@@ -104,7 +105,7 @@ if __name__ == "__main__":
   if save_datas:
     ## Hierarchy object!! ----
     H = Hierarchy(
-      NET, Ga[:, :NET.nodes], R[:, :NET.nodes], D,
+      NET, Gn[:, :NET.nodes], R[:, :NET.nodes], D,
       __nodes__, linkage, __mode__,
       lookup=lookup, alpha=alpha
     )
@@ -144,7 +145,7 @@ if __name__ == "__main__":
   plot_h.plot_newick_R(HS.newick, weighted=T, on=T)
   plot_h.plot_measurements_Entropy(on=T)
   plot_h.plot_measurements_D(on=T)
-  plot_h.plot_measurements_mu(on=T)
+  plot_h.plot_measurements_S(on=T)
   plot_h.plot_measurements_X(on=T)
   # Plot N ----
   plot_n = Plot_N(NET, H)
@@ -166,10 +167,16 @@ if __name__ == "__main__":
     print("Best K: {}\nBest R: {}\t Score: {}".format(k, r, score))
     rlabels = get_labels_from_Z(H.Z, r)
     # Overlap ----
-    ocn, _ = H.discovery_3(k, rlabels)
+    ocn, data_nocs, noc_sizes = H.discovery_channel[discovery](H, k, rlabels)
     NET.set_overlap(ocn)
     H.set_overlap_labels(ocn, score)
     plot_h.core_dendrogram([r], on=T)
+    # Plot N ----
+    plot_n.plot_network_covers(
+      k, np.log(1 + Gn[:__nodes__, :__nodes__]), rlabels,
+      data_nocs, noc_sizes, H.colregion.labels[:H.nodes],
+      score=score, cmap_name="husl", on=T
+    )
     ## Single linkage ----
     plot_h.heatmap_dendro(r, np.log(1 + Gn[:, :__nodes__]), on=T, score="LN")
     plot_h.heatmap_dendro(r, np.log(Ga[:, :__nodes__]), on=T, score="FLN")

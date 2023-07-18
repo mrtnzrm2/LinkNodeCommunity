@@ -27,7 +27,7 @@ class colregion:
         NET.labels_path, f"{labels_name}.csv"
       )
       self.labels = pd.read_csv(
-        labels_path
+        labels_path, header=None
       ).to_numpy().reshape(-1)
       self.labels = np.char.lower(self.labels.astype(str))
       # Get regions path ----

@@ -22,7 +22,7 @@ def worker_distbase(
   number_of_iterations : int, number_of_inj : int,
   number_of_nodes : int, total_number_nodes : int, data_version, distbase : str,
   nlog10 : bool, lookup : bool, prob : bool, cut : bool, run : bool,
-  topology : str, mapping : str, index : str, bias : float, bins : int, mode : str
+  topology : str, mapping : str, index : str, discovery : str, bias : float, bins : int, mode : str
 ):
   # Declare global variables NET ----
   MAXI = number_of_iterations
@@ -76,7 +76,8 @@ def worker_distbase(
     inj=__inj__,
     topology=topology,
     index=index, mapping=mapping,
-    cut=cut, b=bias, alpha=alpha
+    cut=cut, b=bias, alpha=alpha,
+    discovery = discovery
   )
   _, _, _, _, est = fitters[__model__](NET.D, NET.CC, NET.nodes, __bin__)
   lb = est.coef_[0]
@@ -107,7 +108,7 @@ def worker_distbase(
       nlog10=nlog10, lookup=lookup, cut=cut,
       topology=topology, distance=distance,
       mapping=mapping, index=index, b=bias,
-      lb=lb
+      lb=lb, discovery=discovery
     )
     RAND.rows = NET.rows
     # Create network ----
@@ -115,7 +116,7 @@ def worker_distbase(
     RC = RAND.distbase_dict[__model__](
       D, NET.C, run=run, on_save_csv=F
     )
-    RA = column_normalize(RC)
+    # RA = column_normalize(RC)
     # Transform data for analysis ----
     R, lookup, _ = maps[mapping](
       RC, nlog10, lookup, prob, b=bias
@@ -153,7 +154,7 @@ def worker_distbase(
         data.set_kr_zero(RAND_H)
         rlabels = get_labels_from_Z(RAND_H.Z, r)
         # Overlap ----
-        ocn, subcover = RAND_H.discovery_3(k, rlabels)
+        ocn, subcover, _ = RAND_H.discovery_channel[discovery](RAND_H, k, rlabels)
         cover = omega_index_format(
           rlabels, subcover, RAND_H.colregion.labels[:RAND_H.nodes]
         )
@@ -165,6 +166,7 @@ def worker_distbase(
     data.set_plot_path(RAND_H, bias=bias)
     data.set_pickle_path(RAND_H, bias=bias)
     print("Save data")
+    print(data.pickle_path)
     save_class(
       data, data.pickle_path,
       f"series_{MAXI}"

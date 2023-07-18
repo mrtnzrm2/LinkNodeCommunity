@@ -24,7 +24,7 @@ list_of_lists = itertools.product(
 )
 list_of_lists = np.array(list(list_of_lists))
 # Declare global variables NET ----
-MAXI = 501
+MAXI = 1000
 linkage = "single"
 nlog10 = T
 lookup = F
@@ -76,7 +76,7 @@ if __name__ == "__main__":
     if lookup: lup = "_lup"
     if cut: _cut = "_cut"
     data = read_class(
-        "../pickle/RAN/distbase/MAC/{}/{}/{}/{}/BIN_{}/{}/{}/{}/{}".format(
+        "../pickle/RAN/distbase/MAC/{}/{}/{}/{}/BIN_{}/{}/{}/{}/{}/{}".format(
           __version__,
           structure,
           distance,
@@ -86,6 +86,7 @@ if __name__ == "__main__":
           mode,
           f"{topology}_{index}_{mapping}",
           f"b_{bias}",
+          "discovery_6"
           # f"alpha_{alpha:.2f}"
         ),
         "series_{}".format(MAXI)

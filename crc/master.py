@@ -28,8 +28,9 @@ bias = [0]
 bins = [12]
 mode = ["ZERO"]
 indices = ["D1_2_4"]
+discovery = ["discovery_6"]
 list_of_lists = itertools.product(
-  *[distbases, cut, topology, indices, bias, bins, mode]
+  *[distbases, cut, topology, indices, bias, bins, mode, discovery]
 )
 list_of_lists = np.array(list(list_of_lists))
 array_distbase = pd.DataFrame(
@@ -41,7 +42,8 @@ array_distbase = pd.DataFrame(
     "index" : list_of_lists[:, 3].astype(str),
     "bias" : list_of_lists[:, 4].astype(float),
     "bins" : list_of_lists[:, 5].astype(int),
-    "mode" : list_of_lists[:, 6].astype(str)
+    "mode" : list_of_lists[:, 6].astype(str),
+    "discovery" : list_of_lists[:, 7].astype(str),
   }
 )
 
@@ -83,16 +85,17 @@ cut = [F]
 number_of_nodes = [100, 150]
 topology = ["MIX"]
 indices = ["D1_2_4"]
-mode = ["ZERO", "ALPHA", "BETA"]
+mode = ["ZERO"]
+discovery = ["discovery_6"]
 kav = [7]
 mut = [0.1, 0.3]
 muw = [0.01]
-on = [0.1, 0.3]
-om = [2, 3]
+on = [0.1, 0.2]
+om = [2, 3, 4]
 nmin = [5]
 nmax = [25]
 list_of_lists = itertools.product(
-  *[cut, mode, topology, indices, kav, mut, muw, on, om, number_of_nodes, nmin, nmax]
+  *[cut, mode, topology, indices, kav, mut, muw, on, om, number_of_nodes, nmin, nmax, discovery]
 )
 list_of_lists = np.array(list(list_of_lists))
 array_overlap = pd.DataFrame(
@@ -109,7 +112,8 @@ array_overlap = pd.DataFrame(
     "om" : list_of_lists[:, 8].astype(int),
     "number_of_nodes" : list_of_lists[:, 9].astype(int),
     "nmin" : list_of_lists[:, 10].astype(int),
-    "nmax" : list_of_lists[:, 11].astype(int)
+    "nmax" : list_of_lists[:, 11].astype(int),
+    "discovery" : list_of_lists[:, 12].astype(str)
   }
 )
 ## Overlapping condition -----------------
@@ -124,8 +128,9 @@ topology = ["MIX"]
 bias = [0]
 mode = ["ZERO"]
 indices = ["D1_2_4"]
+discovery = ["discovery_6"]
 list_of_lists = itertools.product(
-  *[cut, topology, indices, bias, mode]
+  *[cut, topology, indices, bias, mode, discovery]
 )
 list_of_lists = np.array(list(list_of_lists))
 array_swaps = pd.DataFrame(
@@ -135,7 +140,8 @@ array_swaps = pd.DataFrame(
     "topology" : list_of_lists[:, 1].astype(str),
     "index" : list_of_lists[:, 2].astype(str),
     "bias" : list_of_lists[:, 3].astype(float),
-    "mode" : list_of_lists[:, 4].astype(str)
+    "mode" : list_of_lists[:, 4].astype(str),
+    "discovery" : list_of_lists[:, 5].astype(str),
   }
 )
 
@@ -231,7 +237,7 @@ def NoGodsNoMaster(number_of_iterations, network, t):
       number_of_iterations, number_of_inj, number_of_nodes,
       total_number_nodes, version, array.loc["distbase"],
       nlog10, lookup, prob, cut, run, array.loc["topology"],
-      mapping, index, float(array.loc["bias"]), int(array.loc["bins"]),
+      mapping, index, array.loc["discovery"], float(array.loc["bias"]), int(array.loc["bins"]),
       array.loc["mode"]
     )
   elif array.loc["worker"] == "scalefree":
@@ -268,7 +274,7 @@ def NoGodsNoMaster(number_of_iterations, network, t):
     worker_overlap(
       number_of_iterations, int(array.loc["number_of_nodes"]), array.loc["mode"], nlog10,
       lookup, prob, cut, run, array.loc["topology"],
-      mapping, array.loc["index"],
+      mapping, array.loc["index"], array.loc["discovery"],
       array.loc["kav"], maxk, array.loc["mut"], array.loc["muw"],
       beta, t1, t2, int(array.loc["nmin"]), int(array.loc["nmax"]),
       int(array.loc["number_of_nodes"] * array.loc["on"]), int(array.loc["om"])
@@ -289,7 +295,7 @@ def NoGodsNoMaster(number_of_iterations, network, t):
     worker_swaps(
       number_of_iterations, number_of_inj, number_of_nodes, total_number_nodes,
       version, nlog10, lookup, prob, cut,
-      run, array.loc["topology"], mapping, index, array.loc["bias"],
+      run, array.loc["topology"], mapping, index, array.loc["discovery"], array.loc["bias"],
       array.loc["mode"]
     )
   elif array.loc["worker"] == "ER":
@@ -336,12 +342,12 @@ def NoGodsNoMaster(number_of_iterations, network, t):
 
 if __name__ == "__main__":
   number_of_iterations = int(sys.argv[1])
-  t = int(sys.argv[2])
-  network = sys.argv[3]
+  # t = int(sys.argv[2])
+  network = sys.argv[2]
   ###
   print(DARRAY[network].shape)
   from collections import Counter
   print(Counter(DARRAY[network].worker))
-  # for t in np.arange(1, 4):
-  print(DARRAY[network].iloc[t - 1])
-  NoGodsNoMaster(number_of_iterations, network, t)
+  for t in np.arange(1, 24):
+    print(DARRAY[network].iloc[t - 1])
+    NoGodsNoMaster(number_of_iterations, network, t)

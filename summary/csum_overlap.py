@@ -19,18 +19,19 @@ from various.network_tools import *
 # Declare iter variables ----
 number_of_nodes = [100, 150]
 topologies = ["MIX"]
-indices = ["D1_2_2"]
+indices = ["D1_2_4"]
 MUT = [0.1, 0.3]
 NMIN = [5]
 NMAX = [25]
-ON = [0.1, 0.3]
-OM = [2, 3]
+ON = [0.1, 0.2]
+OM = [2, 3, 4]
+discovery = ["discovery_3", "discovery_4", "discovery_6"]
 list_of_lists = itertools.product(
-  *[number_of_nodes, topologies, indices, MUT, NMIN, NMAX, ON, OM]
+  *[number_of_nodes, topologies, indices, MUT, NMIN, NMAX, ON, OM, discovery]
 )
 list_of_lists = np.array(list(list_of_lists))
 # Constant parameters ---
-MAXI = 50
+MAXI = 51
 linkage = "single"
 nlog10 = F
 lookup = F
@@ -38,18 +39,18 @@ prob = F
 cut = F
 run = T
 mapping = "trivial"
-__mode__ = "ALPHA"
+__mode__ = "ZERO"
 l10 = ""
 lup = ""
 _cut = ""
 if nlog10: l10 = "_l10"
 if lookup: lup = "_lup"
 if cut: _cut = "_cut"
-opt_score = ["_maxmu", "_X", "_D", "_S"]
+opt_score = ["_D", "_S"]
 if __name__ == "__main__":
   # Extract data ----
   THE_DF = pd.DataFrame()
-  for __nodes__, topology, index, mut, nmin, nmax, on, om in list_of_lists:
+  for __nodes__, topology, index, mut, nmin, nmax, on, om, dis in list_of_lists:
     __nodes__ = int(__nodes__)
     nmin = int(nmin)
     nmax = int(nmax)
@@ -74,38 +75,34 @@ if __name__ == "__main__":
       "-om" : f"{om}"
     }
     data = read_class(
-      "../pickle/RAN/scalefree/-N_{}/-k_{}/-maxk_{}/-mut_{}/-muw_{}/-beta_{}/-t1_{}/-t2_{}/-nmin_{}/-nmax_{}/-on_{}/-om_{}/{}/{}/{}/{}".format(
+      "../pickle/RAN/scalefree/-N_{}/-k_{}/-maxk_{}/-mut_{}/-muw_{}/-beta_{}/-t1_{}/-t2_{}/-nmin_{}/-nmax_{}/-on_{}/-om_{}/{}/{}/{}/{}/{}".format(
         str(__nodes__),
         par["-k"], par["-maxk"],
         par["-mut"], par["-muw"],
         par["-beta"], par["-t1"], par["-t2"],
         par["-nmin"], par["-nmax"],
         par["-on"], par["-om"], MAXI-1,
-        __mode__, __mode__, f"{topology}_{index}_{mapping}"
+        __mode__, dis, __mode__, f"{topology}_{index}_{mapping}"
       ),
       "series_{}".format(MAXI)
     )
     if isinstance(data, int): continue
     # print(data.data.shape[0])
-    nnmi = data.data.loc[data.data.sim == "NMI"].shape[0]
+    # nnmi = data.data.loc[data.data.sim == "NMI"].shape[0]
     nomega = data.data.loc[data.data.sim == "NMI"].shape[0]
     THE_DF = pd.concat(
       [
         THE_DF, 
         pd.DataFrame(
           {
-            "val" : np.hstack(
-              [
-                data.data["values"].loc[data.data.sim == "NMI"].to_numpy().astype(float),
-                data.data["values"].loc[data.data.sim == "OMEGA"].to_numpy().astype(float)
-              ]
-            ),
-            "sim" : ["NMI"] * nnmi + ["OMEGA"] * nomega,
-            "score" : [f"{index}{s}" for s in data.data.c],
-            "topology": [f"{topology}"] * (nnmi + nomega),
-            "mut" : [mut] * (nnmi + nomega),
-            "size" : [f"{nmin}_{nmax}"] * (nnmi + nomega),
-            "overlapping" : [f"{on}_{om}"] * (nnmi + nomega)
+            "val" : data.data["values"].loc[data.data.sim == "OMEGA"].to_numpy().astype(float),
+            "sim" : ["OMEGA"] * nomega,
+            "score" : [f"{index}{s}" for s in data.data.c.loc[data.data.sim == "OMEGA"]],
+            "topology": [f"{topology}"] * (nomega),
+            "mut" : [mut] * (nomega),
+            "size" : [f"{nmin}_{nmax}"] * (nomega),
+            "overlapping" : [f"{on}_{om}"] * (nomega),
+            "discovery" : [dis] * nomega
           }
         )
       ], ignore_index=T
@@ -128,7 +125,7 @@ if __name__ == "__main__":
       data=x,
       x="val",
       y="score",
-      col="sim",
+      col="discovery",
       # row="sim",
       hue="mut",
       kind="box"
@@ -136,7 +133,7 @@ if __name__ == "__main__":
     Path(IM_ROOT).mkdir(exist_ok=True, parents=True)
     plt.savefig(
       os.path.join(
-        IM_ROOT, f"NMI_O_{tp}_{__mode__}.png"
+        IM_ROOT, f"O_{tp}_{__mode__}.png"
       ),
       dpi = 300
     )

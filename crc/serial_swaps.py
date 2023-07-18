@@ -22,7 +22,7 @@ def worker_swaps(
   number_of_iterations : int, number_of_inj : int,
   number_of_nodes : int, total_number_of_nodes : int , data_version,
   nlog10 : bool, lookup : bool, prob : bool, cut : bool, run : bool,
-  topology : str, mapping : str, index : str, bias : float, mode : str
+  topology : str, mapping : str, index : str, discovery : str, bias : float, mode : str
 ):
   # Declare global variables NET ----
   MAXI = number_of_iterations
@@ -78,7 +78,8 @@ def worker_swaps(
     mapping=mapping,
     index=index,
     cut = cut,
-    b=bias, alpha=alpha
+    b=bias, alpha=alpha,
+    discovery = discovery
   )
   # Load hierarhical analysis ----
   NET_H = read_class(
@@ -110,7 +111,7 @@ def worker_swaps(
       mapping=mapping,
       index=index,
       nlog10 = nlog10, lookup = lookup,
-      cut=cut, b=bias
+      cut=cut, b=bias, discovery=discovery
     )
     RAND.C, RAND.A = NET.C, NET.A
     RAND.D = NET.D
@@ -153,10 +154,9 @@ def worker_swaps(
       for k, r in zip(K, R):
         RAND_H.set_kr(k, r, SCORE)
         data.set_kr_zero(RAND_H)
-        # Add iteartion to data----
         rlabels = get_labels_from_Z(RAND_H.Z, r)
         # Overlap ----
-        ocn, subcover = RAND_H.discovery_3(k, rlabels)
+        ocn, subcover, _ = RAND_H.discovery_channel[discovery](RAND_H, k, rlabels)
         cover = omega_index_format(
           rlabels, subcover, RAND_H.colregion.labels[:RAND_H.nodes]
         )

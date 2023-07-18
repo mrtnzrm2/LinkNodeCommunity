@@ -57,7 +57,7 @@ class base:
 class MAC57(base):
   def __init__(
     self, linkage : str, mode : str, nlog10=True, lookup=False, 
-    cut = False, topology="MIX", mapping="R1", index="jacp", **kwargs
+    cut = False, topology="MIX", mapping="R1", index="jacp", discovery="discovery_3", **kwargs
   ) -> None:
     super().__init__(linkage, **kwargs)
     self.nlog10 = nlog10
@@ -98,12 +98,12 @@ class MAC57(base):
       self.plot_path = join(
         "../plots", self.common_path,
         self.analysis, mode, self.subfolder,
-        "b_"+str(self.b)
+        f"b_{self.b}", discovery
       )
     self.pickle_path = join(
       "../pickle", self.common_path,
       self.analysis, mode, self.subfolder,
-      "b_"+str(self.b)
+      f"b_{self.b}", discovery
     )
     if "regions_path" in kwargs.keys():
       self.regions_path = kwargs["regions_path"]
@@ -145,8 +145,17 @@ class MAC57(base):
     self.nodes = C.shape[1]
     self.struct_labels = slabel
     self.struct_labels = np.char.lower(self.struct_labels)
-    # np.savetxt(f"{self.csv_path}/labels57.csv", self.struct_labels,  fmt='%s')
-    # return 0, 0
+    # Permute network
+    # import random
+    # from datetime import datetime
+    # random.seed(datetime.now().timestamp())
+    # self.perm = np.random.permutation(np.arange(self.nodes))
+    # self.perm2 = list(self.perm) + list(np.arange(self.nodes, self.rows))
+    # C = C[self.perm2, :][:, self.perm]
+    # self.struct_labels = self.struct_labels[self.perm2]
+    ##
+    np.savetxt(f"{self.csv_path}/labels57.csv", self.struct_labels,  fmt='%s')
+    # NET.struct_labels = NET.struct_labels[perm2]
     return C.astype(float)
 
   def get_summer_counts(self):

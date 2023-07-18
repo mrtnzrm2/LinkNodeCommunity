@@ -7,7 +7,7 @@ class DISTBASE(EDR):
   def __init__(
     self, nodes, total_nodes, linkage,
     bin, mode, iter, nlog10=False, lookup=False, cut=False,
-    topology="MIX", mapping="R1", index="jacp", lb=0.19, **kwargs
+    topology="MIX", mapping="R1", index="jacp", discovery="discovery_5", lb=0.19, **kwargs
   ) -> None:
     super().__init__(nodes, lb=lb, **kwargs)
     self.random = "distbase"
@@ -42,7 +42,7 @@ class DISTBASE(EDR):
     )
     self.plot_path = os.path.join(
       "../plots", self.common_path, mode,
-      self.subfolder, "b_"+str(self.b)
+      self.subfolder, "b_"+str(self.b), discovery
     ) 
     self.csv_path = os.path.join(
       "../CSV", self.folder, self.random,
@@ -59,7 +59,7 @@ class DISTBASE(EDR):
     )
     self.pickle_path = os.path.join(
       "../pickle", self.common_path, mode,
-      self.subfolder, "b_"+str(self.b)
+      self.subfolder, "b_"+str(self.b), discovery
     )
     # Labels and regions ----
     self.labels_path = self.dist_path

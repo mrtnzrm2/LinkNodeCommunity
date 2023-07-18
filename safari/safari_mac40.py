@@ -375,54 +375,55 @@ if __name__ == "__main__":
             t = area_target[m, i]
             t_ = area_target[m, i] / (norm)
             aij = f"{slabel[i]}"
-            TMN.append([aij, monkeys[m],  D_A[i], t, "LNe", AL])
+            TMN.append([aij, monkeys[m],  D_A[i], t, "ANLNe", AL])
             TMN.append([aij, monkeys[m], D_A[i], t_, "FLNe", AL])
 
 
-  TD = pd.DataFrame(TMN, columns=["SOURCE", "Monkey", "D", "W", "var", "TARGET"])
+  TD = pd.DataFrame(TMN, columns=["SOURCE AREA", "Monkey", "D", "W", "var", "TARGET"])
   TD = TD.loc[TD.W > 0] 
-  T1 = TD.loc[TD["var"] == "LNe"].sort_values("D", ascending=True)
+  T1 = TD.loc[TD["var"] == "ANLNe"].sort_values("D", ascending=True)
   T2 = TD.loc[TD["var"] == "FLNe"]
   TD = pd.concat([T1, T2], ignore_index=True)
-  mean_td = TD.groupby(["SOURCE", "TARGET", "var", "D"])["W"].mean().reset_index()
+  mean_td = TD.groupby(["SOURCE AREA", "TARGET", "var", "D"])["W"].mean().reset_index()
   mean_td = pd.DataFrame({
-    "SOURCE" : mean_td["SOURCE"].to_numpy(),
+    "SOURCE AREA" : mean_td["SOURCE AREA"].to_numpy(),
     "TARGET" : mean_td["TARGET"].to_numpy(),
     "var" : mean_td["var"].to_numpy(),
     "W" : mean_td["W"].to_numpy(),
     "D" : mean_td["D"].to_numpy()
   })
 
-  mean_td1 = mean_td.loc[mean_td["var"] == "LNe"].sort_values("D", ascending=True)
+  mean_td1 = mean_td.loc[mean_td["var"] == "ANLNe"].sort_values("D", ascending=True)
   mean_td2 = mean_td.loc[mean_td["var"] == "FLNe"]
   mean_td = pd.concat([mean_td1, mean_td2], ignore_index=True)
   
-  TD["TARGET.VAR"] = [f"{i}.{j}" for i, j in zip(TD.TARGET, TD["var"])]
-  mean_td["TARGET.VAR"] = [f"{i}.{j}" for i, j in zip(mean_td.TARGET, mean_td["var"])]
+  TD["TARGET AREA/TYPE"] = [f"{i}/{j}" for i, j in zip(TD.TARGET, TD["var"])]
+  mean_td["TARGET AREA/TYPE"] = [f"{i}/{j}" for i, j in zip(mean_td.TARGET, mean_td["var"])]
 
   fig, ax = plt.subplots(1, 1)
   sns.lineplot(
     data=mean_td,
-    x="SOURCE",
+    x="SOURCE AREA",
     y="W",
-    hue="TARGET.VAR",
+    hue="TARGET AREA/TYPE",
     alpha=0.6,
     legend=False,
     ax=ax
   )
   sns.scatterplot(
     data=TD,
-    x="SOURCE",
+    x="SOURCE AREA",
     y="W",
-    hue="TARGET.VAR",
+    hue="TARGET AREA/TYPE",
     alpha=0.6,
     s=12,
     ax=ax
   )
   plt.xticks(rotation=90)
   plt.yscale("log")
+  plt.ylabel("Weights")
   fig.set_figheight(8)
-  fig.set_figwidth(15)
+  fig.set_figwidth(16)
   fig.tight_layout()
-  plt.savefig(f"../plots/MAC/40d91/cortex_letter/FLNe_vs_LNe_.png", dpi=300)
+  plt.savefig(f"../plots/MAC/40d91/cortex_letter/FLNe_vs_ANLNe_.png", dpi=300)
   plt.close()

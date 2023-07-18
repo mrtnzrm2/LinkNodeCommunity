@@ -93,18 +93,18 @@ plot_n = Plot_N(NET, H)
 for score in opt_score:
     print(f"Find node partition using {score}")
     # Get best K and R ----
-    # K, R = get_best_kr(score, H, undirected=T, mapping="modularity")
     K, R = get_best_kr_equivalence(score, H)
     r = R[K == np.min(K)][0]
     k = K[K == np.min(K)][0]
-    H.set_kr(k, r, score=score)
     print("Best K: {}\nBest R: {}\t Score: {}".format(k, r, score))
     rlabels = get_labels_from_Z(H.Z, r)
     # Overlap ----
-    NET.overlap, NET.data_nocs = H.discovery_3(k, rlabels, undirected=T)
-    H.set_overlap_labels(NET.overlap, score)
+    NET.overlap, NET.data_nocs = H.discovery_6(k, rlabels, undirected=T)
     print("\n\tAreas with predicted overlapping communities:\n",  NET.data_nocs, "\n")
     cover = omega_index_format(rlabels,  NET.data_nocs, NET.struct_labels[:NET.nodes])
+    # Set community structure ----
+    H.set_kr(k, r, score=score)
+    H.set_overlap_labels(NET.overlap, score)
     H.set_cover(cover, score)
     # Plot H ----
     # plot_h.core_dendrogram([r], on=T) #

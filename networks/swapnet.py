@@ -9,7 +9,7 @@ class SWAPNET(EDR):
   def __init__(
     self, nodes : int, total_number_of_nodes : int, linkage : str, mode : str, iteration : int,
     nlog10=False, lookup=False, cut=False,
-    mapping="R1", topology="MIX", index="jacp", **kwargs
+    mapping="R1", topology="MIX", index="jacp", discovery="discovery_5", **kwargs
   ) -> None:
     super().__init__(nodes, **kwargs)
     self.random = "swaps"
@@ -57,7 +57,7 @@ class SWAPNET(EDR):
     )
     self.plot_path = os.path.join(
       "../plots", self.common_path, mode,
-      self.subfolder, "b_"+str(self.b)
+      self.subfolder, "b_"+str(self.b), discovery
     )
     self.csv_path = os.path.join(
       "../CSV", self.folder, self.random,
@@ -67,7 +67,7 @@ class SWAPNET(EDR):
     )
     self.pickle_path = os.path.join(
       "../pickle", self.common_path, mode, self.subfolder,
-      "b_"+str(self.b)
+      "b_"+str(self.b), discovery
     )
     # Labels and regions ----
     self.labels_path = self.structure_path

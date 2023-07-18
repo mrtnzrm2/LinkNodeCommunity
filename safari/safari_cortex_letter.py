@@ -17,9 +17,9 @@ from networks.structure import MAC
 from various.network_tools import *
 
 def omega(plot_path, mode="ALPHA", iterations=500):
-  path = f"../pickle/RAN/distbase/MAC/57d106/LN/tracto16/EXPMLE/BIN_12/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/"
+  path = f"../pickle/RAN/distbase/MAC/57d106/LN/tracto16/EXPMLE/BIN_12/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/discovery_6"
   H_EDR = read_class(path, f"series_{iterations}")
-  path = f"../pickle/RAN/swaps/MAC/57d106/LN/tracto16/1k/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/"
+  path = f"../pickle/RAN/swaps/MAC/57d106/LN/tracto16/1k/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/discovery_6"
   H_CONG = read_class(path, f"series_{iterations}")
   edr_data =H_EDR.data
   cong_data = H_CONG.data
@@ -63,9 +63,9 @@ def omega(plot_path, mode="ALPHA", iterations=500):
   plt.close()
 
 def entropy(plot_path, mode="ALPHA", iterations=500):
-  path = f"../pickle/RAN/distbase/MAC/57d106/LN/tracto16/EXPMLE/BIN_12/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/"
+  path = f"../pickle/RAN/distbase/MAC/57d106/LN/tracto16/EXPMLE/BIN_12/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/discovery_6"
   H_EDR = read_class(path, f"series_{iterations}")
-  path = f"../pickle/RAN/swaps/MAC/57d106/LN/tracto16/1k/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/"
+  path = f"../pickle/RAN/swaps/MAC/57d106/LN/tracto16/1k/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/discovery_6"
   H_CONG = read_class(path, f"series_{iterations}")
   edr_data = pd.concat([H_EDR.node_entropy, H_EDR.link_entropy])
   cong_data = pd.concat([H_CONG.node_entropy, H_CONG.link_entropy])
@@ -191,9 +191,9 @@ def read_scalefree_entropy(MAXI : int, mode="ALPHA"):
 
 
 def entropy_networks_220830(plot_path, mode="ALPHA", iterations=500):
-    path = f"../pickle/RAN/distbase/MAC/57d106/LN/tracto16/EXPMLE/BIN_12/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/"
+    path = f"../pickle/RAN/distbase/MAC/57d106/LN/tracto16/EXPMLE/BIN_12/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/discovery_6"
     H_EDR = read_class(path, f"series_{iterations}")
-    path = f"../pickle/RAN/swaps/MAC/57d106/LN/tracto16/1k/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/"
+    path = f"../pickle/RAN/swaps/MAC/57d106/LN/tracto16/1k/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/discovery_6"
     H_CONG = read_class(path, f"series_{iterations}")
     edr_data = pd.concat([H_EDR.node_entropy, H_EDR.link_entropy])
     cong_data = pd.concat([H_CONG.node_entropy, H_CONG.link_entropy])
@@ -233,7 +233,7 @@ def entropy_networks_220830(plot_path, mode="ALPHA", iterations=500):
 
     # ###
 
-    path = f"../pickle/RAN/distbase/MAC/57d106/LN/tracto16/EXPMLE/BIN_12/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/"
+    path = f"../pickle/RAN/distbase/MAC/57d106/LN/tracto16/EXPMLE/BIN_12/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/discovery_6"
     H_EDR = read_class(path, f"series_{iterations}")
     mac_data = pd.concat([H_EDR.node_entropy, H_EDR.link_entropy])
     mac_data = mac_data.loc[
@@ -458,7 +458,7 @@ def entropy_networks_40d91(plot_path):
     plt.close()
 
 def sim_histogram(plot_path, mode="ALPHA"):
-    path = f"../pickle/MAC/57d106/LN/original/tracto16/57/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/"
+    path = f"../pickle/MAC/57d106/LN/original/tracto16/57/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/discovery_6"
     H = read_class(path, "hanalysis")
     src = H.source_sim_matrix
     tgt = H.target_sim_matrix
@@ -501,11 +501,11 @@ def sim_histogram(plot_path, mode="ALPHA"):
     plt.close()
 
 def sim_dist(plot_path, mode="ALPHA"):
-    path = f"../pickle/MAC/57d106/LN/original/tracto16/57/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/"
+    path = f"../pickle/MAC/57d106/LN/original/tracto16/57/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/discovery_6"
     H = read_class(path, "hanalysis")
     src = H.source_sim_matrix
     tgt = H.target_sim_matrix
-    D = NET.D[:__nodes__, :__nodes__]
+    D = H.D[:NET.nodes, :]
     
     src = adj2df(src)
     tgt = adj2df(tgt)
@@ -550,11 +550,11 @@ def sim_dist(plot_path, mode="ALPHA"):
 def sim_dist_bin(plot_path, mode="ALPHA"):
     import statsmodels.api as sm
     from sklearn.preprocessing import StandardScaler
-    path = f"../pickle/MAC/57d106/LN/original/tracto16/57/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/"
+    path = f"../pickle/MAC/57d106/LN/original/tracto16/57/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/discovery_6"
     H = read_class(path, "hanalysis")
     src = H.source_sim_matrix
     tgt = H.target_sim_matrix
-    D = NET.D[:__nodes__, :__nodes__]
+    D = H.D[:NET.nodes, :]
     
     src = adj2df(src)
     tgt = adj2df(tgt)
@@ -675,9 +675,9 @@ def sim_dist_bin(plot_path, mode="ALPHA"):
 
 
 def overlap(plot_path, mode="ALPHA", iterations=500):
-    path = f"../pickle/RAN/distbase/MAC/57d106/LN/tracto16/EXPMLE/BIN_12/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/"
+    path = f"../pickle/RAN/distbase/MAC/57d106/LN/tracto16/EXPMLE/BIN_12/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/discovery_6"
     H_EDR = read_class(path, f"series_{iterations}")
-    path = f"../pickle/RAN/swaps/MAC/57d106/LN/tracto16/1k/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/"
+    path = f"../pickle/RAN/swaps/MAC/57d106/LN/tracto16/1k/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/discovery_6"
     H_CONG = read_class(path, f"series_{iterations}")
 
     edr_overlap = H_EDR.data_overlap.loc[
@@ -926,7 +926,7 @@ def directed_average_count(path, NET):
   )
 
   CC = CC.loc[CC.weight > 0]
-  CC["Average neural count"] = CC.weight
+  CC["ANLNe"] = CC.weight
 
   CC = CC.sort_values("D", ascending=True)
 
@@ -941,20 +941,20 @@ def directed_average_count(path, NET):
   g.map_dataframe(
       sns.scatterplot,
       x="Area_Y",
-      y="Average neural count"
+      y="ANLNe"
   )
 
   g.map_dataframe(
       sns.lineplot,
       x="Area_Y",
-      y="Average neural count"
+      y="ANLNe"
   )
 
   g.add_legend()
 
   g.set_xticklabels(rotation=90)
   plt.yscale("log")
-  plt.ylabel("Average neural count")
+  plt.ylabel("ANLNe")
   fig = plt.gcf()
   fig.set_figheight(8)
   fig.set_figwidth(15)
@@ -1007,11 +1007,11 @@ if __name__ == "__main__":
     )
     cortex_letter_path = "../plots/MAC/57d106/LN/original/tracto16/57/SINGLE_106_57_l10/"
     # entropy(cortex_letter_path, mode=mode)
-    # omega(cortex_letter_path, mode=mode)
-    # overlap(cortex_letter_path, mode=mode)
-    entropy_networks_220830(cortex_letter_path, mode=mode)
+    # omega(cortex_letter_path, mode=mode, iterations=1000)
+    # overlap(cortex_letter_path, mode=mode, iterations=1000)
+    # entropy_networks_220830(cortex_letter_path, mode=mode, iterations=1000)
     # sim_dist(cortex_letter_path, mode=mode)
     # sim_dist_bin(cortex_letter_path, mode=mode)
     # sim_histogram(cortex_letter_path, mode=mode)
-    # directed_average_count(cortex_letter_path, NET)
+    directed_average_count(cortex_letter_path, NET)
     

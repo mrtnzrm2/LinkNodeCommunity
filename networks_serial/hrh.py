@@ -59,9 +59,12 @@ class HRH:
 
   def set_association_one(self, score):
     self.association_one[score] = np.zeros((self.nodes, self.nodes))
+    # print(self.labels)
     for key, nodes in self.rcover[score].items():
       for i in np.arange(len(nodes)):
         for j in np.arange(i+1, len(nodes)):
+          # print(nodes[i])
+          # print(np.where(self.labels == nodes[i]))
           x = np.where(self.labels == nodes[i])[0][0]
           y = np.where(self.labels == nodes[j])[0][0]
           if key != -1:

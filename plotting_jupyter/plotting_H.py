@@ -211,7 +211,7 @@ class Plot_H:
     plt.xscale("log")
     fig.tight_layout()
 
-  def plot_network_kk(self, H : Hierarchy, partition, nocs : dict, labels, ang=0, score="", front_edges=False, log_data=False, font_size=0.1, undirected=False, cmap_name="hls"):
+  def plot_network_kk(self, H : Hierarchy, partition, nocs : dict, sizes : dict, labels, ang=0, score="", front_edges=False, log_data=False, font_size=0.1, undirected=False, cmap_name="hls"):
     print("Printing network space")
     new_partition = skim_partition(partition)
     unique_clusters_id = np.unique(new_partition)
@@ -221,19 +221,28 @@ class Plot_H:
     cmap_heatmap[0] = [199/ 255.0, 0, 57/ 255.0]
     cmap_heatmap[1:] = save_colors
     # Assign memberships to nodes ----
-    nodes_memberships = {k : [0] * keff for k in np.arange(H.nodes)}
+    if -1 in unique_clusters_id:
+      nodes_memberships = {k : {"id" : [0] * keff, "size" : [0] * keff} for k in np.arange(H.nodes)}
+    else:
+      nodes_memberships = {k : {"id" : [0] * (keff+1), "size" : [0] * (keff+1)} for k in np.arange(H.nodes)}
     for i, id in enumerate(new_partition):
       if id == -1: continue
-      nodes_memberships[i][id + 1] = 1
+      nodes_memberships[i]["id"][id + 1] = 1
+      nodes_memberships[i]["size"][id + 1] = 1
     for i, key in enumerate(nocs.keys()):
       index_key = np.where(labels == key)[0][0]
       for id in nocs[key]:
-        if id == -1: nodes_memberships[index_key][0] = 1
-        else: nodes_memberships[index_key][id + 1] = 1
+        if id == -1:
+          nodes_memberships[index_key]["id"][0] = 1
+          nodes_memberships[index_key]["size"][0] = 1
+        else:
+          nodes_memberships[index_key]["id"][id + 1] = 1
+          nodes_memberships[index_key]["size"][id + 1] = sizes[key][id]
     # Check unassigned ----
     for i in np.arange(H.nodes):
-      if np.sum(np.array(nodes_memberships[i]) == 0) == keff:
-        nodes_memberships[i][0] = 1
+      if np.sum(np.array(nodes_memberships[i]["id"]) == 0) == keff:
+        nodes_memberships[i]["id"][0] = 1
+        nodes_memberships[i]["size"][0] = 1
       # elif np.sum(np.array(nodes_memberships[i]) != 0) > 2:
       #   print(nodes_memberships[i])
     if not log_data:
@@ -258,10 +267,12 @@ class Plot_H:
       else:
         nx.draw_networkx_edges(G, pos=pos, arrows=True, ax=ax)
     for node in G.nodes:
+      # print(nodes_memberships[node]["id"])
+      # print(nodes_memberships[node]["size"])
       plt.pie(
-        [1 for id in nodes_memberships[node] if id != 0], # s.t. all wedges have equal size
+        [s for s in nodes_memberships[node]["size"] if s != 0], # s.t. all wedges have equal size
         center=pos[node], 
-        colors = [cmap_heatmap[i] for i, id in enumerate(nodes_memberships[node]) if id != 0],
+        colors = [cmap_heatmap[i] for i, id in enumerate(nodes_memberships[node]["id"]) if id != 0],
         radius=0.05
       )
     if front_edges:

@@ -256,6 +256,33 @@ double Dinf(
 	return JACP;
 }
 
+double D1_2_4(
+	std::vector<double> &u, std::vector<double> &v, int &ii, int &jj
+) {
+	int N = u.size();
+	double JACP = 0.;
+	double p = 0, pu = 0, pv = 0;
+	for (int j=0; j < N; j++){
+		pu += u[j];
+		pv += v[j];
+	}
+	for (int i=0; i < N; i++){
+		// D1/2
+		if (i == ii | i == jj) continue;
+		p += sqrt(((u[i]) / pu) * ((v[i]) / pv));
+	}
+	p += sqrt((u[jj]) / pu * ((v[ii]) / pv));
+	p += sqrt((u[ii]) / pu * ((v[jj]) / pv));
+	// D1/2
+  if (p > 0) {
+    p = - 2 * log(p);
+    JACP = 1 / (1 + p);
+  }
+  else
+    JACP = 0;
+	return JACP;
+}
+
 double D1_2_2(
 	std::vector<double> &u, std::vector<double> &v
 ) {
@@ -373,6 +400,12 @@ PYBIND11_MODULE(ctools, m) {
   m.def(
     "D1_2_2",
     &D1_2_2,
+    py::return_value_policy::reference_internal
+  );
+
+	m.def(
+    "D1_2_4",
+    &D1_2_4,
     py::return_value_policy::reference_internal
   );
 }

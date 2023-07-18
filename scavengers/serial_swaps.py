@@ -22,7 +22,7 @@ list_of_lists = itertools.product(
 )
 list_of_lists = np.array(list(list_of_lists))
 # Declare global variables NET ----
-MAXI = 501
+MAXI = 1000
 linkage = "single"
 nlog10 = T
 lookup = F
@@ -75,7 +75,7 @@ if __name__ == "__main__":
     if cut: _cut = "_cut"
     print("Load MAC data ----")
     data = read_class(
-      "../pickle/RAN/swaps/MAC/{}/{}/{}/{}/{}/{}/{}/b_{}".format(
+      "../pickle/RAN/swaps/MAC/{}/{}/{}/{}/{}/{}/{}/b_{}/{}".format(
         __version__,
         structure,
         distance,
@@ -83,7 +83,7 @@ if __name__ == "__main__":
        f"{linkage.upper()}_{total_nodes}_{__nodes__}{l10}{lup}{_cut}",
         mode,
         f"{topology}_{index}_{mapping}",
-        bias
+        bias, "discovery_6"
       ),
       "series_{}".format(MAXI)
     )

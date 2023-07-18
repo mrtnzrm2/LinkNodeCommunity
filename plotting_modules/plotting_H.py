@@ -90,7 +90,7 @@ class Plot_H:
       if not weighted:
         subprocess.run(["Rscript", "R/plot_newick_tree.R", tree_newick, join(plot_path, "tree_newick.png")])
       else:
-        subprocess.run(["Rscript", "R/plot_newick_tree.R", tree_newick, join(plot_path, "tree_newick_H.png")])
+        subprocess.run(["Rscript", "R/plot_newick_tree_H.R", tree_newick, join(plot_path, "tree_newick_H.png")])
     else:
       print("No tree in Newick format")
 
@@ -767,6 +767,14 @@ class Plot_H:
         yticklabels=labels,
         ax = ax
       )
+      if "font_size" in kwargs.keys():
+        if kwargs["font_size"] > 0:
+          ax.set_xticklabels(
+            ax.get_xmajorticklabels(), fontsize = kwargs["font_size"]
+          )
+          ax.set_yticklabels(
+            ax.get_ymajorticklabels(), fontsize = kwargs["font_size"]
+          )
       # Setting labels colors ----
       [t.set_color(i) for i,t in
         zip(
@@ -1453,6 +1461,18 @@ class Plot_H:
           n_clusters=R[i]
         ).reshape(-1)
         if "labels" in kwargs.keys(): ids = kwargs["labels"]
+        ###
+        # 'v1c' 0 'v1pclf' 0 'v1fplf' 1 'v1fpuf' 2 'v2c' 0 'v2pcuf' -1 'v2fplf' 1 'v4c' 0 'v4lf' 0
+        # '7a' 1 '7b' 3 'lip' 1 'mip' 4 'dp' 1 'v6' 1 '5' 4 '7m' 1 'stpr' 5 'stpi' 5 'stpc' 5 'mst' 1 'mtc' 0
+        # 'mtp' 1 'teo' 0 'tepd' 0 'th/tf' 2 'pbr' 5 'pbc' 5 '1' 6 '2' 6 '3' 6 '24b' 7 '24c' 7 '32' 8 'f1' -1 
+        # 'f2' 9 'f7' 7 'f3' 9 'f6' 7 'f4' 3 'f5' 3 'prom' 3 '10' 8 '9' 7 '46d' 10 '46v' 8 '9/46d' 10 '9/46v' 10
+        # '8b' 7 '8l' 10 '8m' 10 '8r' 10 '45a' 10 'opro' -1 '25' 8 '14' 8 '12' 10
+        ###
+        # ids = [
+        #   0, 0, 1, 2, 0, 11, 1, 0, 0, 1, 3, 1, 4, 1, 1, 4, 1, 5, 5, 5, 1, 0, 1, 0, 0, 2, 5, 5, 6, 6, 6, 7, 7, 8, 12,
+        #   9, 7, 9, 7, 3, 3, 3, 8, 7, 10, 8, 10, 10, 7, 10, 10, 10, 10, 13, 8, 8, 10  
+        # ]
+        ##
         # Start old-new mapping ---
         new_ids = {k : k for k in np.unique(ids)}
         # Look for isolated nodes ----

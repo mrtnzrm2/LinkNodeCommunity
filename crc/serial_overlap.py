@@ -19,7 +19,7 @@ from various.network_tools import *
 def worker_overlap(
   number_of_iterations : int, number_of_nodes : int, mode : str,
   nlog10 : bool, lookup : bool, prob : bool, cut : bool, run : bool,
-  topology : str, mapping : str, index : str,
+  topology : str, mapping : str, index : str, discovery : str,
   kav : float, maxk : int, mut : float, muw : float, beta : float,
   t1 : float, t2 : float,  nmin : int, nmax : int, on :int, om : int
 ):
@@ -29,7 +29,7 @@ def worker_overlap(
   linkage = "single"
   __mode__ = mode
   alpha = 0.
-  opt_score = ["_maxmu", "_X", "_D", "_S", "_SD"]
+  opt_score = ["_D", "_S"]
   # Overlapping WDN paramters ----
   opar = {
     "-N" : "{}".format(
@@ -78,19 +78,16 @@ def worker_overlap(
       cut=cut,
       mapping=mapping,
       index=index,
+      discovery=discovery,
       parameters = opar
     )
-    RAND.set_alpha([6, 20])
-    # RAND.set_beta([0.1, 0.2, 0.4])
     # Create network ----
     print("Create random graph")
     RAND.random_WDN_overlap_cpp(
       run=run, on_save_pickle = F   #****
     )
     if np.sum(np.isnan(RAND.A)) > 0:
-      print(
-        "LFB failed to create the network with the desired properties."
-      )
+      print("LFR failed to create the network with the desired properties.")
     else:   
       RAND.col_normalized_adj(on=F)
       L = colregion(RAND)
@@ -102,7 +99,7 @@ def worker_overlap(
         __nodes__, linkage, __mode__, alpha=alpha
       )
       ## Compute features ----
-      RAND_H.BH_features_parallel()
+      RAND_H.BH_features_cpp_no_mu()
       ## Compute link entropy ----
       RAND_H.link_entropy_cpp("short", cut=cut)
       ## Compute lq arbre de merde ----
@@ -131,7 +128,7 @@ def worker_overlap(
           # Single linkage part ----
           print("Best K: {}\nBest R: {}".format(k, r))
           rlabels = get_labels_from_Z(RAND_H.Z, r)
-          nocs, noc_covers = RAND_H.discovery_3(k, rlabels)
+          nocs, noc_covers, _ = RAND_H.discovery_channel[discovery](RAND_H, k, rlabels)
           sen, sep = RAND.overlap_score_discovery(
             k, nocs, RAND_H.colregion.labels[:RAND_H.nodes], on=T
           )

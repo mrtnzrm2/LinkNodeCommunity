@@ -1,4 +1,5 @@
 import numpy as np
+from os.path import join
 from networks.scalefree import SCALEFREE
 from modules.hierarmerge import Hierarchy
 from various.network_tools import *
@@ -7,13 +8,14 @@ class OVERLAPPING(SCALEFREE):
   def __init__(
     self, iter, linkage, mode,
     nlog10=False, lookup=False, cut=False,
-    topology="MIX", mapping="R1", index="jacp", **kwargs
+    topology="MIX", mapping="R1", index="jacp", discovery="discovery_3", **kwargs
   ) -> None:
     super().__init__(
       iter, linkage, mode, nlog10=nlog10, lookup=lookup,
       topology=topology, index=index, mapping=mapping,
       cut=cut, **kwargs
     )
+    self.pickle_path = join(self.pickle_path, discovery)
 
   def read_data_multicolumns(self):
     # Transform community.dat into list ----
