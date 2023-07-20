@@ -414,8 +414,7 @@ def get_r_from_X(H):
 def get_r_from_equivalence(k, H):
   if isinstance(k, list):
     return [H.equivalence[H.equivalence[:, 0] == kk, 1][0] for kk in k]
-  else:
-    return H.equivalence[H.equivalence[:, 0] == k, 1][0]
+  else: return H.equivalence[H.equivalence[:, 0] == k, 1][0]
 
 def get_r_from_X_diag(K, H, Z, R, nodes, **kwargs):
   from scipy.cluster.hierarchy import cut_tree, dendrogram

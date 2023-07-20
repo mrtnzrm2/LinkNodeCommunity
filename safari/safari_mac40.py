@@ -290,46 +290,7 @@ def single_flne_lne():
   plt.savefig(f"../plots/MAC/40d91/cortex_letter/FLNe_vs_LNe_.png", dpi=300)
   plt.close()
 
-# Declare global variables ----
-linkage = "single"
-nlog10 = T
-lookup = F
-prob = T
-cut = F
-structure = "FLN"
-mode = "ALPHA"
-distance = "tracto16"
-nature = "original"
-imputation_method = ""
-topology = "MIX"
-mapping = "trivial"
-index  = "simple2"
-bias = 0
-opt_score = ["_maxmu", "_X", "_D"]
-save_data = T
-version = "40d91"
-__nodes__ = 40
-__inj__ = 40
-# Start main ----
-if __name__ == "__main__":
-  # Load structure ----
-  NET = MAC40(
-    linkage, mode,
-    nlog10 = nlog10,
-    structure = structure,
-    lookup = lookup,
-    version = version,
-    nature = nature,
-    model = imputation_method,
-    distance = distance,
-    inj = __inj__,
-    topology = topology,
-    index = index,
-    mapping = mapping,
-    cut = cut,
-    b = bias
-  )
-  
+def plot_comparing_fln_and_anln(NET):
   D = NET.D[:, :__nodes__]
   # Get structure ----
   file = pd.read_csv(f"{NET.csv_path}/corticoconnectiviy database_kennedy-knoblauch-team-1_distances completed.csv")
@@ -337,26 +298,31 @@ if __name__ == "__main__":
   tlabel = np.unique(file.TARGET)
   inj = tlabel.shape[0]
   slabel = np.unique(file.SOURCE)
-  tareas = slabel.shape[0]
+  total_areas = slabel.shape[0]
   slabel1 = [lab for lab in slabel if lab not in tlabel]
   slabel = np.array(list(tlabel) + slabel1)
   file["SOURCE_IND"] = match(file.SOURCE, slabel)
   file["TARGET_IND"] = match(file.TARGET, slabel)
   ## Average Count
   monkeys = np.unique(file.MONKEY)
-  C = []
+  c = []
   sum_A = np.zeros(np.unique(file.TARGET_IND).shape[0])
-  for m in monkeys:
-    Cm = np.zeros((tareas, inj)) * np.nan
+  tid = np.unique(file.TARGET_IND)
+  tmk = {t : [] for t in tid}
+  for i, m in enumerate(monkeys):
+    Cm = np.zeros((total_areas, inj))
     data_m = file.loc[file.MONKEY == m]
     Cm[data_m.SOURCE_IND, data_m.TARGET_IND] = data_m.TOTAL
+    c.append(Cm)
     cm_tgt = np.unique(data_m.TARGET_IND)
     sum_A[cm_tgt] += 1
-    C.append(Cm)
-  C = np.array(C)
-  CC = C.copy()
-  CC[np.isnan(CC)] = 0
-  CC = np.nansum(CC, axis=0)
+    for t in cm_tgt: tmk[t].append(i)
+  c = np.array(c)
+  c[np.isnan(c)] = 0
+  C = np.zeros((total_areas, inj))
+  for t, mnk in tmk.items(): C[:, t] = np.mean(c[mnk, :, t], axis=0)
+  CC = c.copy()
+  CC = np.sum(CC, axis=0)
   CC = CC / sum_A
   ##
   ##
@@ -365,11 +331,10 @@ if __name__ == "__main__":
   for AL in ALS:
     monkey_target_area = np.unique(file["MONKEY"].loc[file.TARGET == AL])
     A = match([AL], slabel)[0]
-    area_target = C[:, :, A]
+    area_target = c[:, :, A]
     D_A = D[:, A]
-    area_target[np.isnan(area_target)] = 0
     for m in np.arange(area_target.shape[0]):
-        norm = np.nansum(area_target[m, :])
+        norm = np.sum(area_target[m, :])
         for i in np.arange(area_target.shape[1]):
           if monkeys[m] in monkey_target_area:
             t = area_target[m, i]
@@ -427,3 +392,44 @@ if __name__ == "__main__":
   fig.tight_layout()
   plt.savefig(f"../plots/MAC/40d91/cortex_letter/FLNe_vs_ANLNe_.png", dpi=300)
   plt.close()
+
+# Declare global variables ----
+linkage = "single"
+nlog10 = T
+lookup = F
+prob = T
+cut = F
+structure = "FLN"
+mode = "ALPHA"
+distance = "tracto16"
+nature = "original"
+imputation_method = ""
+topology = "MIX"
+mapping = "trivial"
+index  = "simple2"
+bias = 0
+opt_score = ["_maxmu", "_X", "_D"]
+save_data = T
+version = "40d91"
+__nodes__ = 40
+__inj__ = 40
+# Start main ----
+if __name__ == "__main__":
+  # Load structure ----
+  NET = MAC40(
+    linkage, mode,
+    nlog10 = nlog10,
+    structure = structure,
+    lookup = lookup,
+    version = version,
+    nature = nature,
+    model = imputation_method,
+    distance = distance,
+    inj = __inj__,
+    topology = topology,
+    index = index,
+    mapping = mapping,
+    cut = cut,
+    b = bias
+  )
+  plot_comparing_fln_and_anln(NET)

@@ -136,7 +136,7 @@ class MAC40(base):
     tlabel = np.unique(file.TARGET)
     inj = tlabel.shape[0]
     slabel = np.unique(file.SOURCE)
-    tareas = slabel.shape[0]
+    total_areas = slabel.shape[0]
     slabel1 = [lab for lab in slabel if lab not in tlabel]
     slabel = np.array(list(tlabel) + slabel1)
     file["SOURCE_IND"] = match(file.SOURCE, slabel)
@@ -144,23 +144,27 @@ class MAC40(base):
     ## Average Count
     monkeys = np.unique(file.MONKEY)
     C = []
-    for m in monkeys:
-      Cm = np.zeros((tareas, inj)) * np.nan
+    tid = np.unique(file.TARGET_IND)
+    tmk = {t : [] for t in tid}
+    for i, m in enumerate(monkeys):
+      Cm = np.zeros((total_areas, inj))
       data_m = file.loc[file.MONKEY == m]
       Cm[data_m.SOURCE_IND, data_m.TARGET_IND] = data_m.TOTAL
       C.append(Cm)
+      for t in np.unique(data_m.TARGET_IND):
+        tmk[t].append(i)
     C = np.array(C)
-    CC = np.nansum(C, axis=0)
-    C = np.nanmean(C, axis=0)
     C[np.isnan(C)] = 0
-    CC[np.isnan(CC)] = 0
+    CC = np.sum(C, axis=0)
+    c = np.zeros((total_areas, inj))
+    for t, mnk in tmk.items(): c[:, t] = np.mean(C[mnk, :, t], axis=0)
     A = CC / np.sum(CC, axis=0)
-    self.rows = C.shape[0]
-    self.nodes = C.shape[1]
+    self.rows = c.shape[0]
+    self.nodes = c.shape[1]
     self.struct_labels = slabel
     self.struct_labels = np.char.lower(self.struct_labels)
     # np.savetxt(f"{self.csv_path}/labels.csv", self.struct_labels,  fmt='%s')
-    return C.astype(float), CC.astype(float), A.astype(float)
+    return c.astype(float), CC.astype(float), A.astype(float)
 
   def get_distance_MAP3D(self):
     fname =  join(self.distance_path, "DistanceMatrix Map3Dmars2019_91x91.csv")

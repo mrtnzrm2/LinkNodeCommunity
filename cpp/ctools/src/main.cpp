@@ -271,8 +271,10 @@ double D1_2_4(
 		if (i == ii | i == jj) continue;
 		p += sqrt(((u[i]) / pu) * ((v[i]) / pv));
 	}
-	p += sqrt((u[jj]) / pu * ((v[ii]) / pv));
-	p += sqrt((u[ii]) / pu * ((v[jj]) / pv));
+	if (ii < N && jj < N) {
+		p += sqrt((u[jj]) / pu * ((v[ii]) / pv));
+		p += sqrt((u[ii]) / pu * ((v[jj]) / pv));
+	}
 	// D1/2
   if (p > 0) {
     p = - 2 * log(p);

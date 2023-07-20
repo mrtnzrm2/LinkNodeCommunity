@@ -154,7 +154,8 @@ class MAC57(base):
     # C = C[self.perm2, :][:, self.perm]
     # self.struct_labels = self.struct_labels[self.perm2]
     ##
-    np.savetxt(f"{self.csv_path}/labels57.csv", self.struct_labels,  fmt='%s')
+    self.labels = self.struct_labels
+    # np.savetxt(f"{self.csv_path}/labels57.csv", self.struct_labels,  fmt='%s')
     # NET.struct_labels = NET.struct_labels[perm2]
     return C.astype(float)
 
