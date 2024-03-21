@@ -1,0 +1,1 @@
+add_library(bin_dir binary_benchm.cpp)

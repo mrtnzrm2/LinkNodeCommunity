@@ -88,7 +88,7 @@ if __name__ == "__main__":
   version = 100
   mode = "ALPHA"
   nature = "original"
-  feature = "MIX"
+  topology = "MIX"
   index = "jacp"
   mapping="trivial"
   opt_score = ["_D"]
@@ -100,7 +100,7 @@ if __name__ == "__main__":
     "lookup" : lookup,
     "prob" : prob,
     "cut" : cut,
-    "feature" : feature,
+    "topology" : topology,
     "mode" : mode
   }
   # List toys ----

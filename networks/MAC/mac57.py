@@ -66,6 +66,7 @@ class MAC57(base):
     self.mapping = mapping
     self.index = index
     self.cut = cut
+    self.discovery = discovery
     self.subfolder = f"{topology}_{index}_{mapping}"
     # Set attributes ----
     self.mode = mode

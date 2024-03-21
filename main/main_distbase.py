@@ -14,33 +14,34 @@ from plotting_modules.plotting_H import Plot_H
 from plotting_modules.plotting_N import Plot_N
 from various.data_transformations import maps
 from networks.distbase import DISTBASE
-from networks.structure import MAC
+from networks.structure import STR
 from various.network_tools import *
 from various.fit_tools import fitters
+from modules.discovery import discovery_channel
 # Declare global variables ----
-__iter__ = 1
+__iter__ = 0
 linkage = "single"
-nlog10 = T
+nlog10 = F
 lookup = F
 prob = T
 cut = F
-structure = "LN"
+structure = "FLN"
 distance = "tracto16"
 nature = "original"
 __mode__ = "ZERO"
 topology = "MIX"
 mapping = "trivial"
-index  = "D1_2_4"
-discovery = "discovery_6"
+index  = "Hellinger2"
+discovery = "discovery_7"
 imputation_method = ""
-opt_score = ["_X", "_S", "_SD"]
+opt_score = ["_S"]
 save_datas = T
 # Declare global variables DISTBASE ----
-__model__ = "EXPMLE"
+__model__ = "DATA-DRIVEN"
 total_nodes = 106
 __inj__ = 57
 __nodes__ = 57
-__bin__ = 12
+__bin__ = 20
 __version__ = "57d106"
 bias = 0.
 alpha = 0.
@@ -55,7 +56,7 @@ if cut: __ex_name__ = f"{__ex_name__}_cut"
 
 if __name__ == "__main__":
   # MAC network as reference ----
-  REF = MAC[f"MAC{__inj__}"](
+  REF = STR[f"MAC{__inj__}"](
     linkage, __mode__,
     structure = structure,
     nlog10=nlog10, lookup=lookup,
@@ -70,7 +71,7 @@ if __name__ == "__main__":
     cut=cut, b=bias,
     discovery=discovery
   )
-  _, _, _, _, est = fitters[__model__](REF.D, REF.CC, REF.nodes, __bin__)
+  _, _, _, _, est = fitters["EXPMLE"](REF.D, REF.CC, REF.nodes, __bin__)
   lb = est.coef_[0]
   # Create EDR network ----
   NET = DISTBASE(
@@ -84,20 +85,20 @@ if __name__ == "__main__":
   )
   NET.create_plot_path()
   # NET.create_csv_path()
-  # NET.create_pickle_path()
-  L = colregion(REF, labels_name="labels57")
+  NET.create_pickle_path()
+  L = colregion(REF, labels_name=f"labels{__inj__}")
   NET.set_labels(L.labels)
   # Create distance matrix ----
   D = REF.D
   # Create network ----
   print("Create random graph")
   Gn = NET.distbase_dict[__model__](
-      D, REF.C, run=T, on_save_csv=F
+      D, REF.CC, run=T, on_save_csv=F
     )
   Ga = column_normalize(Gn)
   # Transform data for analysis ----
   R, lookup, _ = maps[mapping](
-    Gn, nlog10, lookup, prob, b=bias
+    Ga, nlog10, lookup, prob, b=bias
   )
   # Compute Hierarchy ----
   print("Compute Hierarchy")
@@ -105,9 +106,9 @@ if __name__ == "__main__":
   if save_datas:
     ## Hierarchy object!! ----
     H = Hierarchy(
-      NET, Gn[:, :NET.nodes], R[:, :NET.nodes], D,
+      NET, Ga[:, :NET.nodes], R[:, :NET.nodes], D,
       __nodes__, linkage, __mode__,
-      lookup=lookup, alpha=alpha
+      lookup=lookup, alpha=alpha, index=index
     )
     ## Compute quality functions ----
     H.BH_features_cpp_no_mu()
@@ -134,59 +135,65 @@ if __name__ == "__main__":
     H = read_class(
       NET.pickle_path,
       "hanalysis"
-    )
+    )  
   # Plot H ----
   plot_h = Plot_H(NET, H)
   HS = Hierarchical_Entropy(H.Z, H.nodes, H.colregion.labels[:H.nodes])
   HS.Z2dict("short")
   HS.zdict2newick(HS.tree, weighted=F, on=T)
-  plot_h.plot_newick_R(HS.newick, weighted=F, on=T)
-  HS.zdict2newick(HS.tree, weighted=T, on=T)
-  plot_h.plot_newick_R(HS.newick, weighted=T, on=T)
-  plot_h.plot_measurements_Entropy(on=T)
+  plot_h.plot_newick_R(HS.newick, HS.total_nodes, weighted=T, on=T)
+  # HS.zdict2newick(HS.tree, weighted=T, on=T)
+  # plot_h.plot_newick_R(HS.newick, weighted=T, on=T)
+  # plot_h.plot_measurements_Entropy(on=T)
   plot_h.plot_measurements_D(on=T)
   plot_h.plot_measurements_S(on=T)
-  plot_h.plot_measurements_X(on=T)
+  # plot_h.plot_measurements_X(on=T)
   # Plot N ----
   plot_n = Plot_N(NET, H)
-  plot_n.A_vs_dis(Ga[:, :__nodes__], on=F)
-  plot_n.A_vs_dis(Gn[:, :__nodes__], name="count", on=F)
+  plot_n.A_vs_dis(np.log(Ga[:, :__nodes__]), on=T)
+  # plot_n.A_vs_dis(Gn[:, :__nodes__], name="count", on=F)
   GG = Ga.copy()
   GG[GG == 0] = np.nan
   plot_n.histogram_weight(np.log(GG), on=T, label="logFLN")
-  plot_n.histogram_weight(np.log(1 + Gn), on=T, label="LN")
-  plot_n.histogram_dist(on=F)
+  # plot_n.histogram_weight(np.log(1 + Gn), on=T, label="LN")
+  # plot_n.histogram_dist(on=F)
   plot_n.projection_probability(
-    Gn[:, :__nodes__], __model__, bins=__bin__, on=T
+    Gn[:, :__nodes__], "EXPMLE", bins=__bin__, on=T
   )
-  plot_n.plot_akis(D, s=5, on=T)
+  plot_n.plot_akis(D, s=7, on=T)
   for score in opt_score:
-    K, R = get_best_kr_equivalence(score, H)
+    K, R, HT = get_best_kr_equivalence(score, H)
     r = R[K == np.min(K)]
     k = K[K == np.min(K)]
     print("Best K: {}\nBest R: {}\t Score: {}".format(k, r, score))
     rlabels = get_labels_from_Z(H.Z, r)
+    rlabels = skim_partition(rlabels)
     # Overlap ----
-    ocn, data_nocs, noc_sizes = H.discovery_channel[discovery](H, k, rlabels)
-    NET.set_overlap(ocn)
-    H.set_overlap_labels(ocn, score)
-    plot_h.core_dendrogram([r], on=T)
+    for direction in ["source", "target", "both"]:
+      print("***", direction)
+      ocn, data_nocs, noc_sizes, rlabels2 = discovery_channel[discovery](H, k, rlabels, direction=direction, index=index)
+      NET.set_overlap(ocn)
+      cover = omega_index_format(rlabels2,  data_nocs, NET.struct_labels[:NET.nodes])
+      H.set_cover(cover, score, direction)
+      H.set_rlabels(rlabels2, score, direction)
+      H.set_overlap_labels(NET.overlap, score, direction)
     # Plot N ----
-    plot_n.plot_network_covers(
-      k, np.log(1 + Gn[:__nodes__, :__nodes__]), rlabels,
-      data_nocs, noc_sizes, H.colregion.labels[:H.nodes],
-      score=score, cmap_name="husl", on=T
-    )
+      R = Ga[:__nodes__, :__nodes__].copy()
+      R[R > 0] = -np.log(R[R > 0])
+      plot_n.plot_network_covers(
+        k, R, rlabels2,
+        data_nocs, noc_sizes, H.colregion.labels[:H.nodes],
+        score=score, direction=direction, cmap_name="hls", on=T, figsize=(8,8)
+      )
     ## Single linkage ----
-    plot_h.heatmap_dendro(r, np.log(1 + Gn[:, :__nodes__]), on=T, score="LN")
-    plot_h.heatmap_dendro(r, np.log(Ga[:, :__nodes__]), on=T, score="FLN")
-    plot_h.lcmap_dendro(k, r, on=T)
+    plot_h.heatmap_dendro(r, np.log(Ga[:, :__nodes__]), on=T, score="logFLN")
+    plot_h.lcmap_dendro(k, r, on=T, font_size = 12)
     plot_h.flatmap_dendro(
-      NET, [k], [r], on=F, EC=T #
+      NET, k, r, rlabels2, direction=direction, on=T, EC=T, cmap_name="hls" #
     )
-  save_class(
-    H, NET.pickle_path,
-    "hanalysis",
-    on=F
-  )
+  # save_class(
+  #   H, NET.pickle_path,
+  #   "hanalysis",
+  #   on=T
+  # )
   print("End!")

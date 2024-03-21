@@ -58,7 +58,7 @@ class base:
 class MAC40(base):
   def __init__(
     self, linkage : str, mode : str, nlog10=True, lookup=False, 
-    cut = False, topology="MIX", mapping="R1", index="jacp", **kwargs
+    cut = False, topology="MIX", mapping="R1", index="jacp", discovery="discovery7", **kwargs
   ) -> None:
     super().__init__(linkage, **kwargs)
     self.nlog10 = nlog10
@@ -67,11 +67,13 @@ class MAC40(base):
     self.mapping = mapping
     self.index = index
     self.cut = cut
+    self.discovery = discovery
     self.subfolder = f"{topology}_{index}_{mapping}"
     # Set attributes ----
     self.mode = mode
     # Get structure network ----
     self.C, self.CC, self.A = self.get_structure()
+    self.SN, self.IN, self.SLN = self.get_sln_structure()
     # Get network's spatial distances ----
     dist_dic = {
       "MAP3D" : self.get_distance_MAP3D,
@@ -221,3 +223,69 @@ class MAC40(base):
     np.fill_diagonal(D, 0.)
     D = D.astype(float)
     return D
+  
+  def get_sln_structure(self):
+    # Get structure ----
+    file = pd.read_csv(f"{self.csv_path}/corticoconnectiviy database_kennedy-knoblauch-team-1_distances completed.csv")
+    ## Areas to index
+    tlabel = np.unique(file.TARGET).astype(str)
+    inj = tlabel.shape[0]
+    slabel = np.unique(file.SOURCE)
+    total_areas = slabel.shape[0]
+    slabel1 = [lab for lab in slabel if lab not in tlabel]
+    slabel = np.array(list(tlabel) + slabel1).astype(str)
+    file["SOURCE_IND"] = match(file.SOURCE, slabel)
+    file["TARGET_IND"] = match(file.TARGET, slabel)
+    ## Average Count
+    monkeys = np.unique(file.MONKEY)
+    S = []
+    I = []
+    tid = np.unique(file.TARGET_IND)
+    tmk = {t : [] for t in tid}
+    for i, m in enumerate(monkeys):
+      Sm = np.zeros((total_areas, inj))
+      Im = np.zeros((total_areas, inj))
+      data_m = file.loc[file.MONKEY == m]
+      Sm[data_m.SOURCE_IND, data_m.TARGET_IND] = data_m.SUPRAGRANULAR_NEURONS
+      Im[data_m.SOURCE_IND, data_m.TARGET_IND] = data_m.INFRAGRANULAR_NEURONS
+      S.append(Sm)
+      I.append(Im)
+      for t in np.unique(data_m.TARGET_IND): tmk[t].append(i)
+
+    S = np.array(S)
+    S[np.isnan(S)] = 0
+    I = np.array(I)
+    I[np.isnan(I)] = 0    
+
+    SS = np.sum(S, axis=0)
+    II = np.sum(I, axis=0)
+
+    s = np.zeros((total_areas, inj))
+    i = np.zeros((total_areas, inj))
+    for t, mnk in tmk.items():
+      s[:, t] = np.mean(S[mnk, :, t], axis=0)
+      i[:, t] = np.mean(I[mnk, :, t], axis=0)
+    
+    A = np.zeros(SS.shape)
+    A[SS > 0] = SS[SS > 0] / (SS[SS > 0] + II[SS > 0])
+
+    slabel = np.char.lower(slabel)
+    tlabel = np.char.lower(tlabel)
+
+    s = pd.DataFrame(s, index=slabel, columns=tlabel)
+    s = s[self.struct_labels[:self.nodes]].reindex(self.struct_labels).to_numpy()
+
+    i = pd.DataFrame(i, index=slabel, columns=tlabel)
+    i = i[self.struct_labels[:self.nodes]].reindex(self.struct_labels).to_numpy()
+
+    A = pd.DataFrame(A, index=slabel, columns=tlabel).reindex(self.struct_labels)
+
+    # A.to_csv(f"{self.csv_path}/sln_matrix.csv")
+
+    # pd.DataFrame(s, index=slabel, columns=tlabel).to_csv(
+    #   f"{self.csv_path}/mean_supra_neurons.csv"
+    # )
+    # pd.DataFrame(i, index=slabel, columns=tlabel).to_csv(
+    #   f"{self.csv_path}/mean_infra_neurons.csv"
+    # )
+    return s.astype(float), i.astype(float), A.to_numpy().astype(float)

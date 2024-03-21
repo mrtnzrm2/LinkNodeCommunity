@@ -3,7 +3,10 @@
 #include <vector>
 #include <math.h>
 #include <stdio.h>
+#include <set>
+#include <map>
 #include "hclust-cpp/fastcluster.h"
+#include "mcqd/mcqd.h"
 #include <pybind11/stl.h>
 #include <pybind11/pybind11.h>
 
@@ -41,6 +44,62 @@ void unique(std::vector<int>& v) {
   );
 }
 
+std::vector<int> MaxCliqueApproach(std::vector<int> &source, std::vector<int> &target) {
+  bool **conn;
+  std::vector<int> MaxcliqueMembers;
+  std::vector<int> nodes_r(source.size()+target.size(), 0);
+
+  // Gather all nodes in the network
+  std::merge(source.begin(), source.end(), target.begin(), target.end(), nodes_r.begin());
+  unique(nodes_r);
+
+  // for (int xx=0; xx < nodes_r.size(); xx++)
+  //   std::cout << nodes_r[xx] << " ";
+  // std::cout << "\n";
+
+  int size = nodes_r.size();
+
+  // From raw nodes to alligned nodes
+  std::map<int, int> nodes_r2a;
+  std::map<int, int> nodes_a2r;
+  for (int i=0; i < size; i++) {
+    nodes_r2a[nodes_r[i]] = i;
+    nodes_a2r[i] = nodes_r[i];
+  }
+
+  // Create Adj from mcqd
+  conn = new bool*[size];
+  for (int i=0; i < size; i++) {
+    conn[i] = new bool[size];
+    memset(conn[i], 0, size * sizeof(bool));
+  }
+
+  for (int i=0; i < source.size(); i++) {
+    conn[nodes_r2a[source[i]]][nodes_r2a[target[i]]] = true;
+    conn[nodes_r2a[target[i]]][nodes_r2a[source[i]]] = true;
+  }
+
+  // Run mcqd
+  Maxclique m(conn, size);
+  int *qmax;
+  int qsize;
+  m.mcq(qmax, qsize);
+
+  // for (int xx=0; xx < qsize; xx++)
+  //   std::cout << qmax[xx] << " ";
+  // std::cout << "\n";
+
+  for (int i=0; i < qsize; i++)
+    MaxcliqueMembers.push_back(nodes_a2r[qmax[i]]);
+
+  delete qmax;
+  for (int i=0; i < size; i++)
+    delete [] conn[i];
+  delete [] conn;
+
+  return MaxcliqueMembers;
+}
+
 std::vector<int> intersect(
   std::vector<int>& v,
   std::vector<int>& u
@@ -63,38 +122,35 @@ void print_v2(std::vector<int> &v) {
 
 std::vector<double> link_communitiy_Dc(
   int* labels, int& leaves,
-  std::vector<int>& source, std::vector<int>& target, bool &undirected
+  std::vector<int>& source, std::vector<int>& target, int &undirected
 ) {
-  int edg, N;
+  int N;
   double dc;
-  std::vector<int> nodes_src;
-  std::vector<int> nodes_tgt;
   std::vector<int> lc_nodes;
   std::vector<int> vector_labels(labels, labels + leaves);
   unique(vector_labels);
   std::vector<double> Dc(vector_labels.size());
-  for (int i = 0; i < vector_labels.size(); i++) {
-    edg = 0;
-    for (int j = 0; j < leaves; j++) {
+  std::vector<std::set<int> > node_buffer(vector_labels.size());
+  std::vector<int> edges(vector_labels.size(), 0);
+
+  for (int j = 0; j < leaves; j++) {
+    for (int i = 0; i < vector_labels.size(); i++) {
       if ( labels[j] == vector_labels[i]) {
-        nodes_src.push_back(source[j]);
-        nodes_tgt.push_back(target[j]);
-        edg++;
+        node_buffer[i].insert(source[j]);
+        node_buffer[i].insert(target[j]);
+        edges[i]++;
+        break;
       }
     }
-    lc_nodes = nodes_src;
-    lc_nodes.insert(
-      lc_nodes.end(), nodes_tgt.begin(), nodes_tgt.end()
-    );
-    unique(lc_nodes);
-    N = lc_nodes.size();
-    if (!undirected)
-      dc = (edg - N + 1.) / (pow(N - 1., 2.0));
-    else
-      dc = (edg - N + 1.) / (N * (N - 1.) / 2. - N + 1.);
+  }
+  
+  for (int i = 0; i < vector_labels.size(); i++) {
+    N = node_buffer[i].size();
+    if (undirected == 0)
+      dc = (edges[i] - N + 1.) / (pow(N - 1., 2.0));
+    else 
+      dc = (edges[i] - N + 1.) / (N * (N - 1.) / 2. - N + 1.);
     Dc[i] = dc;
-    nodes_src.clear();
-    nodes_tgt.clear();
   }
   return Dc;
 }
@@ -148,7 +204,7 @@ class noeud_arbre {
     std::vector<double> height_feature;
     std::vector<int> NEC;
     int nodes, leaves, linkage, n;
-    bool undirected;
+    int undirected;
     // return
     std::vector<std::vector<double> > node_hierarchy;
     std::vector<std::vector<int> > equivalence;
@@ -165,7 +221,7 @@ class noeud_arbre {
       const int linkage_method,
       const int edege_list_size,
       const int sp,
-      const bool uni
+      const int uni
     ) {
       // Set class attributes
       distance = distance_link_matrix;
@@ -215,6 +271,7 @@ void noeud_arbre::vite(const int &sp) {
   int ct = 0, k, t=0;
   // equivalence carrier ----
   bool eq_true = false;
+  std::vector<int> inter_1;
   std::vector<int> eq(2, 0);
   //
   std::cout << "Commencer: la abre a merde\n";
@@ -272,20 +329,26 @@ void noeud_arbre::vite(const int &sp) {
       // Get source and target nodes
       for (int kk = 0; kk < leaves; kk++) {
         if (labels[kk] == unique_labels[valid_DCs[j]]) {
-          if (!undirected) {
-            node_src_1.push_back(source[kk]);
-            node_tgt_1.push_back(target[kk]);
-          } else {
-            node_src_1.push_back(source[kk]);
-            node_tgt_1.push_back(target[kk]);
-            node_src_1.push_back(target[kk]);
-            node_tgt_1.push_back(source[kk]);
-          }
+          node_src_1.push_back(source[kk]);
+          node_tgt_1.push_back(target[kk]);
         }
       }
-      unique(node_src_1);
-      unique(node_tgt_1);
-      std::vector<int> inter_1 = intersect(node_src_1, node_tgt_1);
+      if (undirected == 0) {
+        unique(node_src_1);
+        unique(node_tgt_1);
+        inter_1 = intersect(node_src_1, node_tgt_1);
+      }
+      else if (undirected == 1) {
+        unique(node_src_1);
+        unique(node_tgt_1);
+        if (node_src_1.size() != node_tgt_1.size()) continue;
+        inter_1 = intersect(node_src_1, node_tgt_1);
+      }
+       else if (undirected == 2) {
+        inter_1 = MaxCliqueApproach(node_src_1, node_tgt_1);
+       }
+      else
+        throw std::invalid_argument( "Direction not defined");
       // If LC is a non-trivial community
       if (inter_1.size() > 1) {
         std::vector<int> compatible_LCs;
@@ -311,6 +374,7 @@ void noeud_arbre::vite(const int &sp) {
             merge_list_clone[compatible_LCs[1]].members.begin(),
             merge_list_clone[compatible_LCs[1]].members.end()
           );
+          unique(new_members);
           node new_node = {
             ct + nodes,
             new_members
@@ -326,7 +390,7 @@ void noeud_arbre::vite(const int &sp) {
           merge_list_clone.push_back(new_node);
           // eq
           eq[0] = k;
-          eq[1] = nodes - ct;
+          eq[1] = nodes - ct - 1;
           equivalence.push_back(eq);
           //
           ct++;
@@ -394,7 +458,7 @@ void noeud_arbre::vite(const int &sp) {
             }
             // eq
             eq[0] = k;
-            eq[1] = nodes - ct;
+            eq[1] = nodes - ct - 1;
             equivalence.push_back(eq);
             //
             ct++;
@@ -402,27 +466,36 @@ void noeud_arbre::vite(const int &sp) {
         }
         merge_list = merge_list_clone;
       }
+      inter_1.clear();
     }
     if (!eq_true) {
       eq[0] = k;
-      eq[1] = nodes - ct;
+      if (equivalence.size() > 0) {
+        eq[1] = equivalence[equivalence.size() - 1][1];
+      } else {
+        eq[1] = nodes;
+      }
       equivalence.push_back(eq);
     } else {
       eq_true = false;
     }
   }
+
+  // for (int i =0 ; i< node_hierarchy.size(); i++)
+  //   std::cout << node_hierarchy[i][0] << " " << node_hierarchy[i][1] << " " << node_hierarchy[i][2] << " " << node_hierarchy[i][3] << std::endl;
+
   if (merge_list.size() > 1) {
-    std::cout << "Adding exceptional nodes." << std::endl;
+     py::print( "Adding exceptional nodes.");
     for (int kk = 0; kk < merge_list.size() - 1; kk++) {
       node_hierarchy[ct][0] = merge_list.back().merge;
       node_hierarchy[ct][1] = merge_list[kk].merge;
-      node_hierarchy[ct][2] = node_hierarchy[ct - 1][2] * 1.05;
+      node_hierarchy[ct][2] = node_hierarchy[ct - 1][2];
       node_hierarchy[ct][3] = merge_list.back().members.size() + merge_list[kk].members.size();
       merge_list.back().merge = ct + nodes;
       merge_list.back().members.push_back(merge_list[kk].members[0]);
       // eq
       eq[0] = k;
-      eq[1] = nodes - ct;
+      eq[1] = nodes - ct - 1;
       equivalence.push_back(eq);
       //
       ct++;
@@ -451,7 +524,7 @@ PYBIND11_MODULE(la_arbre_a_merde, m) {
             const int,
             const int,
             const int,
-            const bool
+            const int
           >()
         )
         .def("vite", &noeud_arbre::vite)

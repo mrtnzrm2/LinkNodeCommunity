@@ -7,6 +7,7 @@ scp -r modules jmarti53@crcfe01.crc.nd.edu:/afs/crc.nd.edu/user/j/jmarti53/Publi
 scp -r R jmarti53@crcfe01.crc.nd.edu:/afs/crc.nd.edu/user/j/jmarti53/Public/brain_project/LINKPROJECT/python
 
 scp -r cpp/process_hclust/src/main.cpp jmarti53@crcfe01.crc.nd.edu:/afs/crc.nd.edu/user/j/jmarti53/Public/brain_project/LINKPROJECT/python/cpp/process_hclust/src
+scp -r cpp/ctools/src/main.cpp jmarti53@crcfe01.crc.nd.edu:/afs/crc.nd.edu/user/j/jmarti53/Public/brain_project/LINKPROJECT/python/cpp/ctools/src
 # scp -r cpp/process_hclust/src/entropy_tools.cpp jmarti53@crcfe01.crc.nd.edu:/afs/crc.nd.edu/user/j/jmarti53/Public/brain_project/LINKPROJECT/python/cpp/process_hclust/src
 # scp -r cpp/process_hclust/src/bene_tools.cpp jmarti53@crcfe01.crc.nd.edu:/afs/crc.nd.edu/user/j/jmarti53/Public/brain_project/LINKPROJECT/python/cpp/process_hclust/src
 scp -r cpp/rand_network/src/main.cpp jmarti53@crcfe01.crc.nd.edu:/afs/crc.nd.edu/user/j/jmarti53/Public/brain_project/LINKPROJECT/python/cpp/rand_network/src

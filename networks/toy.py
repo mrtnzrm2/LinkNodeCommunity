@@ -63,7 +63,7 @@ class TOY(BASE):
   """
   def __init__(
     self, A, linkage, nlog10=False, lookup=False, cut=False,
-    mapping="trivial", index="jacp", topology="MIX",
+    mapping="trivial", index="jacp", topology="MIX", discovery="discovery_7",
     **kwargs
   ) -> None:
     super().__init__(linkage, **kwargs)
@@ -73,7 +73,8 @@ class TOY(BASE):
     self.topology = topology
     self.mapping = mapping
     self.index = index
-    self.A = A.copy()
+    self.discovery = discovery
+    self.A = A
     self.subfolder = f"{topology}_{index}_{mapping}"
     self.nodes, self.rows = A.shape
     # Set ANALYSIS NAME ----

@@ -166,6 +166,57 @@ def trivial_mapping(A, *args, **kwargs):
   np.fill_diagonal(AA, np.nan)
   return AA, 0, 0
 
+def bin_mapping(A, *args, **kwargs):
+  AA = A.copy().astype(float)
+  AA[AA > 0] = 1.
+  np.fill_diagonal(AA, np.nan)
+  return AA, 0, 0
+
+def signed_trivial_mapping(A, *args, **kwargs):
+  n , m = A.shape
+  AA = np.zeros((2, n, m))
+  AA[0][A > 0] = A[A > 0]
+  AA[1][A < 0] = -A[A < 0]
+  
+  BB = np.zeros((n, m, 2))
+  BB[:, :, 0] = AA[0]
+  BB[:, :, 1] = AA[1]
+  
+  np.fill_diagonal(BB[:, :, 0], np.nan)
+  np.fill_diagonal(BB[:, :, 1], np.nan)
+  return BB, 0, 0
+
+def multiplexed_trivial_mapping(A, *args, **kwargs):
+  n , m = args[0].shape
+  
+  BB = np.zeros((n, m, len(args)))
+  for i in np.arange(len(args)):
+    BB[:, :, i] = args[i]
+    BB[:, :, i] = args[i]
+    np.fill_diagonal(BB[:, :, i], np.nan)
+
+  return BB, 0, 0
+
+def multiplexed_colnormalized_mapping(A, *args, **kwargs):
+  n , m = args[0].shape
+  
+  BB = np.zeros((n, m, len(args)))
+  for i in np.arange(len(args)):
+    BB[:, :, i] = args[i]
+    BB[:, :, i] = args[i]
+    np.fill_diagonal(BB[:, :, i], np.nan)
+  
+  for i in np.arange(BB.shape[1]):
+    N = np.nansum(BB[:, i, :])
+    BB[:, i, :] /= N
+
+  return BB, 0, 0
+
+def column_normalized_mapping(A, *args, **kwargs):
+  AA = A / np.sum(A, axis=0)
+  np.fill_diagonal(AA, np.nan)
+  return AA, 0, 0
+
 maps = {
   "R1" : inverted_mapping,
   "R2" : normal_mapping,
@@ -173,6 +224,11 @@ maps = {
   "R4" : exp_count_mapping,
   "R5" : exp_count_mapping_2,
   "trivial" : trivial_mapping,
+  "bin" : bin_mapping,
+  "signed_trivial" : signed_trivial_mapping,
+  "multiplexed_trivial" : multiplexed_trivial_mapping,
+  "multiplexed_colnormalized" : multiplexed_colnormalized_mapping,
   "cum_exp" : cum_exp_mapping,
-  "desp" : desperate_mapping
+  "desp" : desperate_mapping,
+  "column_norm" : column_normalized_mapping
 }

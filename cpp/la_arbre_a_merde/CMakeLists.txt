@@ -1,4 +1,8 @@
 cmake_minimum_required(VERSION 3.24.0-rc4)
+
+set(CMAKE_C_COMPILER "/usr/bin/clang")
+set(CMAKE_CXX_COMPILER "/usr/bin/clang++")
+
 project(la_arbre_a_merde)
 
 include(FetchContent)
@@ -18,3 +22,5 @@ pybind11_add_module(${PROJECT_NAME} src/main.cpp)
 
 add_subdirectory(src/hclust-cpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE fastcluster)
+
+include_directories(src/mcqd)

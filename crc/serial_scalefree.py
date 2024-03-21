@@ -16,19 +16,20 @@ from modules.colregion import colregion
 from numpy import zeros
 
 def worker_scalefree(
-  number_of_iterations : int, number_of_nodes : int, mode : str,
-  nlog10 : bool, lookup : bool, prob : bool, cut : bool, run : bool,
+  number_of_iterations : int, number_of_nodes : int, benchmark : str, mode : str,
+  nlog10 : bool, lookup : bool, cut : bool, run : bool,
   topology : str, mapping : str, index : str,
   kav : float, maxk : int, mut : float, muw :float, beta : float,
-  t1 : float, t2 : float, nmin : int, nmax : int
+  t1 : float, t2 : float, nmin : int, nmax : int, **kwargs
 ):
   # Declare global variables NET ----
   MAXI = number_of_iterations
   __nodes__ = number_of_nodes
   linkage = "single"
+  discovery = "discovery_7"
   __mode__ =  mode
   alpha = 0.
-  opt_score = ["_maxmu", "_X", "_D", "_S", "_SD"]
+  opt_score = ["_X", "_D", "_S"]
   # WDN paramters ----
   par = {
     "-N" : f"{__nodes__}",
@@ -40,7 +41,8 @@ def worker_scalefree(
     "-t1" : f"{t1}",
     "-t2" : f"{t2}",
     "-nmin" : f"{nmin}",
-    "-nmax" : f"{nmax}"
+    "-nmax" : f"{nmax}",
+    "-fixed_range" : T
   }
   # Print summary ----
   print(f"Number of iterations: {MAXI}")
@@ -68,18 +70,22 @@ def worker_scalefree(
       i,
       linkage,
       __mode__,
+      benchmark=benchmark,
       nlog10=nlog10, lookup=lookup,
       topology=topology,
       cut=cut,
       mapping=mapping,
       index=index,
-      parameters = par
+      parameters = par,
+      discovery = discovery,
+      **kwargs
     )
-    RAND.set_alpha([6, 20, 50])
-    # RAND.set_beta([0.1, 0.2, 0.4])
     # Create network ----
     print("Create random graph")
-    RAND.random_WDN_cpp(run=run, on_save_pickle=F)     #*****
+    if benchmark == "WDN":
+      RAND.random_WDN_cpp(run=run, random_seed=T, on_save_pickle=F)     #*****
+    elif benchmark == "WN":
+      RAND.random_WN_cpp(run=run, random_seed=T, on_save_pickle=F)
     RAND.col_normalized_adj(on=F)
     # Compute RAND Hierarchy ----
     print("Compute Hierarchy")
@@ -88,13 +94,13 @@ def worker_scalefree(
       __nodes__, linkage, __mode__, alpha=alpha
     )
     ## Compute features ----
-    RAND_H.BH_features_parallel()
+    RAND_H.BH_features_cpp_no_mu()
     ## Compute link entropy ----
-    RAND_H.link_entropy_cpp("short", cut=cut)
+    # RAND_H.link_entropy_cpp("short", cut=cut)
     ## Compute lq arbre de merde ----
     RAND_H.la_abre_a_merde_cpp(RAND_H.BH[0])
     ## Compute node entropy ----
-    RAND_H.node_entropy_cpp("short", cut=cut)
+    # RAND_H.node_entropy_cpp("short", cut=cut)
     # Save stats ----
     data.set_data_measurements(RAND_H, i)
     # Set labels to network ----
@@ -102,28 +108,21 @@ def worker_scalefree(
     RAND_H.set_colregion(L)
     RAND_H.delete_dist_matrix()
     #  Update entropy ----
-    data.update_entropy(
-      [RAND_H.node_entropy, RAND_H.node_entropy_H,
-       RAND_H.link_entropy, RAND_H.link_entropy_H],  
-    )
-    rlabels = zeros(1)
+    # data.update_entropy(
+    #   [RAND_H.node_entropy, RAND_H.node_entropy_H,
+    #    RAND_H.link_entropy, RAND_H.link_entropy_H],  
+    # )
     for score in opt_score:
       print("Score: {}".format(score))
       # Get best k, r for given score ----
-      K, R = get_best_kr_equivalence(score, RAND_H)
-      for ii, kr in enumerate(zip(K, R)):
-        k, r = kr
-        if score == "_maxmu":
-          SCORE = f"{score}_{RAND.Alpha[ii]}"
-        else: SCORE = score
-        print("Score: {}".format(SCORE))
+      K, R, _ = get_best_kr_equivalence(score, RAND_H)
+      for k, r in zip(K, R):
+        print("Score: {}".format(score))
         # Single linkage part ----
         print("Best K: {}\nBest R: {}".format(k, r))
-        rlabels = get_labels_from_Z(RAND_H.Z, r)
-        if np.nan in rlabels:
-          print("*** BAD dendrogram")
-          break
-        data.set_nmi_nc(RAND.labels, rlabels, score = SCORE)
+        rlabels = get_labels_from_Z(RAND_H.Z, r)        
+        data.set_nmi_nc(RAND.labels, rlabels, score=score)
+
     if np.sum(np.isnan(rlabels)) == 0: i += 1
   # Save ----
   if isinstance(RAND_H, Hierarchy):

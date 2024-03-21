@@ -1,10 +1,139 @@
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 pd.options.mode.chained_assignment = None
 from os.path import join, exists, isfile
+from sklearn.metrics import adjusted_mutual_info_score
+from scipy.special import factorial
+from scipy.stats import hypergeom
+import math
 from os import remove, stat
 import pickle as pk
 from various.omega import Omega
+import matplotlib.colors as mc
+
+def adj2Den(A, dir=False):
+    n = A.shape[0]
+    if dir:
+      m = np.sum(A > 0) / 2
+      return m / (n * (n - 1) / 2)
+    else:
+      m = np.sum(A > 0)
+      return m / (n * (n - 1))
+
+
+def random_partition_R(m : int, R : int) -> dict:
+  A_nodes = np.arange(m)
+  if R > m:
+    raise RuntimeError("Number of communities more than the number of nodes.")
+  
+  initial_nodes = np.random.choice(A_nodes, size=R, replace=False)
+  partition = {i:[n] for i, n in enumerate(initial_nodes)}
+
+  # Take out the initial nodes assigned to each urn.
+  A_nodes = np.array([n for n in A_nodes if n not in initial_nodes])
+  A_nodes_memberships = np.random.choice(np.arange(R), size=A_nodes.shape[0], replace=True)
+
+  for mem, n in zip(A_nodes_memberships, A_nodes):
+    partition[mem].append(n)
+  
+  return partition
+
+def pvalue2asterisks(pvalue):
+  if  not np.isnan(pvalue): 
+    if pvalue > 0.05:
+      a = "n.s."
+    elif pvalue <= 0.05 and pvalue > 0.001:
+      a = "*" 
+    elif pvalue <= 0.001 and pvalue > 0.0001:
+      a = "**" 
+    else:
+      a = "***"
+  else:
+    a = "nan"
+  return a
+
+def hungarian_algorithm(cost_matrix : npt.NDArray):
+    num_rows, num_cols = cost_matrix.shape
+    num_workers = num_rows
+    num_jobs = num_cols
+
+    if num_workers > num_jobs:
+        cost_matrix = np.pad(cost_matrix, ((0, 0), (0, num_workers - num_jobs)), mode='constant')
+    elif num_jobs > num_workers:
+        cost_matrix = np.pad(cost_matrix, ((0, num_jobs - num_workers), (0, 0)), mode='constant')
+
+    num_rows, num_cols = cost_matrix.shape
+
+    marked_zeros = np.zeros((num_rows, num_cols))
+    row_covered = np.zeros(num_rows, dtype=bool)
+    col_covered = np.zeros(num_cols, dtype=bool)
+    num_covered = 0
+
+    while num_covered < num_workers:
+        marked_zeros.fill(0)
+        for i in range(num_rows):
+            for j in range(num_cols):
+                if cost_matrix[i, j] == 0 and not row_covered[i] and not col_covered[j]:
+                    marked_zeros[i, j] = 1
+
+        if np.sum(marked_zeros) == 0:
+            min_val = np.min(cost_matrix[~row_covered, :][:, ~col_covered])
+            cost_matrix[~row_covered, :][:, ~col_covered] -= min_val
+            row_min = np.min(cost_matrix[~row_covered, :], axis=1)
+            cost_matrix[~row_covered, :] -= row_min[:, np.newaxis]
+            col_min = np.min(cost_matrix[:, ~col_covered], axis=0)
+            cost_matrix[:, ~col_covered] -= col_min
+        else:
+            for i in range(num_rows):
+                for j in range(num_cols):
+                    if marked_zeros[i, j]:
+                        if not row_covered[i] and not col_covered[j]:
+                            marked_zeros[i, j] = 2
+                            row_covered[i] = True
+                            col_covered[j] = True
+                            num_covered += 1
+                            break
+
+    assignment = []
+    for i in range(num_workers):
+        for j in range(num_jobs):
+            if marked_zeros[i, j] == 2:
+                assignment.append((i, j))
+
+    return assignment
+
+def cover_alignment(cov : dict, cov_ref : dict):
+  cost = np.zeros((len(cov), len(cov)))
+  for i, (k, ele) in enumerate(cov.items()):
+    for j, (kf, elef) in enumerate(cov_ref.items()):
+      cost[i, j] = 1 / (1 + len(set(ele).intersection(set(elef))))
+  
+  min_cost = np.min(cost)
+  cost *= min_cost
+
+  alignment = hungarian_algorithm(cost.astype(int))
+  return {alignment[k][1]: ele for k, ele in cov.items()}
+
+def Requiv2K(H : npt.NDArray, r):
+  return np.min(H[H[:, 1] == r, 0]).astype(int)
+
+def cover_node_2_node_cover(cover : dict, labels):
+    node_cover = {k: [] for k in labels}
+    for k, vals in cover.items():
+      for l in labels:
+        if l in vals:
+          node_cover[l].append(k)
+    
+    return node_cover
+
+def hex2(s):
+  return mc.to_hex(s)
+
+def invert_permutation(permutation):
+    inv = np.empty_like(permutation)
+    inv[permutation] = np.arange(len(inv), dtype=inv.dtype)
+    return inv
 
 def skim_partition(partition):
   par = partition.copy()
@@ -56,35 +185,27 @@ def range_and_probs_from_DC(D, C, bins):
   # Treat distances ----
   min_d = np.min(D_[D_ > 0])
   max_d = np.max(D_)
-  d_range = np.linspace(min_d, max_d, bins)
+  d_range = np.linspace(min_d, max_d, bins-1)
+  d_range[-1] += 1e-4
   # Bin size - delta ----
   delta = (d_range[1] - d_range[0]) / 2
-  counts = np.zeros(d_range.shape[0] - 1)
+  counts = np.zeros(bins - 1)
   # Sum counts ----
   for i in np.arange(C.shape[0]):
     for j in np.arange(C.shape[1]):
       d = D[i, j]
-      for k in np.arange(d_range.shape[0] - 1):
-        if k <= d_range.shape[0] - 3:
-          if d_range[k] <= d and d_range[k + 1] > d:
-            counts[k] += C[i, j]
-            break
-        else:
-          if d_range[k] <= d and d_range[k + 1] + 0.1 > d:
-            counts[k] += C[i, j]
-            break
+      for k in np.arange(bins - 1):
+        if d_range[k] <= d and d_range[k + 1] > d:
+          counts[k] += C[i, j]
+          break
   # Prepare x and y ----
-  y = np.log(counts /(np.sum(counts) * 2 * delta))
-  x = d_range[:-1] + delta
+  y = counts /(np.sum(counts) * 2 * delta)
+  x = d_range + delta
   return d_range, x, y
 
 def get_best_kr(score, H, undirected=False, mapping="X_diag"):
   k = 1
-  if score == "_maxmu":
-    k = get_k_from_maxmu(
-      get_H_from_BH(H)
-    )
-  elif score == "_D":
+  if score == "_D":
     k = get_k_from_D(
       get_H_from_BH(H)
     )
@@ -118,24 +239,20 @@ def get_best_kr(score, H, undirected=False, mapping="X_diag"):
 
 def get_best_kr_equivalence(score, H):
   k = 1
-  if score == "_maxmu":
-    k = get_k_from_maxmu(
-      get_H_from_BH(H)
-    )
-  elif score == "_D":
-    k = get_k_from_D(
+  if score == "_D":
+    k, h = get_k_from_D(
       get_H_from_BH(H)
     )
   elif score == "_X":
-    k = get_k_from_X(
+    k, h = get_k_from_X(
       get_H_from_BH(H), order=0
     )
   elif score == "_S":
-    k = get_k_from_S(
+    k, h = get_k_from_S(
       get_H_from_BH(H)
     )
   elif score == "_SD":
-    k = get_k_from_SD(
+    k, h = get_k_from_SD(
       get_H_from_BH(H)
     )
   else: raise ValueError(f"Unexpected score: {score}")
@@ -143,13 +260,13 @@ def get_best_kr_equivalence(score, H):
   # print(k)
   # k = int(k)
   if isinstance(r, list) and isinstance(k, list):
-    return np.array(k), np.array(r)
+    return np.array(k), np.array(r), np.array(h)
   elif isinstance(k, list):
-    return np.array(k), np.array([r])
+    return np.array(k), np.array([r]), np.array(h)
   elif isinstance(r, list):
-    return np.array([k]), np.array(r)
+    return np.array([k]), np.array(r), np.array([h])
   else:
-    return np.array([k]), np.array([r])
+    return np.array([k]), np.array([r]), np.array([h])
 
 def aesthetic_ids_vector(v):
   vv = v.copy()
@@ -164,19 +281,20 @@ def aesthetic_ids_vector(v):
   return vv
 
 def aesthetic_ids(dA):
-    ids = np.sort(
-      np.unique(
-        dA["id"].to_numpy()
-      )
-    )
-    if -1 in ids:
-      ids = ids[1:]
-      aids = np.arange(1, len(ids) + 1)
+    ids = np.sort(np.unique(dA["id"].to_numpy()))
+    if ids.shape[0] == 1 and ids[0] == -1:
+      pass
     else:
-      aids = np.arange(1, len(ids) + 1)
-    for i, id in enumerate(ids):
-      dA.loc[dA["id"] == id, "id"] = aids[i].astype(str)
-    dA["id"] = dA["id"].astype(int)
+      aids = np.zeros(ids.shape[0])
+      if -1 in ids:
+        aids[0] = -1
+        aids[1:] = np.arange(1, len(ids[1:]) + 1)
+      else:
+        aids = np.arange(1, len(ids)+1)
+      dump = np.zeros(dA.shape[0])
+      for i, id in enumerate(ids):
+        dump[dA["id"] == id] = aids[i]
+      dA["id"] = dump.astype(int)
 
 def combine_dics(f1, f2):
   for k in f2.keys():
@@ -233,13 +351,10 @@ def bar_data(dA, nodes, labels, norm=False):
   return data
 
 def reverse_partition(Cr, labels):
-  skm = skim_partition(Cr)
-  s = np.unique(skm).astype(int)
+  s = np.unique(Cr).astype(int)
   s = s[s != -1]
-  k = {
-    r : [] for r in s
-  }
-  for i, r in enumerate(skm):
+  k = {r : [] for r in s}
+  for i, r in enumerate(Cr):
     if r == -1: continue
     k[r].append(labels[i])
   return k
@@ -247,12 +362,8 @@ def reverse_partition(Cr, labels):
 def nocs2parition(partition: dict, nocs: dict):
   for noc in nocs.keys():
     for cover in nocs[noc]:
-      if cover == -1: 
-        if cover not in partition.keys():
-          partition[cover] = [str(noc)]
-        else: partition[cover].append(str(noc))
-      if cover not in partition.keys(): continue
-      if str(noc) not in partition[cover]: partition[cover].append(str(noc))
+      if str(noc) not in partition[cover]:
+        partition[cover].append(str(noc))
 
 def get_H_from_BH(H):
   h = pd.DataFrame()
@@ -297,24 +408,19 @@ def get_k_from_avmu(H):
     k = k[0]
   return k
 
-def get_k_from_maxmu(H : pd.DataFrame):
-  alphas = np.sort(np.unique(H.alpha))
-  avH = H.copy().groupby(["K", "alpha"]).max().reset_index()
-  avH = [avH.loc[avH.alpha == al] for al in alphas]
-  k = [np.min(avH[i].K.loc[avH[i].mu == np.nanmax(avH[i].mu)]).astype(int) for i in np.arange(alphas.shape[0])]
-  return k
-
 def get_k_from_X(H, order=0):
-  avH = H.groupby(["K", "alpha"]).max()
-  avH = avH.groupby(["K"]).mean()
-  target_maximum = np.sort(avH["X"])
+  target_maximum = np.sort(H["X"])
   target_maximum = target_maximum[-1 - order]
-  k = avH.index[
-    avH["X"] == target_maximum
+  k = H.index[
+    H["X"] == target_maximum
   ].to_numpy().reshape(-1).astype(int)
-  if len(k) > 0:
+  h = H.height[
+    H["X"] == target_maximum
+  ].to_numpy().reshape(-1).astype(int)
+  if k.shape[0] > 1:
     k = k[0]
-  return k
+    h = h[0]
+  return int(k), float(h)
 
 def get_labels_from_Z(Z, r):
   save_Z = np.sum(Z, axis=1)
@@ -348,30 +454,39 @@ def get_k_from_D(H):
   r = H["K"].loc[
     H["D"] == np.nanmax(H["D"])
   ]
-  if (len(r) > 1):
+  h = H["height"].loc[
+    H["D"] == np.nanmax(H["D"])
+  ]
+  if r.shape[0] > 1:
     print("warning: more than one k")
     r = r.iloc[0]
-  return int(r)
+    h = h.iloc[0]
+  return int(r), float(h)
 
-def get_k_from_S(H):
+def   get_k_from_S(H):
   r = H["K"].loc[
     H["S"] == np.nanmax(H["S"])
   ]
-  if (len(r) > 1):
+  h = H["height"].loc[
+    H["S"] == np.nanmax(H["S"])
+  ]
+  if r.shape[0] > 1:
     print("warning: more than one k")
-    r = r.iloc[0]
-  return int(r)
+  return int(r.iloc[0]), float(h.iloc[0])
 
 def get_k_from_SD(H):
   if "SD" in H.columns:
     r = H["K"].loc[H.SD == np.nanmax(H.SD)]
+    h = H["height"].loc[H.SD == np.nanmax(H.SD)]
   else:
     best = (H.D / np.nansum(H.D))* (H.S / np.nansum(H.S))
     r = H.K.loc[best == np.nanmax(best)]
+    h = H.height.loc[best == np.nanmax(best)]
   if (len(r) > 1):
     print("warning: more than one k")
     r = r.iloc[0]
-  return int(r)
+    h = h.iloc[0]
+  return int(r), h
 
 def get_r_from_avmu(H):
   avH = H.groupby(["K"]).mean()
@@ -414,7 +529,7 @@ def get_r_from_X(H):
 def get_r_from_equivalence(k, H):
   if isinstance(k, list):
     return [H.equivalence[H.equivalence[:, 0] == kk, 1][0] for kk in k]
-  else: return H.equivalence[H.equivalence[:, 0] == k, 1][0]
+  else: return np.min(H.equivalence[H.equivalence[:, 0] == k, 1])
 
 def get_r_from_X_diag(K, H, Z, R, nodes, **kwargs):
   from scipy.cluster.hierarchy import cut_tree, dendrogram
@@ -594,29 +709,68 @@ def AD_NMI_label(gt, pred, on=True):
     if np.sum(np.isnan(pred)) > 0: nmi = np.nan
     elif len(np.unique(pred)) == 1: nmi = np.nan
     else:
-      from sklearn.metrics import adjusted_mutual_info_score
-      nmi = adjusted_mutual_info_score(gt, pred, average_method="max")
+      p = pred.copy()
+      none = np.sum(p == -1)
+      p[p == -1] = np.arange(np.max(p) + 1, np.max(p) + 1 + none)
+      nmi = adjusted_mutual_info_score(gt, p, average_method="max")
+
     print("ADNMI: {}".format(nmi))
     return nmi
 
-def AD_NMI_overlap(gt, pred, cover1, cover2, on=True):
+def AD_NMI_overlap(gt, pred, on=True):
   if on:
     if np.sum(np.isnan(pred)) > 0: nmi = np.nan
     elif len(np.unique(pred)) == 1: nmi = np.nan
     else:
-      gtx = np.array([int(k) for k, v in cover1.items() if len(v) > 1])
-      gtxx = gt.copy()
-      gtxx[gtx] = -1
-      predxx = pred.copy()
-      predx = np.array([int(k) for k, v in cover2.items() if len(v) > 1])
-      if len(predx) > 0: 
-        predxx[predx] = -1
-      from sklearn.metrics import adjusted_mutual_info_score
-      nmi = adjusted_mutual_info_score(gtxx, predxx, average_method="max")
+      predx = pred.copy()
+      none = np.sum(predx == -1)
+      predx[predx == -1] = np.arange(np.max(predx) + 1, np.max(predx) + 1 + none)
+      nmi = adjusted_mutual_info_score(gt, predx, average_method="max")
     print("ADNMI: {:.4f}".format(nmi))
     return nmi
   else:
     return -1
+
+def stirling(n):
+    return math.sqrt(2*math.pi*n)*(n/math.e)**n
+
+def modAD_NMI_overlap(gt : dict, pred : dict, on=True):
+  ngt = len(gt)
+  npred = len(pred)
+  NUV = np.zeros((ngt, npred))
+  for i, (kgt, vgt) in enumerate(gt.items()):
+    for j, (kpred, vpred) in enumerate(pred.items()):
+      NUV[i,j] = len(set(vgt).intersection(set(vpred)))
+  Neff = np.sum(NUV)
+  NU = np.sum(NUV, axis=1).ravel()
+  NV = np.sum(NUV, axis=0).ravel()
+
+  MI = 0
+  
+  for i in np.arange(ngt):
+    for j in np.arange(npred):
+      if NUV[i,j] > 0:
+        MI += (NUV[i, j] / Neff) * np.log(Neff * NUV[i,j]/ (NU[i] * NV[j]))
+
+  MIrand = 0
+
+  for i in np.arange(ngt):
+    ai = NU[i]
+    for j in np.arange(npred):
+      bj = NV[j]
+      lw = np.maximum(0, ai + bj - Neff)
+      up = np.minimum(ai, bj)
+      hy = hypergeom(Neff, bj, ai)
+      for nij in np.arange(lw, up):
+          if nij > 0:
+            MIrand += (nij/Neff) * np.log((Neff * nij)/(ai*bj)) * hy.pmf(nij)
+  
+  HU = np.sum([-(nu/Neff) * np.log(nu / Neff) for nu in NU])
+  HV = np.sum([-(nv/Neff) * np.log(nv / Neff) for nv in NV])
+
+  score = (MI - MIrand) / (np.maximum(HU, HV) - MIrand)
+  print("modADNMI: {:.4f}".format(score))
+  return score 
 
 def save_class(
   CLASS, pickle_path, class_name="duck", on=True, **kwargs

@@ -12,28 +12,29 @@ import numpy as np
 from modules.hierarmerge import Hierarchy
 from modules.colregion import colregion
 from networks_serial.hrh import HRH
-from networks.structure import MAC
+from networks.structure import STR
 from networks.distbase import DISTBASE
 from various.data_transformations import maps
+from modules.discovery import discovery_channel
 from various.network_tools import *
 from various.fit_tools import fitters
 
 def worker_distbase(
-  number_of_iterations : int, number_of_inj : int,
-  number_of_nodes : int, total_number_nodes : int, data_version, distbase : str,
+  subject : str, number_of_iterations : int, number_of_inj : int,
+  number_of_nodes : int, total_number_nodes : int, data_version, distance_matrix : str, distbase : str,
   nlog10 : bool, lookup : bool, prob : bool, cut : bool, run : bool,
   topology : str, mapping : str, index : str, discovery : str, bias : float, bins : int, mode : str
 ):
   # Declare global variables NET ----
   MAXI = number_of_iterations
   linkage = "single"
-  structure = "LN"
+  structure = "FLNe"
   nature = "original"
-  distance = "tracto16"
+  distance = distance_matrix
   mode = mode
   alpha = 0.
   imputation_method = ""
-  opt_score = ["_X", "_S", "_SD"]  
+  opt_score = ["_S"]  
   # Statistic test ----
   alternative = "less"
   # Declare global variables DISTBASE ----
@@ -63,13 +64,13 @@ def worker_distbase(
       __model__, str(__nodes__),str(__inj__), alternative
     )
   )
-  print("Load MAC data ----")
+  print("Load data ----")
   # Create macaque class ----
-  NET = MAC[f"MAC{__inj__}"](
+  NET = STR[f"{subject}{__inj__}"](
     linkage, mode,
-    structure = structure,
+    structure=structure,
     nlog10=nlog10, lookup=lookup,
-    version = __version__,
+    version=__version__,
     nature=nature,
     model=imputation_method,
     distance=distance,
@@ -77,9 +78,9 @@ def worker_distbase(
     topology=topology,
     index=index, mapping=mapping,
     cut=cut, b=bias, alpha=alpha,
-    discovery = discovery
+    discovery=discovery
   )
-  _, _, _, _, est = fitters[__model__](NET.D, NET.CC, NET.nodes, __bin__)
+  _, _, _, _, est = fitters["EXPMLE"](NET.D, NET.C, NET.nodes, __bin__)
   lb = est.coef_[0]
   # Load hierarhical analysis ----
   NET_H = read_class(
@@ -89,7 +90,7 @@ def worker_distbase(
   # Create colregions ----
   L = colregion(NET, labels_name=f"labels{__inj__}")
   # Create hrh class ----
-  data = HRH(NET_H, L)
+  data = HRH(NET_H, L, MAXI)
   RAND_H = 0
   # Get distance matrix from structure ----
   D = NET.D
@@ -108,24 +109,26 @@ def worker_distbase(
       nlog10=nlog10, lookup=lookup, cut=cut,
       topology=topology, distance=distance,
       mapping=mapping, index=index, b=bias,
-      lb=lb, discovery=discovery
+      lb=lb, discovery=discovery,
+      subject=subject, rho=adj2Den(NET.A[:NET.nodes,:][:, :NET.nodes])
     )
     RAND.rows = NET.rows
     # Create network ----
     print("Create random graph")
     RC = RAND.distbase_dict[__model__](
-      D, NET.C, run=run, on_save_csv=F
+      D, NET.CC, run=run, on_save_csv=F
     )
-    # RA = column_normalize(RC)
+    RA = column_normalize(RC)
     # Transform data for analysis ----
     R, lookup, _ = maps[mapping](
-      RC, nlog10, lookup, prob, b=bias
+      RA, nlog10, lookup, prob, b=bias
     )
     # Compute RAND Hierarchy ----
     print("Compute Hierarchy")
     RAND_H = Hierarchy(
-      RAND, RC[:, :__nodes__], R[:, :__nodes__], D,
-      __nodes__, linkage, mode, lookup=lookup, alpha=alpha
+      RAND, RA[:, :__nodes__], R[:, :__nodes__], D,
+      __nodes__, linkage, mode, lookup=lookup, alpha=alpha,
+      index=index
     )
     ## Compute features ----
     RAND_H.BH_features_cpp_no_mu()
@@ -139,32 +142,35 @@ def worker_distbase(
     RAND_H.set_colregion(L)
     # Stats ----
     data.set_data_measurements_zero(RAND_H, i)
+    data.set_hierarchical_association(RAND_H.Z, i)
     data.set_stats(RAND_H)
     # Set entropy ----
     data.set_entropy_zero(
       [RAND_H.node_entropy, RAND_H.node_entropy_H,
        RAND_H.link_entropy, RAND_H.link_entropy_H],  
     )
-    ial = 0
     for SCORE in opt_score:
       # Get k from RAND_H ----
-      K, R = get_best_kr_equivalence(SCORE, RAND_H)
+      K, R, _ = get_best_kr_equivalence(SCORE, RAND_H)
       for k, r in zip(K, R):
         RAND_H.set_kr(k, r, SCORE)
         data.set_kr_zero(RAND_H)
         rlabels = get_labels_from_Z(RAND_H.Z, r)
+        rlabels = skim_partition(rlabels)
         # Overlap ----
-        ocn, subcover, _ = RAND_H.discovery_channel[discovery](RAND_H, k, rlabels)
-        cover = omega_index_format(
-          rlabels, subcover, RAND_H.colregion.labels[:RAND_H.nodes]
-        )
-        data.set_association_zero(SCORE, cover)
-        data.set_clustering_similarity(rlabels, cover, SCORE)
-        data.set_overlap_data_zero(ocn, SCORE)
+        for direction in ["source", "target", "both"]:
+          print("***", direction)
+          noc, subcover, _, rlabels2 = discovery_channel[discovery](
+            RAND_H, k, rlabels, direction=direction, index=index
+          )
+          cover = omega_index_format(rlabels2, subcover, RAND_H.colregion.labels[:RAND_H.nodes])
+          data.set_association_zero(SCORE, cover, direction)
+          data.set_clustering_similarity(rlabels2, cover, SCORE, direction)
+          data.set_overlap_data_zero(noc, SCORE, direction)
   if isinstance(RAND_H, Hierarchy):
     data.set_subfolder(RAND_H.subfolder)
-    data.set_plot_path(RAND_H, bias=bias)
-    data.set_pickle_path(RAND_H, bias=bias)
+    data.set_plot_path(RAND_H)
+    data.set_pickle_path(RAND_H)
     print("Save data")
     print(data.pickle_path)
     save_class(

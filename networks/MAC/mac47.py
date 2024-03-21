@@ -28,6 +28,9 @@ class base:
     if "b" in kwargs.keys():
       self.b = kwargs["b"]
     else: self.b = ""
+    if "discovery" in kwargs.keys():
+      self.discovery = kwargs["discovery"]
+    else: self.discovery = "discovery_7"
     ### mu parameters ----
     self.Alpha = np.array([6])
     beta1 = np.linspace(0.01, 0.2, 4)
@@ -71,8 +74,8 @@ class MAC47(base):
     # Set attributes ----
     self.mode = mode
     # Get structure network ----
-    self.C, self.A = self.get_structure()
-    self.CC = self.get_summer_counts()
+    self.C = self.get_structure()
+    self.CC, self.A = self.get_summer_counts()
     # Get network's spatial distances ----
     dist_dic = {
       # "MAP3D" : self.get_distance_MAP3D,
@@ -104,7 +107,7 @@ class MAC47(base):
     self.pickle_path = join(
       "../pickle", self.common_path,
       self.analysis, mode, self.subfolder,
-      "b_"+str(self.b)
+      "b_"+str(self.b), self.discovery
     )
     if "regions_path" in kwargs.keys():
       self.regions_path = kwargs["regions_path"]
@@ -141,14 +144,13 @@ class MAC47(base):
     ## Average Count
     C = file[tlabel].loc[slabel]
     C = C.to_numpy(dtype=float)
-    A = C / np.sum(C, axis=0)
     self.rows = C.shape[0]
     self.nodes = C.shape[1]
     self.struct_labels = slabel
     self.struct_labels = np.char.lower(self.struct_labels)
-    # np.savetxt(f"{self.csv_path}/labels47.csv", self.struct_labels,  fmt='%s')
+    np.savetxt(f"{self.csv_path}/labels47.csv", self.struct_labels,  fmt='%s')
     # return 0, 0
-    return C.astype(float), A.astype(float)
+    return C.astype(float)
 
   def get_summer_counts(self):
     file = pd.read_csv(f"{self.csv_path}/CountMatrix_Summed_57areas_220830.csv", index_col=0)
@@ -156,7 +158,7 @@ class MAC47(base):
     file.index = np.char.lower(file.index.to_numpy(dtype=str))
     file = file[self.struct_labels[:self.nodes]].loc[self.struct_labels]
     CC = file.to_numpy(dtype=float)
-    return CC
+    return CC, CC / np.sum(CC, axis=0)
   
   def get_distance_tracto16(self):
     fname =  join(self.distance_path, "106x106_DistanceMatrix.csv")

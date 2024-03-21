@@ -89,6 +89,11 @@
     "memory_resource": "cpp",
     "stop_token": "cpp",
     "thread": "cpp",
-    "cfenv": "cpp"
+    "cfenv": "cpp",
+    "span": "cpp",
+    "charconv": "cpp",
+    "format": "cpp",
+    "cinttypes": "cpp",
+    "__verbose_abort": "cpp"
   }
 }

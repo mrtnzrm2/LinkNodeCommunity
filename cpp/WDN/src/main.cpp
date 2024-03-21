@@ -13,8 +13,9 @@ public:
     int N=100, double k=20, double maxk=30,
     double mut=0.2, double muw=0.2,
     double beta=2, double t1=2, double t2=3,
-    int on=-1, int om=-1, int nmin=-1, int nmax=-1
+    int on=-1, int om=-1, int nmin=-1, int nmax=-1, bool fixed_range=false, int seed=12345
   ) {
+		srand5(seed);
 		Parameters p;
     // Set parameters ----
     p.num_nodes = N;
@@ -33,6 +34,8 @@ public:
       p.nmin = nmin;
     if (nmax > 0)
       p.nmax = nmax;
+		if (fixed_range)
+			p.fixed_range = fixed_range;
     create_network(
       p.excess, p.defect, p.num_nodes, p.average_k, p.max_degree,
       p.tau, p.tau2, p.mixing_parameter,  p.mixing_parameter2,
@@ -480,12 +483,12 @@ int WDN::propagate(
 PYBIND11_MODULE(WDN, m) {
     py::class_<WDN>(m, "WDN")
         .def(
-          py::init<int, double, double, double, double, double, double, double, int, int, int, int>(),
+          py::init<int, double, double, double, double, double, double, double, int, int, int, int, bool, int>(),
 					py::arg("N")=100, py::arg("k")=20, py::arg("maxk")=30,
 					py::arg("mut")=0.2, py::arg("muw")=0.2,
 					py::arg("beta")=2, py::arg("t1")=2, py::arg("t2")=3,
 					py::arg("on")=-1, py::arg("om")=-1,
-					py::arg("nmin")=-1, py::arg("nmax")=-1
+					py::arg("nmin")=-1, py::arg("nmax")=-1, py::arg("fixed_range")=false, py::arg("seed")=12345
         )
         .def("create_network", &WDN::create_network)
         .def("print_network", &WDN::print_network)

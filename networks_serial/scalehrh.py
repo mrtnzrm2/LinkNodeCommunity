@@ -88,7 +88,7 @@ class SCALEHRH:
     self.iter = iter
 
   def set_pickle_path(self, H : Hierarchy):
-     # Get pickle location ----
+    # Get pickle location ----
     pickle_path = H.pickle_path.split("/")
     self.pickle_path = ""
     for i in np.arange(len(pickle_path)):

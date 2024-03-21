@@ -1,0 +1,9 @@
+# ninja log v5
+0	16676	1709179843470384509	Sources/CMakeFiles/bin_dir.dir/binary_benchm.cpp.o	501a7b953d6dad66
+16681	16779	1709179843590287000	Sources/libbin_dir.a	3967e8920ca98ac2
+23013	30054	1709179856864458241	/Users/jmarti53/Documents/Projects/LINKPROJECT/Dlink/cpp/WN/build/lib.macosx-13-x86_64-cpython-39/WN.cpython-39-darwin.so	24c5fe9a4cbba813
+0	23011	1709179849779092002	CMakeFiles/WN.dir/src/main.cpp.o	bbc09dd78dad63a6
+22	32158	1709181530577766987	Sources/CMakeFiles/bin_dir.dir/binary_benchm.cpp.o	501a7b953d6dad66
+32159	32283	1709181530782881000	Sources/libbin_dir.a	3967e8920ca98ac2
+22	36098	1709181534567483837	CMakeFiles/WN.dir/src/main.cpp.o	bbc09dd78dad63a6
+36098	43848	1709181542348070265	/Users/jmarti53/Documents/Projects/LINKPROJECT/Dlink/cpp/WN/build/lib.macosx-13-x86_64-cpython-39/WN.cpython-39-darwin.so	24c5fe9a4cbba813

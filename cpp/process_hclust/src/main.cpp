@@ -571,6 +571,7 @@ void ph::get_sizes(
         lcsize[j]++;
         node_buffer[j].insert(source[i]);
         node_buffer[j].insert(target[i]);
+        break;
       }
     }
   }
@@ -628,7 +629,7 @@ void ph::vite() {
     cutree_k(
       number_of_elements,
       merge,
-      sim_k[i],
+      K[i],
       labels
     );
     std::vector<int> unique_labels(labels, labels + number_of_elements);
@@ -642,7 +643,7 @@ void ph::vite() {
     // }
     mtree = 0.;
     nec = 0;
-    nt = 0;
+    nt = 0; 
     dcv = std::vector<double>(sizes.size(), 0.);
     scv = std::vector<double>(sizes.size(), 0.);
     for (std::map<int, lcprops >::iterator it=sizes.begin(); it != sizes.end(); ++it) {

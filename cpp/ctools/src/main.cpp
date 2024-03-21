@@ -329,6 +329,118 @@ double Dalpha(
 	return JACP;
 }
 
+double jacp_2(
+	std::vector<double> &u, std::vector<double> &v, int &ii, int &jj)
+{
+	int N = u.size();
+	double JACP = 0;
+	double p;
+	for (int i=0; i < N; i++){
+		if ((u[i] > 0 && v[i] > 0) && (i != ii || i != jj)){
+			p = 0;
+			for (int j=0; j < N; j++) {
+				if (j == ii || j == jj) continue;
+				p += std::max(u[j]/u[i], v[j]/v[i]);
+			}
+			p += std::max(u[jj]/u[i], v[ii]/v[i]);
+			if (p != 0)
+				JACP += 1 / p;
+			else
+				std::cout << "Vectors in jaccardp are both zero\n";
+		}
+	}
+	if (u[jj] > 0 && v[ii] > 0) {
+		p = 0;
+		for (int j=0; j < N; j++) {
+			if (j == ii || j == jj) continue;
+			p += std::max(u[j]/u[jj], v[j]/v[ii]);
+		}
+		p += 1;
+		if (p != 0)
+			JACP += 1 / p;
+		else
+			std::cout << "Vectors in jaccardp are both zero\n";
+	}
+	return JACP;
+}
+
+double jacw(std::vector<double> &u, std::vector<double> &v, int &ii, int &jj) {
+	double min_uv = 0., max_uv = 0.;
+	for (int i = 0; i < u.size(); i++) {
+		if (i != ii || i != jj) {
+			min_uv += std::min(u[i], v[i]);
+			max_uv += std::max(u[i], v[i]);
+		}
+	}
+	if (ii < u.size() && jj < u.size()) {
+		min_uv += std::min(u[jj], v[ii]);
+		max_uv += std::max(u[jj], v[ii]);
+		min_uv += std::min(u[ii], v[jj]);
+		max_uv += std::max(u[ii], v[jj]);
+	}
+	return min_uv / max_uv;
+}
+
+double Hellinger(
+	std::vector<double> &u, std::vector<double> &v, int &ii, int &jj
+) {
+	int N = u.size();
+	double p = 0, pu = 0, pv = 0;
+	for (int j=0; j < N; j++){
+		if (!(j == jj && ii >= N)) {
+			pu += u[j];
+		}
+		if (!(j == ii && jj >= N)) {
+			pv += v[j];
+		}
+	}
+	if (pu > 0 && pv > 0) {
+		for (int i=0; i < N; i++){
+			if (i == ii | i == jj) continue;
+			p += pow(sqrt(u[i] / pu)  - sqrt(v[i] / pv), 2.);
+		}
+		if (ii < N && jj < N) {
+			p += pow(sqrt(u[jj] / pu) - sqrt(v[ii] / pv), 2.);
+			p += pow(sqrt(u[ii] / pu) - sqrt(v[jj] / pv), 2.);
+		}
+
+		return 1. - sqrt(0.5 * p);
+	}
+	else {
+		return 0;
+	}
+}
+
+double Hellinger2(
+	std::vector<double> &u, std::vector<double> &v, int &ii, int &jj
+) {
+	int N = u.size();
+	double p = 0, pu = 0, pv = 0;
+	for (int j=0; j < N; j++){
+		if (!(j == jj && ii >= N)) {
+			pu += u[j];
+		}
+		if (!(j == ii && jj >= N)) {
+			pv += v[j];
+		}
+	}
+	if (pu > 0 && pv > 0) {
+		for (int i=0; i < N; i++){
+			if (i == ii | i == jj) continue;
+			p += pow(sqrt(u[i] / pu)  - sqrt(v[i] / pv), 2.);
+		}
+		if (ii < N && jj < N) {
+			p += pow(sqrt(u[jj] / pu) - sqrt(v[ii] / pv), 2.);
+			p += pow(sqrt(u[ii] / pu) - sqrt(v[jj] / pv), 2.);
+		}
+
+		return 1. - (0.5 * p);
+	}
+	else {
+		return 0;
+	}
+}
+
 PYBIND11_MODULE(ctools, m) {
 
   m.doc() = "Creates fast random networks";
@@ -345,9 +457,21 @@ PYBIND11_MODULE(ctools, m) {
     py::return_value_policy::reference_internal
   );
 
+	 m.def(
+    "jacw",
+    &jacw,
+    py::return_value_policy::reference_internal
+  );
+
   m.def(
     "jacp",
     &jacp,
+    py::return_value_policy::reference_internal
+  );
+
+	m.def(
+    "jacp_2",
+    &jacp_2,
     py::return_value_policy::reference_internal
   );
 
@@ -408,6 +532,18 @@ PYBIND11_MODULE(ctools, m) {
 	m.def(
     "D1_2_4",
     &D1_2_4,
+    py::return_value_policy::reference_internal
+  );
+
+	m.def(
+    "Hellinger",
+    &Hellinger,
+    py::return_value_policy::reference_internal
+  );
+
+	m.def(
+    "Hellinger2",
+    &Hellinger2,
     py::return_value_policy::reference_internal
   );
 }

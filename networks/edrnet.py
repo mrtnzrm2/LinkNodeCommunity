@@ -4,12 +4,14 @@ from various.network_tools import *
 
 class EDR:
   def __init__(
-    self, nodes : int, lb=0.19, **kwargs
+    self, nodes : int, lb=0.19, rho=0.59, **kwargs
   ) -> None:
     # Directory details ----
     self.folder = "RAN"
     # Folders ----
-    self.subject = "MAC"
+    if "subject" in kwargs.keys():
+      self.subject = str(kwargs["subject"])
+    else: self.subject = "MAC"
     if "version" in kwargs.keys():
       self.version = str(kwargs["version"])
     else: self.version = str(220617)
@@ -40,7 +42,7 @@ class EDR:
     # Constants ----
     self.lb = lb #[mm^-1]
     self.Area = 10430 # [mm^2]
-    self.rho =  0.59 # network density
+    self.rho =  rho # network density
     self.counter = int(8993482 * 100 / 49)
     # Parameters ----
     self.nodes = nodes

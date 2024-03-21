@@ -91,14 +91,14 @@ nlog10 = T
 lookup = F
 prob = F
 cut = F
-structure = "LN"
+structure = "FLN"
 mode = "ZERO"
 distance = "tracto16"
 nature = "original"
 imputation_method = ""
 topology = "MIX"
 mapping = "trivial"
-index  = "D1_2_3"
+index  = "Hellinger2"
 bias = float(0)
 alpha = 0.
 opt_score = ["_X", "_S"]
@@ -123,8 +123,33 @@ if __name__ == "__main__":
       mapping = mapping,
       cut = cut,
       b = bias,
-      alpha = alpha
+      alpha = alpha,
+      discovery="discovery_9"
     )
-    # cortex_letter_path = "../plots/MAC/57d106/LN/original/tracto16/57/SINGLE_106_57_l10/"
-    # weight_histograms(NET)
-    binary_histograms(NET)
+    H = read_class(
+      NET.pickle_path,
+      "hanalysis"
+    )
+    
+    src = 1 - H.source_sim_matrix
+    tgt = 1 - H.target_sim_matrix
+
+    xsrc, ysrc = np.where(src < 0.33)
+    xtgt, ytgt = np.where(tgt < 0.33)
+
+    SRC = np.zeros(src.shape)
+    TGT = np.zeros(tgt.shape)
+
+    SRC[xsrc, ysrc] = 1
+    TGT[xtgt, ytgt] = 2
+
+    G = SRC + TGT
+    G[G == 0] = np.nan
+
+    sns.heatmap(
+        data=G,
+        xticklabels=NET.struct_labels[:57],
+        yticklabels=NET.struct_labels[:57],
+        cmap=sns.color_palette("deep", 3),
+        cbar=False
+    )

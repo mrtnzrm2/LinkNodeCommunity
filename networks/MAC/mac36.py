@@ -1,4 +1,5 @@
 from os.path import join
+import os
 import pandas as pd
 import numpy as np
 from pathlib import Path
@@ -57,7 +58,7 @@ class MAC36(base):
   def __init__(
     self, linkage : str, mode : str, nlog10=True, lookup=False, 
     cut = False, topology="MIX", mapping="R1", index="jacp",
-    sln=False, **kwargs
+    discovery="discovery7", **kwargs
   ) -> None:
     super().__init__(linkage, **kwargs)
     self.nlog10 = nlog10
@@ -66,15 +67,18 @@ class MAC36(base):
     self.mapping = mapping
     self.index = index
     self.cut = cut
+    self.discovery = discovery
     self.subfolder = f"{topology}_{index}_{mapping}"
     # Set attributes ----
     self.mode = mode
     # Get structure network ----
     self.C, self.A = self.get_structure()
+    self.get_supraneurons()
+    self.get_infraneurons()
+    self.SLN = np.zeros(self.SN.shape)
+    self.SLN[self.SN > 0] = self.SN[self.SN > 0] / (self.SN[self.SN>0] + self.IN[self.SN>0])
     # Get network's spatial distances ----
     self.D = self.get_distance()
-    if sln: self.sln, self.supra, self.infra = self.get_sln()
-    else: self.sln = np.nan
     # Set ANALYSIS NAME ----
     self.analysis =  "{}_{}_{}".format(
       linkage.upper(), self.rows, self.nodes
@@ -128,37 +132,20 @@ class MAC36(base):
 
   def get_structure(self):
     # Get structure ----
-    if self.nature == "original":
-      path = join(self.csv_path, "Count36.csv")
-      C = pd.read_csv(path, index_col=0)
-      clab = C.columns.to_numpy()
-      rlab = np.array(C.index)
-      nrlab = np.array([r for r in rlab if r not in clab])
-      rlab = np.hstack([clab, nrlab])
-      C = C.reindex(rlab).to_numpy()
-      # self.struct_labels = rlab[:-1]
-      self.struct_labels = rlab
-      #
-      self.struct_labels = np.array(self.struct_labels, dtype=str)
-      self.struct_labels = np.char.lower(self.struct_labels)
-      self.rows = C.shape[0]
-      self.nodes = C.shape[1]
-    elif self.nature == "imputation":
-      path = join(
-        self.csv_path, "fln.csv"
-      )
-      ##
-      # C = pd.read_csv(path, index_col=0)
-      C = pd.read_csv(path)
-      ##
-      self.struct_labels = C.columns.to_numpy().astype(str)
-      self.struct_labels = np.char.lower(self.struct_labels)
-      C = C.to_numpy()
-      # Get network dimensions ----
-      self.rows = C.shape[0]
-      self.nodes = C.shape[1]
-    else:
-      raise ValueError("Data not understood.")
+    path = join(self.csv_path, "Count36.csv")
+    C = pd.read_csv(path, index_col=0)
+    clab = C.columns.to_numpy()
+    rlab = np.array(C.index)
+    nrlab = np.array([r for r in rlab if r not in clab])
+    rlab = np.hstack([clab, nrlab])
+    C = C.reindex(rlab).to_numpy()
+    # self.struct_labels = rlab[:-1]
+    self.struct_labels = rlab
+    #
+    self.struct_labels = np.array(self.struct_labels, dtype=str)
+    self.struct_labels = np.char.lower(self.struct_labels)
+    self.rows = C.shape[0]
+    self.nodes = C.shape[1]
     return C,  column_normalize(C.copy())
 
   def get_distance(self):
@@ -176,23 +163,27 @@ class MAC36(base):
     np.fill_diagonal(D, 0)
     return D
 
-  def get_sln(self):
+  def get_supraneurons(self):
     ## Files ----
-    fname = join(self.csv_path, "supraCount.csv")
+    fname = f"{self.csv_path}/tracto16/49/supraCount.csv"
+
     supra = pd.read_csv(fname, index_col=0)
     supra.columns = np.char.lower(supra.columns.to_numpy().astype(str))
     supra = supra.set_index(np.char.lower(supra.index.to_numpy().astype(str)))
-    fname = join(self.csv_path, "infraCount.csv")
+    ##
+    supra = supra[self.struct_labels[:int(self.inj)]].reindex(self.struct_labels)
+    supra = supra.to_numpy()
+    ##
+    self.SN = supra
+  
+  def get_infraneurons(self):
+    ## Files ----
+    fname = os.path.join(self.csv_path, "tracto16/49/infraCount.csv")
     infra = pd.read_csv(fname, index_col=0)
     infra.columns = np.char.lower(infra.columns.to_numpy().astype(str))
     infra = infra.set_index(np.char.lower(infra.index.to_numpy().astype(str)))
     ##
-    supra = supra[self.struct_labels[:int(self.inj)]].reindex(self.struct_labels)
     infra = infra[self.struct_labels[:int(self.inj)]].reindex(self.struct_labels)
-    supra = supra.to_numpy()
     infra = infra.to_numpy()
     ##
-    sln = np.zeros(supra.shape)
-    sln = supra / (supra + infra)
-    sln[np.isnan(sln)] = 0
-    return sln, supra, infra
+    self.IN = infra

@@ -9,7 +9,7 @@ class OVERLAPHRH(SCALEHRH):
     super().__init__(linkage)
     self.data_overlap = pd.DataFrame()
 
-  def set_overlap_scores(self, omega, acc1, acc2, **kwargs):
+  def set_overlap_scores(self, omega, acc1, acc2, direction="both", **kwargs):
     if "score" in kwargs.keys():
       subdata = pd.DataFrame(
         {
@@ -17,7 +17,8 @@ class OVERLAPHRH(SCALEHRH):
           "sensitivity" : [acc1],
           "specificity" : [acc2],
           "iter" : [self.iter],
-          "c" : [kwargs["score"]]
+          "c" : [kwargs["score"]],
+          "direction" : [direction]
         }
       )
     else:
@@ -27,24 +28,26 @@ class OVERLAPHRH(SCALEHRH):
           "sensitivity" : [acc1],
           "specificity" : [acc2],
           "iter" : [self.iter],
-          "c" : ["node communities"]
+          "c" : ["node communities"],
+          "direction" : [direction]
         }
       )
     self.data_overlap = pd.concat(
       [self.data_overlap, subdata], ignore_index=True
     )
   
-  def set_nmi_nc_overlap(self, l1, l2, cover1, cover2, omega, **kwargs):
+  def set_nmi_nc_overlap(self, l1, l2, omega, direction="both", **kwargs):
     if "score" in kwargs.keys():
       #create subdata ----
       subdata = pd.DataFrame(
         {
           "sim" : ["NMI", "OMEGA"],
           "values" : [
-            AD_NMI_overlap(l1, l2, cover1, cover2),  omega
+            AD_NMI_overlap(l1, l2), omega
           ],
           "c" : [kwargs["score"]] * 2,
-          "iter" : [self.iter] * 2
+          "iter" : [self.iter] * 2,
+          "direction" : [direction] * 2
         }
       )
     else:
@@ -53,10 +56,11 @@ class OVERLAPHRH(SCALEHRH):
         {
            "sim" : ["NMI", "OMEGA"],
           "values" : [
-            AD_NMI_overlap(l1, l2, cover1, cover2),  omega,
+            AD_NMI_overlap(l1, l2), omega,
           ],
           "iter" : [self.iter] * 2,
-          "c" : ["node communities"] * 2
+          "c" : ["node communities"] * 2,
+          "direction" : [direction] * 2
         }
       )
     # Merge with data ----

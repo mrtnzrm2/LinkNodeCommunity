@@ -6,6 +6,8 @@
 #include <pybind11/stl.h>
 #include <pybind11/pybind11.h>
 
+const int INF = std::numeric_limits<int>::max();
+
 namespace py = pybind11;
 
 // #define lmbda 0.07921125
@@ -62,9 +64,9 @@ class simquest {
 		std::vector<std::vector<double> > get_target_matrix();
 		double jacp(std::vector<double> &u, std::vector<double> &v);
 		double jacp_2(std::vector<double> &u, std::vector<double> &v, int &ii, int &jj);
-		double tanimoto_coefficient(std::vector<double> &u, std::vector<double> &v);
+		double tanimoto_coefficient(std::vector<double> &u, std::vector<double> &v, int &ii, int &jj);
 		double dist_sim(double &d);
-		double cosine_similarity(std::vector<double> &u, std::vector<double> &v);
+		double cosine_similarity(std::vector<double> &u, std::vector<double> &v, int &ii, int &jj);
 		double jacw(std::vector<double> &u, std::vector<double> &v);
 		double simple(std::vector<double> &u, std::vector<double> &v);
 		double simple2(std::vector<double> &u, std::vector<double> &v);
@@ -80,6 +82,9 @@ class simquest {
 		double D1_2_2(std::vector<double> &u, std::vector<double> &v);
 		double D1_2_3(std::vector<double> &u, std::vector<double> &v, int &ii, int&jj);
 		double D1_2_4(std::vector<double> &u, std::vector<double> &v, int &ii, int&jj);
+		double Hellinger(std::vector<double> &u, std::vector<double> &v, int &ii, int&jj);
+		double Hellinger2(std::vector<double> &u, std::vector<double> &v, int &ii, int&jj);
+		double TV(std::vector<double> &u, std::vector<double> &v, int &ii, int&jj);
 		double D2(std::vector<double> &u, std::vector<double> &v);
 		double Dinf(std::vector<double> &u, std::vector<double> &v);
 		double Dalpha(std::vector<double> &u, std::vector<double> &v);
@@ -169,28 +174,40 @@ std::vector<double> simquest::calculate_linksim_matrix(
 }
 
 double simquest::tanimoto_coefficient(
-	std::vector<double> &u, std::vector<double> &v
+	std::vector<double> &u, std::vector<double> &v, int &ii, int &jj
 ) {
 	int N = u.size();
 	double uv=0., uu=0., vv=0.;
 	for (int i=0; i < N; i++) {
-		uv += u[i] * v[i];
 		uu += u[i] * u[i];
 		vv += v[i] * v[i];
+		if (i == ii | i == jj) continue;
+		uv += u[i] * v[i];
+	}
+	if (ii < N && jj < N) {
+		uv += u[jj] * v[ii];
+		uv += u[ii] * v[jj]; 
 	}
 	return uv / (uu + vv - uv);
 }
 
 double simquest::cosine_similarity(
-	std::vector<double> &u, std::vector<double> &v
+	std::vector<double> &u, std::vector<double> &v, int &ii, int &jj
 ) {
 	int N = u.size();
 	double uv=0., uu=0., vv=0.;
 	for (int i=0; i < N; i++) {
-		uv += u[i] * v[i];
 		uu += u[i] * u[i];
 		vv += v[i] * v[i];
+		if (i == ii | i == jj) continue;
+		uv += u[i] * v[i];
 	}
+
+	if (ii < N && jj < N) {
+		uv += u[jj] * v[ii];
+		uv += u[ii] * v[jj]; 
+	}
+
 	return uv / (sqrt(uu * vv));
 }
 
@@ -475,8 +492,10 @@ double simquest::D1_2_4(
 		if (i == ii | i == jj) continue;
 		p += sqrt(((u[i]) / pu) * ((v[i]) / pv));
 	}
-	p += sqrt((u[jj]) / pu * ((v[ii]) / pv));
-	p += sqrt((u[ii]) / pu * ((v[jj]) / pv));
+	if (ii < N && jj < N) {
+		p += sqrt((u[jj]) / pu * ((v[ii]) / pv));
+		p += sqrt((u[ii]) / pu * ((v[jj]) / pv));
+	}
 	// D1/2
   if (p > 0) {
     p = - 2 * log(p);
@@ -485,6 +504,133 @@ double simquest::D1_2_4(
   else
     JACP = 0;
 	return JACP;
+}
+
+double simquest::Hellinger(
+	std::vector<double> &u, std::vector<double> &v, int &ii, int &jj
+) {
+	int N = u.size();
+	double p = 0, pu = 0, pv = 0;
+	for (int j=0; j < N; j++){
+		pu += u[j];
+		pv += v[j];
+	}
+	if (pu > 0 && pv > 0) {
+		for (int i=0; i < N; i++){
+			if (i == ii | i == jj) continue;
+			p += pow(sqrt(u[i] / pu)  - sqrt(v[i] / pv), 2.);
+		}
+		if (ii < N && jj < N) {
+			p += pow(sqrt(u[jj] / pu) - sqrt(v[ii] / pv), 2.);
+			p += pow(sqrt(u[ii] / pu) - sqrt(v[jj] / pv), 2.);
+		}
+
+		return 1. - sqrt(0.5 * p);
+	}
+	else {
+		return 0;
+	}
+}
+
+// double simquest::Hellinger2(
+// 	std::vector<double> &u, std::vector<double> &v, int &ii, int &jj
+// ) {
+// 	int N = u.size();
+// 	double p = 0, pu = 0, pv = 0;
+// 	for (int j=0; j < N; j++){
+// 		pu += u[j];
+// 		pv += v[j];
+// 	}
+// 	if (pu > 0 && pv > 0) {
+// 		for (int i=0; i < N; i++){
+// 			if (i == ii | i == jj) continue;
+// 			p += pow(sqrt(u[i] / pu)  - sqrt(v[i] / pv), 2.);
+// 		}
+// 		if (ii < N && jj < N) {
+// 			p += pow(sqrt(u[jj] / pu) - sqrt(v[ii] / pv), 2.);
+// 			p += pow(sqrt(u[ii] / pu) - sqrt(v[jj] / pv), 2.);
+// 		}
+
+// 		return 1. - (0.5 * p);
+// 	}
+// 	else {
+// 		return 0.;
+// 	}
+// }
+
+double simquest::Hellinger2(
+	std::vector<double> &u, std::vector<double> &v, int &ii, int &jj
+) {
+	int N = u.size(), k=0;
+	double p = 0, pu = 0., pv = 0., maxp, s;
+	std::vector<bool> possible;
+	std::vector<double> ppu(N, 0.), ppv(N, 0.), peff(N, 0.);
+
+	for (int j=0; j < N; j++){
+		pu += u[j];
+		pv += v[j];
+
+		if (j == ii || j == jj) continue;
+		ppu[k] = u[j];
+		ppv[k] = v[j];
+		k++;
+	}
+	ppu[N-2] = u[ii];
+	ppu[N-1] = u[jj];
+	ppv[N-2] = v[jj];
+	ppv[N-1] = v[ii];
+
+	if (pu == 0 || pv == 0) return  0.;
+
+	for (int j=0; j < N; j++) {
+		if (ppu[j] > 0 && ppv[j] > 0) {
+			peff[j] = 0.5 * (log(ppu[j]) + log(ppv[j]) - log(pu) -log(pv));
+			possible.push_back(true);
+		}	else{
+			possible.push_back(false);
+		}
+		
+	}
+	
+	for (int j=0; j < N; j++) {
+		if (possible[j])  {
+			if (maxp > peff[j]) maxp = peff[j];
+		}
+	}
+	if (maxp == 0) return 0.;
+
+	for (int j=0; j < N; j++) {
+		if (possible[j]) {
+			s += exp(peff[j]-maxp);
+		}
+	}
+	return s * exp(maxp);
+}
+
+double simquest::TV(
+	std::vector<double> &u, std::vector<double> &v, int &ii, int &jj
+) {
+	int N = u.size();
+	double p = 0, pu = 0, pv = 0;
+	for (int j=0; j < N; j++){
+		pu += u[j];
+		pv += v[j];
+	}
+	if (pu > 0 && pv > 0) {
+		for (int i=0; i < N; i++){
+			if (i == ii | i == jj) continue;
+			p += abs(u[i] / pu - v[i] / pv);
+		}
+		if (ii < N && jj < N) {
+			p += abs(u[jj] / pu - v[ii] / pv);
+			p += abs(u[ii] / pu - v[jj] / pv);
+		}
+
+		return 1 / (0.5 * p + 1);
+	}
+	else {
+		return 0;
+	}
 }
 
 double simquest::D2(
@@ -658,11 +804,11 @@ double simquest::similarity_index(std::vector<double> &u, std::vector<double> &v
   }
 	// Tanimoto coefficient
   else if (index == 1) {
-		return tanimoto_coefficient(u, v);
+		return tanimoto_coefficient(u, v, ii, jj);
 	}
 	// Cosine similarity
   else if (index == 2) {
-		return cosine_similarity(u, v);
+		return cosine_similarity(u, v, ii, jj);
 	}
 	// Modified weighted Jaccard
 	else if (index == 3) {
@@ -742,6 +888,15 @@ double simquest::similarity_index(std::vector<double> &u, std::vector<double> &v
 	}
 	else if (index == 27) {
 		return D1_2_4(u, v, ii, jj);
+	}
+	else if (index == 28) {
+		return Hellinger(u, v, ii, jj);
+	}
+	else if (index == 29) {
+		return TV(u, v, ii, jj);
+	}
+	else if (index == 30) {
+		return Hellinger2(u, v, ii, jj);
 	}
   else {
     std::range_error("Similarity index must be a integer from 0 to 5\n");

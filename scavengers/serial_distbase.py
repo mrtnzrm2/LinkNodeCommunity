@@ -12,10 +12,12 @@ import itertools
 # Import network libraries ----
 from plotting_modules.plotting_serial import PLOT_S
 from plotting_modules.plotting_o_serial import PLOT_OS
+from modules.colregion import colregion
+from networks.structure import STR
 from various.network_tools import read_class
 # Declare iter variables ----
 topologies = ["MIX"]
-distbases = ["EXPMLE"]
+distbases = ["M"]
 bias = [0]
 bins = [12]
 mode = ["ZERO"]
@@ -26,26 +28,26 @@ list_of_lists = np.array(list(list_of_lists))
 # Declare global variables NET ----
 MAXI = 1000
 linkage = "single"
-nlog10 = T
+nlog10 = F
 lookup = F
-prob = F
+prob = T
 cut = F
 run = T
-structure = "LN"
-distance = "tracto16"
+structure = "FLNe"
+distance = "MAP3D"
 nature = "original"
 mapping = "trivial"
-index  = "D1_2_4"
+index  = "Hellinger2"
 imputation_method = ""
-opt_score = ["_X", "_S", "_SD"]
+opt_score = ["_S"]
 alpha = 0.
 # Statistic test ----
 alternative = "less"
 # Declare global variables DISTBASE ----
-total_nodes = 106
-__inj__ = 57
-__nodes__ = 57
-__version__ = "57d106"
+total_nodes = 91
+__inj__ = 40
+__nodes__ = 40
+__version__ = "40d91"
 if __name__ == "__main__":
   for topology, __model__, bias, _bin_ , mode in list_of_lists:
     _bin_ = int(_bin_)
@@ -76,7 +78,7 @@ if __name__ == "__main__":
     if lookup: lup = "_lup"
     if cut: _cut = "_cut"
     data = read_class(
-        "../pickle/RAN/distbase/MAC/{}/{}/{}/{}/BIN_{}/{}/{}/{}/{}/{}".format(
+        "../pickle/RAN/distbase/MAC/{}/{}/{}/{}/BIN_{}/{}/{}/{}/{}".format(
           __version__,
           structure,
           distance,
@@ -85,28 +87,52 @@ if __name__ == "__main__":
           f"{linkage.upper()}_{total_nodes}_{__nodes__}{l10}{lup}{_cut}",
           mode,
           f"{topology}_{index}_{mapping}",
-          f"b_{bias}",
-          "discovery_6"
+          # f"b_{bias}",
+          "discovery_7"
           # f"alpha_{alpha:.2f}"
         ),
         "series_{}".format(MAXI)
       )
     if isinstance(data, int): continue
+    NET = STR[f"MAC{__inj__}"](
+      linkage, mode,
+      nlog10 = nlog10,
+      structure = structure,
+      lookup = lookup,
+      version = __version__,
+      nature = nature,
+      model = imputation_method,
+      distance = distance,
+      inj = __inj__,
+      topology = topology,
+      index = index,
+      mapping = mapping,
+      cut = cut,
+      b = bias,
+      alpha = alpha,
+      discovery = "discovery_7"
+    )
+    L = colregion(NET, labels_name=f"labels{__inj__}")
     # Plotting ----
     print("Statistical analysis")
     plot_s = PLOT_S(data)
-    plot_s.plot_measurements_Entropy(on=T)
-    plot_s.plot_measurements_Entropy_noodle(on=F)
-    plot_s.plot_stats(alternative=alternative, on=T)
-    plot_s.plot_measurements_D(on=T)
-    plot_s.plot_measurements_X(on=T)
-    plot_s.plot_measurements_S(on=T)
-    plot_s.plot_measurements_SD(on=T)
+    # plot_s.plot_measurements_Entropy(on=T)
+    # plot_s.plot_measurements_Entropy_noodle(on=F)
+    # plot_s.plot_stats(alternative=alternative, on=T)
+    # plot_s.plot_measurements_D(on=T)
+    # plot_s.plot_measurements_X(on=T)
+    # plot_s.plot_measurements_S(on=T)
+    # plot_s.plot_measurements_SD(on=T)
     plot_s.histogram_clustering_similarity(
       on=T, c=T, hue_norm=[s.replace("_", "") for s in opt_score]
     )
     plot_o = PLOT_OS(data)
     for score in opt_score:
       plot_s.histogram_krs(score=score, on=T)
-      plot_o.association_heatmap(score, on=T)
-      plot_o.histogram_overlap(score, on=T)
+      for direction in ["source", "target", "both"]:
+        plot_o.association_heatmap(score, direction, on=T)
+        plot_o.association_heatmap_zero(score, direction, on=T)
+        plot_o.cover_flatmap_association(
+          __nodes__, __version__, L.regions, score, direction, on=T, EC=T, cmap="hls"
+        )
+        plot_o.histogram_overlap(score, direction, on=T)

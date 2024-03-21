@@ -103,7 +103,15 @@ class OVERLAPPING(SCALEFREE):
       self.overlap = WDN["overlap"]
       print(self.overlap)
 
-  def random_WDN_overlap_cpp(self, run=True, **kwargs):
+  def random_WDN_overlap_cpp(self, run=True, random_seed=None, **kwargs):
+    if random_seed:
+      import random
+      from datetime import datetime
+      random.seed(datetime.now().timestamp())
+      seed = random.randint(0, 100000)
+
+    else: seed = 12345
+
     parameters = self.numeric_parameters()
     if run:
       if not exists(self.pickle_path + "/WDN_cpp.pk"):
@@ -120,7 +128,9 @@ class OVERLAPPING(SCALEFREE):
           on = parameters["-on"],
           om = parameters["-om"],
           nmin = parameters["-nmin"],
-          nmax = parameters["-nmax"]
+          nmax = parameters["-nmax"],
+          fixed_range = parameters["-fixed_range"],
+          seed = seed
         )
         self.dA = np.array(A.get_network())
         if len(self.dA) == 0:
@@ -163,6 +173,151 @@ class OVERLAPPING(SCALEFREE):
       self.A = WDN["A"]
       self.labels = WDN["labels"]
       self.overlap = WDN["overlap"]
+      print({k : v for k, v in self.overlap.items() if len(v) > 1})
+
+  def random_WN_overlap_cpp(self, run=True, random_seed=None, **kwargs):
+    if random_seed:
+      import random
+      from datetime import datetime
+      random.seed(datetime.now().timestamp())
+      seed = random.randint(0, 100000)
+
+    else: seed = 12345
+
+    parameters = self.numeric_parameters()
+    if run:
+      if not exists(self.pickle_path + "/WN_cpp.pk"):
+        from WN import WN as wn
+        A = wn(
+          N = parameters["-N"],
+          k = parameters["-k"],
+          maxk = parameters["-maxk"],
+          t1 = parameters["-t1"],
+          t2 = parameters["-t2"],
+          beta = parameters["-beta"],
+          mut = parameters["-mut"],
+          muw = parameters["-muw"],
+          on = parameters["-on"],
+          om = parameters["-om"],
+          nmin = parameters["-nmin"],
+          nmax = parameters["-nmax"],
+          fixed_range = parameters["-fixed_range"],
+          ca = parameters["-C"],
+          seed = seed
+        )
+        self.dA = np.array(A.get_network())
+        if len(self.dA) == 0:
+          self.dA = np.array([np.nan])
+          self.A = np.array([np.nan])
+          self.labels = np.array([np.nan])
+          self.overlap = dict()
+        else:
+          self.dA[:, :2] -= 1
+          self.dA = pd.DataFrame(
+            self.dA, columns=["source", "target", "weight"]
+          )
+          self.A = df2adj(self.dA.copy())
+          self.labels, self.overlap = self.read_dat_multicolumns_cpp(
+            A.get_communities()
+          )
+          print({k : v for k, v in self.overlap.items() if len(v) > 1})
+          if "on_save_pickle" in kwargs.keys():
+            if kwargs["on_save_pickle"]:
+              print("\n\t**** Network saved in pickle format****\n")
+              self.save_class(
+                {
+                  "dA" : self.dA,
+                  "A" : self.A,
+                  "labels" : self.labels,
+                  "overlap" : self.overlap
+                },
+                self.pickle_path, "WN_cpp"
+              )
+      else:
+        WN = self.read_class(self.pickle_path, "WN_cpp")
+        self.dA = WN["dA"]
+        self.A = WN["A"]
+        self.labels = WN["labels"]
+        self.overlap = WN["overlap"]
+        print({k : v for k, v in self.overlap.items() if len(v) > 1})
+    else:
+      WN = self.read_class(self.pickle_path, "WN_cpp")
+      self.dA = WN["dA"]
+      self.A = WN["A"]
+      self.labels = WN["labels"]
+      self.overlap = WN["overlap"]
+      print({k : v for k, v in self.overlap.items() if len(v) > 1})
+  
+  def random_BN_overlap_cpp(self, run=True, random_seed=None, **kwargs):
+    if random_seed:
+      import random
+      from datetime import datetime
+      random.seed(datetime.now().timestamp())
+      seed = random.randint(0, 100000)
+
+    else: seed = 12345
+
+    parameters = self.numeric_parameters()
+    if run:
+      if not exists(self.pickle_path + "/BN_cpp.pk"):
+        from BN import BN as bn
+        A = bn(
+          N = parameters["-N"],
+          k = parameters["-k"],
+          maxk = parameters["-maxk"],
+          mut = parameters["-mut"],
+          t1 = parameters["-t1"],
+          t2 = parameters["-t2"],
+          on = parameters["-on"],
+          om = parameters["-om"],
+          nmin = parameters["-nmin"],
+          nmax = parameters["-nmax"],
+          fixed_range = parameters["-fixed_range"],
+          ca = parameters["-C"],
+          seed = seed
+        )
+        self.dA = np.array(A.get_network())
+        
+        if len(self.dA) == 0:
+          self.dA = np.array([np.nan])
+          self.A = np.array([np.nan])
+          self.labels = np.array([np.nan])
+          self.overlap = dict()
+        else:
+          self.dA[:, :2] -= 1
+          self.dA = pd.DataFrame(
+            self.dA, columns=["source", "target", "weight"]
+          )
+          self.A = df2adj(self.dA.copy())
+          self.labels, self.overlap = self.read_dat_multicolumns_cpp(
+            A.get_communities()
+          )
+          print({k : v for k, v in self.overlap.items() if len(v) > 1})
+          if "on_save_pickle" in kwargs.keys():
+            if kwargs["on_save_pickle"]:
+              print("\n\t**** Network saved in pickle format****\n")
+              self.save_class(
+                {
+                  "dA" : self.dA,
+                  "A" : self.A,
+                  "labels" : self.labels,
+                  "overlap" : self.overlap
+                },
+                self.pickle_path, "BN_cpp"
+              )
+      else:
+        BN = self.read_class(self.pickle_path, "BN_cpp")
+        self.dA = BN["dA"]
+        self.A = BN["A"]
+        self.labels = BN["labels"]
+        self.overlap = BN["overlap"]
+        print({k : v for k, v in self.overlap.items() if len(v) > 1})
+    else:
+      BN = self.read_class(self.pickle_path, "BN_cpp")
+      self.dA = BN["dA"]
+      self.A = BN["A"]
+      self.labels = BN["labels"]
+      self.overlap = BN["overlap"]
       print({k : v for k, v in self.overlap.items() if len(v) > 1})
 
   def set_colregion(self, colregion):
@@ -268,13 +423,20 @@ class OVERLAPPING(SCALEFREE):
       omega = omega_index(pred_covers, gt_covers)
     else: omega = -1
     return omega
+  
+  def mod_adj_nmi(self, node_partition, noc_covers, node_labels, on=False):
+    if on:
+      gt_covers = reverse_cover(self.overlap, node_labels)
+      pred_covers = omega_index_format(node_partition, noc_covers, node_labels)
+      score = modAD_NMI_overlap(gt_covers, pred_covers)
+    else: score = -1
+    return score
 
   def overlap_score_discovery(self, K : int, nocs, labels, on=False):
     if on:
       if K == 1: return np.nan, np.nan
       # Ground-truth partition prep. ----
-      gt = [k for k, v in self.overlap.items() if len(v) > 1]
-      GT = set([str(g) for g in gt])
+      GT = set([str(k) for k, v in self.overlap.items() if len(v) > 1])
       ## Sensitivity/Specificity ----
       ALL = set(labels)
       PRED = set(nocs)

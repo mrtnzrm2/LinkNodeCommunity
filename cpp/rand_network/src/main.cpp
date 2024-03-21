@@ -2,12 +2,21 @@
 #include <vector>
 #include <stdlib.h>
 #include <math.h>
+#include <cmath>
 #include <ctime> // time
 #include <map>
 #include <pybind11/stl.h>
 #include <pybind11/pybind11.h>
 
 namespace py = pybind11;
+
+int sample_cmf(std::vector<double> &cmf, double &U,int &nbins) {
+  for (int i=0; i < nbins-1; i++) {
+    if (cmf[i] <= U && cmf[i+1] > U) {
+      return i;
+    }
+  }
+}
 
 template<typename T>
 std::vector<double> linspace(T start_in, T end_in, int num_in)
@@ -567,6 +576,138 @@ std::vector<std::vector<int> > sample_distbase(
   return NET;
 }
 
+std::vector<std::vector<int> > sample_data_driven(
+  std::vector<std::vector<double> > &net,
+  std::vector<double> &cmf,
+  std::vector<double> &bins, int &nbins,
+  int &nodes, int &ncols, int &leaves,
+  double &rho
+) {
+  // Change random seed ----
+  srand(time(0));
+  // Declare variables ----
+  int c, r, A, B, t = 0, sp = 5;
+  double Rho = 0.0, d;
+  // Declare network ----
+  std::vector<std::vector<int> > NET(
+    nodes, std::vector<int>(nodes, 0)
+  );
+  // Categorize distances ----
+  std::vector<std::vector<std::vector<double> > > subnet;
+  get_subnets(
+    net, bins, leaves, nbins, subnet
+  );
+  std::cout << "Matching network density:\n";
+  while (Rho < rho) {
+    display_progress(Rho, rho, t, sp);
+    // Generate random distance
+    d =  (rand() % 100000) / 100000.;
+    if (d > bins[nbins - 1]) continue;
+    c = sample_cmf(cmf, d, nbins);
+    if (c == -1) continue;
+    if (subnet[c].size() == 0) continue;
+    r = rand() % subnet[c].size();
+    A = rand() % 2;
+    if (A == 0) B = 1;
+    else B = 0;
+    NET[subnet[c][r][A]][subnet[c][r][B]]++;
+    network_density(NET, ncols, Rho);
+  }
+  if (Rho > rho)
+     NET[subnet[c][r][A]][subnet[c][r][B]]--;
+  std::cout << "\nDone!\n";
+  return NET;
+}
+
+// Function to find the root of
+double fsample_distbase_sqrt(double y, double x) {
+    // Example function: f(x) = x^2 - 4
+    return exp(-y) * (sqrt(y) + 1.) - 1. + x;
+}
+
+// Bisection method to find the root
+double findRoot(double a, double b, double x, double tolerance, double (*func)(double, double)) {
+    if (func(a, x) * func(b, x) > 0) {
+        // std::cout << "Invalid initial values. Function values must have opposite signs." << std::endl;
+        return NAN; // Not a Number (indicates failure)
+    }
+
+    double c;
+    int iterations = 0;
+
+    do {
+        // Bisection step
+        c = (a + b) / 2;
+
+        // Check if the root is found
+        if (fabs(func(c, x)) < tolerance) {
+            std::cout << "Root found after " << iterations << " iterations." << std::endl;
+            return c;
+        }
+
+        // Update the interval [a, b] based on the sign of f(c)
+        if (func(c, x) * func(a, x) < 0) {
+            b = c;
+        } else {
+            a = c;
+        }
+
+        iterations++;
+
+    } while (iterations < 1000); // Maximum number of iterations to avoid infinite loops
+
+    // std::cout << "Root not found within the maximum number of iterations." << std::endl;
+    return NAN; // Not a Number (indicates failure)
+}
+
+std::vector<std::vector<int> > sample_distbase_sqrt(
+  std::vector<std::vector<double> > &net,
+  std::vector<double> &bins, int &nbins,
+  int &nodes, int &ncols, int &leaves,
+  double &rho, double &lb
+) {
+  // Change random seed ----
+  srand(time(0));
+  // Declare variables ----
+  double ini, fini, tolerance = 1e-3;
+  int c, r, A, B, t = 0, sp = 5;
+  double Rho = 0.0, d;
+  // Declare network ----
+  std::vector<std::vector<int> > NET(
+    nodes, std::vector<int>(nodes, 0)
+  );
+  // Categorize distances ----
+  std::vector<std::vector<std::vector<double> > > subnet;
+  get_subnets(
+    net, bins, leaves, nbins, subnet
+  );
+  std::cout << "Matching network density:\n";
+  while (Rho < rho) {
+    display_progress(Rho, rho, t, sp);
+    // Generate random distance
+    d =  (rand() % 1000) / 1000.;
+    ini = (rand() % 1000) / 1000.;
+    fini = 100 * (rand() % 1000) / 1000.;
+    d = findRoot(ini, fini, d, tolerance, &fsample_distbase_sqrt);
+    if (isnan(d)) continue;
+    d /= lb;
+    if (d > bins[nbins - 1]) continue;
+    c = find_bin(d, bins, nbins);
+    if (c == -1) continue;
+    if (subnet[c].size() == 0) continue;
+    r = rand() % subnet[c].size();
+    A = rand() % 2;
+    if (A == 0) B = 1;
+    else B = 0;
+    NET[subnet[c][r][A]][subnet[c][r][B]]++;
+    network_density(NET, ncols, Rho);
+  }
+  if (Rho > rho)
+     NET[subnet[c][r][A]][subnet[c][r][B]]--;
+  std::cout << "\nDone!\n";
+  return NET;
+}
+
 std::vector<std::vector<int> > sample_distbase_trunc(
   std::vector<std::vector<double> > &net,
   std::vector<double> &bins, int &nbins,
@@ -634,7 +775,7 @@ std::vector<std::vector<int> > sample_distbase_M(
   while (m <= M) {
     display_progress(m, M, t, sp);
     // Generate random distance
-    d = (rand() % 1000) / 1000.;
+    d = (rand() % 1000000) / 1000000.;
     d = - log(1 - d) / lb ;
     if (d > bins[nbins - 1]) continue;
     c = find_bin(d, bins, nbins);
@@ -674,7 +815,7 @@ std::vector<std::vector<int> > const_sample_distbase_M(
   std::cout << "Matching number of edges in injected areas:\n";
   while (m <= M) {
     display_progress(m, M, t, sp);
-    d =  (rand() % 1000) / 1000.;
+    d =  (rand() % 1000000) / 1000000.;
     d = - log(1 - d) / lb ;
     if (d > bins[nbins - 1]) continue;
     c = find_bin(d, bins, nbins);
@@ -833,6 +974,208 @@ std::vector<std::vector<double> > swap_one_k(
   return GG;
 }
 
+std::vector<std::vector<double> > swap_dir_weights(
+  std::vector<std::vector<double> > &G,
+  const int &rows, const int &cols, int &swaps
+) {
+  // Change random seed ----
+  srand(time(0));
+  // Declare the shuffle nodes ----
+  int A, B, C, keep = 0, t = 0, sp = 5;
+  int luck;
+  double m;
+  // Copy network ----
+  std::vector<std::vector<double> > GG = G;
+  // Start loop!!!
+  printf("Swapping weights %i times:\n", swaps);
+  while (t < swaps) {
+    display_progress(t, swaps, keep, sp);
+    // Create luck ----
+    luck = rand() % 2;
+    switch (luck) {
+    // Horizontal cases ----
+    case 0:
+      A = rand() % rows;
+      B = rand() % rows;
+      C = rand() % cols;
+      if (A == B) continue;
+      if (A == C || B == C) continue;
+      if (GG[A][C] == 0 || GG[B][C] == 0) continue;
+      m = GG[A][C];
+      GG[A][C] = GG[B][C];
+      GG[B][C] = m;
+      break;
+    // Vertical case ----
+    case 1:
+      A = rand() % rows;
+      B = rand() % cols;
+      C = rand() % cols;
+      if (A == B) continue;
+      if (A == C || B == C) continue;
+      if (GG[A][B] == 0 || GG[A][C] == 0) continue;
+      m = GG[A][B];
+      GG[A][B] = GG[A][C];
+      GG[A][C] = m;
+      break;
+    default:
+      break;
+    }
+    t++;
+  }
+  std::cout << "\nDone!\n";
+  return GG;
+}
+
+
+std::vector<std::vector<std::vector<double> > > swap_one_k_TWOMX(
+  std::vector<std::vector<double> > &G, std::vector<std::vector<double> > &H,
+  const int &rows, const int &cols, int &swaps
+) {
+  // Change random seed ----
+  srand(time(0));
+  // Declare the shuffle nodes ----
+  int A, B, C, D, keep = 0, t = 0, sp = 5;
+  int luck;
+  double m;
+  // Copy network ----
+  std::vector<std::vector<double> > GG = G;
+  std::vector<std::vector<double> > HH = H;
+  // Start loop!!!
+  printf("Swapping edges %i times:\n", swaps);
+  while (t < swaps) {
+    display_progress(t, swaps, keep, sp);
+    A = rand() % rows;
+    B = rand() % rows;
+    C = rand() % cols;
+    D = rand() % cols;
+    if (A == B || C == D) continue;
+    if (A == D || B == C) continue;
+    if (A == C || B == D) continue;
+    if (GG[A][C] == 0 || GG[B][D] == 0) continue;
+    if (GG[A][D] > 0 || GG[B][C] > 0) continue;
+    // Create luck ----
+    luck = rand() % 2;
+    switch (luck) {
+    // Horizontal cases ----
+    case 0:
+      GG[A][D] = GG[A][C];
+      GG[A][C] *= 0.0;
+      GG[B][C] = GG[B][D];
+      GG[B][D] *= 0.0;
+
+      HH[A][D] = HH[A][C];
+      HH[A][C] *= 0.0;
+      HH[B][C] = HH[B][D];
+      HH[B][D] *= 0.0;
+
+      break;
+    // Vertical case ----
+    case 1:
+      GG[B][C] = GG[A][C];
+      GG[A][C] *= 0.0;
+      GG[A][D] = GG[B][D];
+      GG[B][D] *= 0.0;
+
+      HH[B][C] = HH[A][C];
+      HH[A][C] *= 0.0;
+      HH[A][D] = HH[B][D];
+      HH[B][D] *= 0.0;
+
+      break;
+    default:
+      break;
+    }
+    t++;
+  }
+  
+  std::vector<std::vector<std::vector<double> > > GH;
+  GH.push_back(GG);
+  GH.push_back(HH);
+
+  std::cout << "\nDone!\n";
+  return GH;
+}
+
+std::vector<std::vector<double> > swap_one_k_dense(
+  std::vector<std::vector<double> > &G,
+  const int &rows, const int &cols, int &swaps
+) {
+  // Change random seed ----
+  srand(time(0));
+  // Declare the shuffle nodes ----
+  int A, B, C, D, keep = 0, t = 0, sp = 5;
+  int luck;
+  double m, tmp;
+  // Copy network ----
+  std::vector<std::vector<double> > GG = G;
+  // Start loop!!!
+  printf("Swapping edges %i times:\n", swaps);
+  while (t < swaps) {
+    display_progress(t, swaps, keep, sp);
+    A = rand() % rows;
+    B = rand() % rows;
+    C = rand() % cols;
+    D = rand() % cols;
+    if (A == B || C == D) continue;
+    if (A == D || B == C) continue;
+    if (A == C || B == D) continue;
+    if (GG[A][C] == 0 || GG[B][D] == 0) continue;
+    // Create luck ----
+    luck = rand() % 2;
+    switch (luck) {
+    // Horizontal cases ----
+    case 0:
+      if (GG[A][D] > 0) {
+        tmp = GG[A][D];
+        GG[A][D] = GG[A][C];
+        GG[A][C] = tmp;
+      }
+      else {
+        GG[A][D] = GG[A][C];
+        GG[A][C] *= 0.0;
+      }
+      if (GG[B][C] > 0) {
+        tmp = GG[B][C];
+        GG[B][C] = GG[B][D];
+        GG[B][D] = tmp;
+      }
+      else {
+        GG[B][C] = GG[B][D];
+        GG[B][D] *= 0.0;
+      }
+      
+      break;
+    // Vertical case ----
+    case 1:
+      if (GG[B][C] > 0){
+        tmp = GG[B][C];
+        GG[B][C] = GG[A][C];
+        GG[A][C] = tmp;
+      }
+      else {
+        GG[B][C] = GG[A][C];
+        GG[A][C] *= 0.0;
+      }
+      if (GG[A][D] > 0) {
+        tmp = GG[B][D];
+        GG[A][D] = GG[B][D];
+        GG[B][D] = tmp;
+      }
+      else {
+        GG[A][D] = GG[B][D];
+        GG[B][D] *= 0.0;
+      }
+      
+      break;
+    default:
+      break;
+    }
+    t++;
+  }
+  std::cout << "\nDone!\n";
+  return GG;
+}
+
 PYBIND11_MODULE(rand_network, m) {
 
   m.doc() = "Creates fast random networks";
@@ -874,6 +1217,18 @@ PYBIND11_MODULE(rand_network, m) {
   );
 
   m.def(
+    "sample_data_driven",
+    &sample_data_driven,
+    py::return_value_policy::reference_internal
+  );
+
+  m.def(
+    "sample_distbase_sqrt",
+    &sample_distbase_sqrt,
+    py::return_value_policy::reference_internal
+  );
+
+  m.def(
     "sample_distbase_trunc",
     &sample_distbase_trunc,
     py::return_value_policy::reference_internal
@@ -900,6 +1255,24 @@ PYBIND11_MODULE(rand_network, m) {
   m.def(
     "swap_one_k",
     &swap_one_k,
+    py::return_value_policy::reference_internal
+  );
+
+  m.def(
+    "swap_dir_weights",
+    &swap_dir_weights,
+    py::return_value_policy::reference_internal
+  );
+
+  m.def(
+    "swap_one_k_TWOMX",
+    &swap_one_k_TWOMX,
+    py::return_value_policy::reference_internal
+  );
+
+  m.def(
+    "swap_one_k_dense",
+    &swap_one_k_dense,
     py::return_value_policy::reference_internal
   );
 

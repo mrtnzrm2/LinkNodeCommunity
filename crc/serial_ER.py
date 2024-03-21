@@ -53,7 +53,6 @@ def worker_ER(
     A = np.array(A, dtype=float)
     # Create TOY ---
     NET = TOY(A, linkage, **properties)
-    NET.set_alpha([6, 15, 30])
     NET.create_plot_directory()
     NET.set_labels(labels)
     H = Hierarchy(

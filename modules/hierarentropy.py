@@ -20,6 +20,7 @@ class Hierarchical_Entropy:
 
   def get_height_Z(self, Z):
     self.height[1:] = Z[:, 2]
+    self.height[0] = self.height[1]
 
   def sum_vertices(self, tree : dict, i):
     for key in tree.keys():
@@ -71,7 +72,7 @@ class Hierarchical_Entropy:
       if self.is_leaf(tree[key]): continue
       i = int(key.split("_")[0][1:])
       Mul = len(tree[key]) - 1
-      Sh[self.total_nodes - i -1] -= Mul * stirling_3(Mul, Ml[f"L{i+1}"])
+      Sh[self.total_nodes - i - 1] -= Mul * stirling_3(Mul, Ml[f"L{i+1}"])
       self.SH(tree[key], Ml, Sh)
 
   def SV(self, Ml : dict, M, Sv):
@@ -166,7 +167,7 @@ class Hierarchical_Entropy:
       coms = [M[L, i] for i in nodes_prev]
       for i, com in enumerate(np.unique(coms)):
         key = f"L{tL}_{int(com)}"
-        nodes_com = set(list(np.where(M[L, :] == com)[0]))
+        nodes_com = set(list(np.where(M[L, :] == com)[0]) )
         compare = nodes_com.intersection(nodes_prev)
         if len(compare) > 0:
           if key_prev not in tree.keys():
@@ -223,16 +224,21 @@ class Hierarchical_Entropy:
     elif Z2 == "long":
       self.Z2dict_long(self.A, self.tree, self.root, nodes, L, tL)
     else: raise ValueError("Only Z2 short or long")
+    # print(*self.tree.items())
 
   def zdict2pre_newick(self, tree : dict, root :str, key_pred : str, pre_newick : dict, weighted=False):
     if not self.is_leaf(tree[root]):
       leaves_names = [leaf for leaf in tree[root].keys() if leaf != "height" and leaf != "label"]
       is_root_leaf = [self.is_leaf(tree[root][leaf]) for leaf in leaves_names]
       distances = [tree[root]["height"] - tree[root][leaf]["height"] for leaf in leaves_names]
+      # distances = [tree[root]["height"] for leaf in leaves_names]
+      # if root == "L4_0":
+      #   print(is_root_leaf)
+      #   print(*tree[root].items())
       if weighted:
         if np.sum(is_root_leaf) > 0: 
           dic1 = {key_pred + root + k: dis for is_leaf, k, dis in zip(is_root_leaf, leaves_names, distances) if not is_leaf}
-          dic2 = {tree[root][leaf]["label"] : dis for is_leaf, leaf, dis in zip(is_root_leaf, leaves_names, distances) if is_leaf}
+          dic2 = {tree[root][leaf]["label"] : 0 for is_leaf, leaf, dis in zip(is_root_leaf, leaves_names, distances) if is_leaf}
           pre_newick[key_pred + root] = {**dic1, **dic2}
         else:
           pre_newick[key_pred + root] = {key_pred + root + k: dis for k, dis in zip(leaves_names, distances)}
@@ -253,6 +259,15 @@ class Hierarchical_Entropy:
       self.zdict2pre_newick(tree, self.root, "", pre_newick, weighted=weighted)
       self.newick = self.newickify(pre_newick, root_node=self.root)
       print(self.newick, "\n")
+      return self.newick
+
+  def zdict2newick_(self, tree, weighted=False, on=True):
+    if on:
+      print("Print hierarchy newicks")
+      pre_newick = {}
+      self.zdict2pre_newick(tree, self.root, "", pre_newick, weighted=weighted)
+      self.newick = self.newickify(pre_newick, root_node=self.root)
+      return self.newick
 
   def newickify(self, node_to_children, root_node) -> str:
     """Source code: https://stackoverflow.com/questions/50003007/how-to-convert-python-dictionary-to-newick-form-format"""

@@ -38,7 +38,7 @@ class Sim:
       "simple" : 5, "simple2" : 6, "from_reg": 7, "from_clf" : 8, "simple3": 9, "simple4" : 10, "logcos" : 11,
       "simple5": 12, "simple6": 13, "D1" : 14, "D1_2" : 15, "D2" : 16, "Dinf" : 17, "simple7" : 18,
       "Dalpha" : 19, "simple2_2" : 20, "D1_2_2" : 21, "D1b" : 22, "dist_sim" : 23,  "D1_2_3" : 24,
-      "bsim_2" : 25, "jacp_2" : 26, "D1_2_4" : 27
+      "bsim_2" : 25, "jacp_2" : 26, "D1_2_4" : 27, "Hellinger" : 28, "TV" : 29, "Hellinger2": 30
     }
     self.topology = topology
     self.index = index

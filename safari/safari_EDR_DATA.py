@@ -12,9 +12,12 @@ import pandas as pd
 import seaborn as sns
 sns.set_theme()
 from various.data_transformations import maps
-from networks.structure import MAC
+from networks.MAC.mac57 import MAC57
 from various.network_tools import *
 from various.similarity_indices import jacp_smooth, jacp
+from networks.distbase import DISTBASE
+from various.fit_tools import fitters
+import ctools as ct
 
 def simple(x, y):
   return -np.mean(np.abs(x-y))
@@ -82,180 +85,287 @@ def model_network2(D, C, nodes, bins):
   x = scaler.transform(x)
   x = np.hstack([x, np.power(x, 3)])
 
+
+def EDR_ensemble(NET, trials):
+
+  bins=12
+  distance_model = "EXPMLE"
+
+  _, _, _, _, est = fitters[distance_model](NET.D, NET.C, NET.nodes, bins)
+  lb = est.coef_[0]
+
+  D12_edr_tgt = np.zeros((trials, int(NET.nodes * (NET.nodes - 1) / 2)))
+
+  for i in np.arange(trials):
+
+    RAND = DISTBASE(
+      __inj__, __nodes__,
+      linkage, bins, mode, i,
+      structure = structure,
+      version = version, model="tracto16",
+      nlog10=nlog10, lookup=T, cut=cut,
+      topology=topology, distance=distance,
+      mapping=mapping, index=index, b=bias,
+      lb=lb, discovery=discovery
+    )
+    RAND.rows = NET.rows
+    # Create network ----
+    print("Create random graph")
+    RC = RAND.distbase_dict[distance_model](
+      NET.D, NET.C, run=T, on_save_csv=F
+    )
+    RA = column_normalize(RC)
+    # Transform data for analysis ----
+    R, lookup, _ = maps[mapping](
+      RA, nlog10, T, prob, b=bias
+    )
+    e = 0 
+    np.fill_diagonal(R, 0)
+    for j in np.arange(NET.nodes):
+      for k in np.arange(j+1 , NET.nodes):
+        D12_edr_tgt[i, e] = ct.D1_2_4(R[:, j], R[:, k], j, k)
+        D12_edr_tgt[i, e] = (1 / D12_edr_tgt[i, e]) - 1
+        e += 1
+  return D12_edr_tgt
+
+def mean_trend(D, data, network : str):
+  bins = 12
+  minD = np.min(D)
+  maxD = np.max(D)
+  distance_bin = np.linspace(minD, maxD, bins + 1)
+  delta = (distance_bin[1] - distance_bin[0]) / 2
+  distance_center_bin = distance_bin[:-1] + delta
+  mean_d12 = np.zeros(bins + 2)
+  sd_d12 = np.zeros(bins + 2)
+
+  for i in np.arange(bins):
+    if i != bins - 1:
+      mean_d12[i + 1] = data["score"].loc[
+        (data["distance"] < distance_bin[i + 1]) &
+        (data["distance"] >= distance_bin[i])
+      ].mean()
+      sd_d12[i + 1] = data["score"].loc[
+        (data["distance"] < distance_bin[i + 1]) &
+        (data["distance"] >= distance_bin[i])
+      ].std()
+    else:
+      mean_d12[i + 1] = data["score"].loc[
+        (data["distance"] >= distance_bin[i])
+      ].mean()
+      sd_d12[i + 1] = data["score"].loc[
+        (data["distance"] >= distance_bin[i])
+      ].std()
+
+
+  distance_center_bin2 =  np.zeros(bins + 2)
+  distance_center_bin2[1:-1] = distance_center_bin
+  distance_center_bin2[0] = minD
+  distance_center_bin2[-1] = maxD
+  
+  mean_d12[0] = data["score"].loc[data["distance"] == minD].mean()
+  mean_d12[-1] = data["score"].loc[data["distance"] == maxD].mean()
+
+  sd_d12[0] = data["score"].loc[data["distance"] == minD].std()
+  sd_d12[-1] = data["score"].loc[data["distance"] == maxD].std()
+
+
+  return pd.DataFrame(
+    {
+      "score" : mean_d12[1:-1],
+      "distance" : distance_center_bin2[1:-1],
+      "network" : [network] * bins
+    }
+  ) , mean_d12, sd_d12, distance_center_bin2
+
 # Declare global variables ----
-__iter__ = 0
 linkage = "single"
 nlog10 = T
 lookup = F
-prob = T
+prob = F
 cut = F
 structure = "LN"
+mode = "ZERO"
 distance = "tracto16"
 nature = "original"
-__mode__ = "ALPHA"
-topology = "MIX"
-mapping = "R4"
-index  = "simple"
 imputation_method = ""
-opt_score = ["_maxmu", "_X"]
-save_datas = T
-# Declare global variables DISTBASE ----
-__model__ = "DEN"
-total_nodes = 106
-__inj__ = 57
+topology = "MIX"
+mapping = "trivial"
+index  = "Hellinger2"
+discovery = "discovery_7"
+bias = 0.
+alpha = 0.
+opt_score = ["_S"]
+version = "57d106"
 __nodes__ = 57
-__bin__ = 12
-lb = 0.07921125
-__version__ = 220830
-bias = float(0)
-## Very specific!!! Be careful ----
-if nature == "original":
-  __ex_name__ = f"{total_nodes}_{__inj__}"
-else:
-  __ex_name__ = f"{total_nodes}_{total_nodes}_{__inj__}"
-if nlog10: __ex_name__ = f"{__ex_name__}_l10"
-if lookup: __ex_name__ = f"{__ex_name__}_lup"
-if cut: __ex_name__ = f"{__ex_name__}_cut"
+__inj__ = 57
 
 if __name__ == "__main__":
-  # MAC network as reference ----
-  REF = MAC(
-    linkage, __mode__,
+  NET = MAC57(
+    linkage, mode,
+    nlog10 = nlog10,
     structure = structure,
-    nlog10=nlog10, lookup=lookup,
-    version = __version__,
+    lookup = lookup,
+    version = version,
     nature = nature,
     model = imputation_method,
     distance = distance,
     inj = __inj__,
-    topology=topology,
-    index=index,
-    mapping=mapping,
-    cut=cut, b=bias
+    topology = topology,
+    index = index,
+    mapping = mapping,
+    cut = cut,
+    b = bias,
+    alpha = alpha,
+    discovery = discovery
   )
-  RFLN, lookup, _ = maps[mapping](
-    REF.C, nlog10, lookup, prob, b=bias
-  )
-  np.fill_diagonal(RFLN, 0)
-  SIMT = np.zeros((__nodes__, __nodes__))
-  for i in np.arange(__nodes__):
-    for j in np.arange(i+1, __nodes__):
-      u = RFLN[:, i]
-      u[i] = np.mean(u[u>0])
-      v = RFLN[:, j]
-      v[j] = np.mean(v[v>0])
-      SIMT[i, j] = jacp_smooth(u, v, RFLN.shape[0], False)
-      SIMT[j, i] = SIMT[i, j]
-      if SIMT[i, j] > 1: print(u, "\n\n", v)
-  SIMS = np.zeros((__nodes__, __nodes__))
-  for i in np.arange(__nodes__):
-    for j in np.arange(i+1, __nodes__):
-      u = RFLN[i, :]
-      u[i] = np.mean(u[u>0])
-      v = RFLN[j, :]
-      v[j] = np.mean(v[v>0])
-      SIMS[i, j] = jacp_smooth(u, v, RFLN.shape[1], False)
-      SIMS[j, i] = SIMS[i, j]
-      if SIMS[i, j] > 1: print(u, "\n\n", v)
 
-  SIMT = adj2df(SIMT)
-  SIMT = SIMT.loc[SIMT.source > SIMT.target].weight.to_numpy()
-  SIMS = adj2df(SIMS)
-  SIMS = SIMS.loc[SIMS.source > SIMS.target].weight.to_numpy()
-  D = adj2df(REF.D[:__nodes__, :__nodes__])
-  D = D.loc[D.source > D.target].weight.to_numpy()
-  data = pd.DataFrame(
-    { 
-      "dist" : list(D) + list(D),
-      "simple" : np.hstack([SIMT, SIMS]),
-      "dir" : ["tar"] * len(SIMT) + ["src"] * len(SIMS)
+  H_DATA = read_class(
+    "../pickle/MAC/57d106/FLN/original/tracto16/57/SINGLE_106_57_l10/ZERO/MIX_Hellinger2_trivial/b_0.0/discovery_7/",
+    "hanalysis"
+  )
+
+  trials = 100
+  D12_edr_tgt = EDR_ensemble(NET, trials)
+  trials, connections = D12_edr_tgt.shape
+  D = np.zeros(connections)
+  e = 0
+  for i in np.arange(NET.nodes):
+    for j in np.arange(i + 1, NET.nodes):
+      D[e] = NET.D[i, j]
+      e += 1
+
+  D = np.tile(D, trials).ravel()
+
+  edr = pd.DataFrame(
+    {
+      "score" : D12_edr_tgt.ravel(),
+      "distance" : D,
+      "network" : ["EDR"] * D.shape[0]
     }
   )
+
+  edr_mean, mean_d12, sd_d12, distance_bin_center = mean_trend(D, edr, "EDR")
+
+  s_data = H_DATA.target_sim_matrix.copy()
+  s_data = -2 * np.log(s_data)
+
+  D = H_DATA.D.copy()[:__nodes__, :__nodes__]
+  n = D.ravel().shape[0]
+
+  data = pd.DataFrame(
+    {
+      "score" : s_data.ravel(),
+      "distance" : D.ravel(),
+      "network" : ["Data"] *  n
+    }
+  )
+
+  data = data.loc[(data["score"] < np.Inf) & (data["distance"] > 0)]
+
+  data_mean, mean_data_d12, sd_data_d12, _ = mean_trend(data["distance"], data, "Data")
+
+  # import statsmodels.api as sm
+
+
+  # X = data["distance"].to_numpy().reshape(-1, 1)
+  # X = sm.add_constant(X)
+  # data_model = sm.OLS(data["score"].to_numpy(), X).fit()
+
+  # l = np.linspace(np.min(D), np.max(D), 100)
+  # data_reg = {
+  #   "distance" : l,
+  #   "score" : data_model.predict(sm.add_constant(l.reshape(-1, 1))),
+  #   "network" : ["Data"] * 100
+  # }
+
+  sns.set_style("whitegrid")
+  sns.set_context("talk")
+
   _, ax = plt.subplots(1, 1)
-  # sns.histplot(
-  #   data=data,
-  #   x="simple",
-  #   hue="dir",
-  #   stat = "density",
-  #   common_norm=False,
-  #   ax=ax
-  # )
+
   sns.scatterplot(
     data=data,
-    x="dist",
-    y="simple",
-    hue="dir",
-    alpha=0.6,
+    x="distance",
+    y="score",
+    hue="network",
+    alpha=0.9,
+    palette={"Data" : sns.color_palette("deep", as_cmap=T)[1]},
+    s=10,
     ax=ax
   )
-  # DD = lb * D
-  # p = -np.log(2) + 1 * (DD - 1) - np.log(1 *(DD + 1) + 1) + 2 * np.log(DD + 1)
-  # data2 = pd.DataFrame(
-  #   {
-  #     "dist" : D,
-  #     "simple": -p
-  #   }
-  # )
-  # sns.lineplot(
-  #   data=data2,
-  #   x="dist",
-  #   y="simple",
-  #   ax=ax
-  # )
-  plt.show()
 
-  # a = np.array([1, 0, 0, 3])
-  # b = np.array([0, 3, 4, 0])
-  # print(jacp(a, b, 4))
-  # pred_sim = 
-  # D = REF.D
-  # p = lambda a, xm, x: xm * np.power(1 - x, -1/a)
-  # data = pd.DataFrame(
-  #   {
-  #    "dist" : p(1.00095, np.nanmin(D[D>0])-1e-8, np.random.rand(100000,))
-  #   }
-  # )
-  # data = data.loc[data.dist < np.nanmax(D)]
-  # _, ax= plt.subplots(1, 1)
-  # sns.histplot(
-  #   data=data,
-  #   x="dist",
-  #   stat="density",
-  #   ax=ax
-  # )
-  # ax.set_yscale("log")
+  sns.lineplot(
+    data=data_mean,
+    x="distance",
+    y="score",
+    hue="network",
+    alpha=0.8,
+    palette={"Data" : sns.color_palette("deep", as_cmap=T)[1]},
+    ax=ax
+  )
+
+  sns.lineplot(
+    data=edr_mean,
+    x="distance",
+    y="score",
+    hue="network",
+    alpha=0.6,
+    markers="o",
+    ax=ax
+  )
+
+  sns.scatterplot(
+    data=data_mean,
+    x="distance",
+    y="score",
+    hue="network",
+    alpha=1,
+    linewidth=1,
+    edgecolors="black",
+    palette={"Data" : sns.color_palette("deep", as_cmap=T)[1]},
+    s=45,
+    ax=ax
+  )
+
+  sns.scatterplot(
+    data=edr_mean,
+    x="distance",
+    y="score",
+    linewidth=1,
+    edgecolors="black",
+    hue="network",
+    alpha=1,
+    s=45,
+    ax=ax
+  )
+
+  ax.fill_between(
+    distance_bin_center,
+    mean_data_d12 + sd_data_d12 / 2,
+    mean_data_d12 - sd_data_d12 / 2, color=sns.color_palette("deep", as_cmap=T)[1],
+    alpha=0.4, edgecolor=None
+  )
+
+  ax.fill_between(
+    distance_bin_center,
+    mean_d12 + sd_d12 / 2,
+    mean_d12 - sd_d12 / 2, color=sns.color_palette("deep", as_cmap=T)[0],
+    alpha=0.4, edgecolor=None
+  )
+
+  plt.ylabel(r"$D_{1/2}^{-}$")
+  plt.xlabel('interareal tractography distances [mm]')
+
   # plt.show()
-  # model_network(D, REF.C, __nodes__, 12)
-  # # Transform data for analysis ----
-  # RFLN, lookup, _ = maps[mapping](
-  #   REF.A, nlog10, lookup, prob, b=bias
-  # )
-  # RFLN = RFLN[:, :__nodes__]
-  # Create network ----
-  # print("Create random graph")
-  # Gn = 0
-  # G = column_normalize(Gn)
-  # # Transform data for analysis ----
-  # REDR, lookup, _ = maps[mapping](
-  #   G, nlog10, lookup, prob, b=bias
-  # )
-  # REDR = REDR[:, :__nodes__]
-  # ## Draw
-  # zeros_fln = RFLN == 0
-  # zeros_edr = REDR == 0
-  # zeros = zeros_fln | zeros_edr
-  # RFLN = RFLN[~zeros]
-  # REDR = REDR[~zeros]
-  # data = pd.DataFrame(
-  #   {
-  #     "edr" : REDR.ravel(),
-  #     "data" : RFLN.ravel()
-  #   }
-  # )
-  # sns.scatterplot(
-  #   data=data,
-  #   x="edr",
-  #   y="data",
-  #   s=5
-  # )
-  # plt.show()
+
+  plt.gcf().set_figwidth(8.5)
+  plt.gcf().set_figheight(6.5)
+  
+
+  cortex_letter_path = "../plots/MAC/57d106/FLN/original/tracto16/57/SINGLE_106_57_l10/"
+
+
+  plt.savefig(
+    os.path.join(cortex_letter_path, "cortex_letter/two_divergences2.svg"), dpi=300, transparent=T
+  )
+  

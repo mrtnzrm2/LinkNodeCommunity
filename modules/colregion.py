@@ -11,7 +11,7 @@ class colregion:
     self.nodes = NET.nodes
     self.auto = False
     # Define auto ----
-    if NET.version == "ellipse" or NET.version == "scalefree":
+    if NET.version == "ellipse" or NET.version == "scalefree" or NET.version == "PTN1200_recon2":
       self.labels = np.arange(NET.nodes).astype(str)
       self.auto = True
     elif "labels" in kwargs.keys():
@@ -58,6 +58,33 @@ class colregion:
       }
     )
     return colors
+  
+  def MUS_region_colors(self):
+    maxc = 255
+    colors = pd.DataFrame(
+      {
+        "REGION" : [
+          "Occipital",
+          "Temporal",
+          "Parietal",
+          "Frontal",
+          "Prefrontal",
+          "Cingulate",
+          "Insular"
+        ],
+        "COLOR" : [
+          to_hex((0 ,97/maxc, 65/maxc)),
+          to_hex((1, 126/maxc, 0)),
+          "#800080",
+          "#fec20c",
+          # "#ffd500",
+          to_hex((237/maxc, 28/maxc, 36/maxc)),
+          "#2a52be",
+          "#FF0080"
+        ]
+      }
+    )
+    return colors
 
   def get_regions(self):
     if self.auto:
@@ -81,9 +108,22 @@ class colregion:
       if self.subject == "MAC":
         # Format area labels from regions ----
         from various.label_format import MAC_areas_regions
-        MAC_areas_regions(self.regions)
+        # MAC_areas_regions(self.regions)
         # Set colors to region dataframe ----
         colors = self.MAC_region_colors()
+        self.regions["COLOR"] = colors.loc[
+          match(
+            self.regions["REGION"],
+            colors["REGION"]
+          ),
+          "COLOR"
+        ].to_numpy()
+      elif self.subject == "MUS":
+        # Format area labels from regions ----
+        from various.label_format import MAC_areas_regions
+        # MAC_areas_regions(self.regions)
+        # Set colors to region dataframe ----
+        colors = self.MUS_region_colors()
         self.regions["COLOR"] = colors.loc[
           match(
             self.regions["REGION"],

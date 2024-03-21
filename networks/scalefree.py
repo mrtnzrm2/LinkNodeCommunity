@@ -5,8 +5,8 @@ from modules.hierarmerge import Hierarchy
 from various.network_tools import *
 
 class SCALEFREE:
-  def __init__(self, iter, linkage, mode, nlog10=False, lookup=False, 
-    cut=False, topology="", mapping="", index="", **kwargs
+  def __init__(self, iter, linkage, mode, benchmark="WDN", nlog10=False, lookup=False, 
+    cut=False, topology="", mapping="", index="", discovery="discovery7", **kwargs
   ) -> None:
     self.nlog10 = nlog10
     self.lookup = lookup
@@ -15,6 +15,7 @@ class SCALEFREE:
     self.index = index
     self.cut = cut
     self.subfolder = f"{topology}_{index}_{mapping}"
+    self.discovery = discovery
     self.folder = "RAN"
     self.version = "scalefree"
     self.parameters = {
@@ -43,20 +44,15 @@ class SCALEFREE:
     # Create common path ----
     self.set_common_path()
     self.common_path = join(
-      self.folder, self.version,
+      self.folder, self.version, benchmark,
       self.common_path, str(iter)
     )
     # Save methods from net_tool ----
     self.column_normalize = column_normalize
     self.save_class = save_class
     self.read_class = read_class
-    ## Define mu-score parameters ----
-    self.Alpha = np.array([6])
-    beta1 = np.linspace(0.01, 0.2, 4)
-    beta2 = np.linspace(0.2, 0.4, 2)[1:]
-    self.Beta = np.hstack((beta1, beta2))
     # Create paths ----
-    self.wdn_path =  join(getcwd(), "cpp/WDN")
+    self.wdn_path =  join(getcwd(), f"cpp/{benchmark}")
     self.plot_path = join(
       "../plots", self.common_path, self.analysis,
       mode, self.subfolder
@@ -64,16 +60,6 @@ class SCALEFREE:
     self.pickle_path = join(
       "../pickle", self.common_path, mode
     )
-    self.regions_path = join(
-      "../CSV/Regions",
-      "Table_areas_regions_09_2019.csv"
-    )
-
-  def set_alpha(self, alpha):
-    self.Alpha = alpha
-  
-  def set_beta(self, beta):
-    self.Beta = beta
 
   def create_plot_path(self):
     Path(self.plot_path).mkdir(exist_ok=True, parents=True)
@@ -167,6 +153,7 @@ class SCALEFREE:
       if k == "-om": continue
       if k == "-nmin": continue
       if k == "-nmax": continue
+      if k == "-fixed_range": continue
       numeric_param[k] = float(parameters[k])
     if "-on" in parameters.keys():
       numeric_param["-on"] = int(parameters["-on"])
@@ -180,9 +167,23 @@ class SCALEFREE:
     if "-nmax" in self.parameters.keys():
       numeric_param["-nmax"] = int(parameters["-nmax"])
     else: numeric_param["-nmax"] = -1
+    if "-fixed_range" in self.parameters.keys():
+      numeric_param["-fixed_range"] = parameters["-fixed_range"]
+    else: numeric_param["-fixed_range"] = False
+    if "-C" in self.parameters.keys():
+      numeric_param["-C"] = int(parameters["-C"])
+    else: numeric_param["-C"] = -1.
     return numeric_param
 
-  def random_WDN_cpp(self, run=True, **kwargs):
+  def random_WDN_cpp(self, run=True, random_seed=None, **kwargs):
+    if random_seed:
+      import random
+      from datetime import datetime
+      random.seed(datetime.now().timestamp())
+      seed = random.randint(0, 10000000)
+
+    else: seed = 12345
+    
     parameters = self.numeric_parameters()
     if run:
       if not exists(self.pickle_path + "/WDN_cpp.pk"):
@@ -197,7 +198,8 @@ class SCALEFREE:
           mut = parameters["-mut"],
           muw = parameters["-muw"],
           nmin = parameters["-nmin"],
-          nmax = parameters["-nmax"]
+          nmax = parameters["-nmax"],
+          seed = seed
         )
         self.dA = np.array(A.get_network())
         self.dA[:, :2] -= 1
@@ -226,3 +228,59 @@ class SCALEFREE:
       self.dA = WDN["dA"]
       self.A = WDN["A"]
       self.labels = WDN["labels"]
+
+
+  def random_WN_cpp(self, run=True, random_seed=None, **kwargs):
+    if random_seed:
+      import random
+      from datetime import datetime
+      random.seed(datetime.now().timestamp())
+      seed = random.randint(0, 10000000)
+
+    else: seed = 12345
+
+    parameters = self.numeric_parameters()
+    if run:
+      if not exists(self.pickle_path + "/WN_cpp.pk"):
+        from WN import WN as wn
+        A = wn(
+          N = parameters["-N"],
+          k = parameters["-k"],
+          maxk = parameters["-maxk"],
+          t1 = parameters["-t1"],
+          t2 = parameters["-t2"],
+          beta = parameters["-beta"],
+          mut = parameters["-mut"],
+          muw = parameters["-muw"],
+          nmin = parameters["-nmin"],
+          nmax = parameters["-nmax"],
+          ca = parameters["-C"],
+          seed = seed
+        )
+        self.dA = np.array(A.get_network())
+        self.dA[:, :2] -= 1
+        self.dA = pd.DataFrame(
+          self.dA, columns=["source", "target", "weight"]
+        )
+        self.A = df2adj(self.dA.copy())
+        self.labels = np.array(A.get_communities(), dtype=int)[:, 1] -1
+        if "on_save_pickle" in kwargs.keys():
+          if kwargs["on_save_pickle"]:
+            self.save_class(
+              {
+                "dA" : self.dA,
+                "A" : self.A,
+                "labels" : self.labels
+              },
+              self.pickle_path, "WN_cpp"
+            )
+      else:
+        WN = self.read_class(self.pickle_path, "WN_cpp")
+        self.dA = WN["dA"]
+        self.A = WN["A"]
+        self.labels = WN["labels"]
+    else:
+      WN = self.read_class(self.pickle_path, "WN_cpp")
+      self.dA = WN["dA"]
+      self.A = WN["A"]
+      self.labels = WN["labels"]

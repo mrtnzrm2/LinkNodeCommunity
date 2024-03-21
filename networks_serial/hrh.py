@@ -2,15 +2,17 @@
 from pathlib import Path
 import numpy as np
 import pandas as pd
+from scipy.cluster.hierarchy import cut_tree
+from collections import Counter
 from os.path import join
-from various.omega import Omega
 # Personal libs ----
 from various.network_tools import *
 from modules.hierarmerge import Hierarchy
+from modules.sign.hierarmerge import Hierarchy as signed_Hierarchy
 from modules.colregion import colregion
 
 class HRH:
-  def __init__(self, H: Hierarchy, L : colregion) -> None:
+  def __init__(self, H, L : colregion, iterations : int) -> None:
     # Load attributes from H ----
     self.linkage = H.linkage
     self.nodes = H.nodes
@@ -18,6 +20,8 @@ class HRH:
     self.dA = H.dA
     self.R = H.R
     self.rcover = H.cover
+    self.source_sim_matrix = H.source_sim_matrix
+    self.target_sim_matrix = H.target_sim_matrix
     self.subfolder = H.subfolder
     # Get labels from L ----
     self.labels = L.labels[:self.nodes]
@@ -26,7 +30,7 @@ class HRH:
     # Node community membership ----
     self.labels_nc = pd.DataFrame()
     # Cover ----
-    self.cover = {}
+    self.cover = {"source" : {}, "target": {}, "both" : {}}
     # Overlap ----
     self.data_overlap = pd.DataFrame()
     # Partition, labels, & covers ----
@@ -42,91 +46,142 @@ class HRH:
     self.link_entropy = pd.DataFrame()
     self.set_entropy_one(H.entropy)
     # Association matrice ----
-    self.association_one = {}
+    self.association_one = {"source" : {}, "target": {}, "both": {}}
     self.association_zero = {}
     for key in self.rcover.keys():
-      self.set_association_one(key)
-      self.association_zero[key] = np.zeros((self.nodes, self.nodes))
+      if len(self.rcover[key]) > 0:
+        self.set_association_one(key)
+        self.association_zero[key] = {k : np.zeros((self.nodes, self.nodes)) for k in self.rcover[key].keys() }
+    # Hierarchical association ----
+    self.hierarchical_association = np.zeros((iterations, self.nodes, self.nodes))
+    # SLN matrices
+    self.sln = {"1" : [], "0": []}
+    self.set_sln_matrix_one(H.data_sln)
     # Set save_class as method ----
     self.save_class = save_class
     self.read_class = read_class
     # Set stats ----
-    self.stats = H.stats
-    self.stats["data"] = "1"
+
+    if hasattr(H, "stats"):
+      self.stats = H.stats
+      self.stats["data"] = "1"
+
+  def set_sln_matrix_one(self, SLN : npt.NDArray):
+    self.sln["1"] = SLN
+
+  def set_sln_matrix_zero(self, SLN : npt.NDArray, key="0"):
+    if key not in self.sln.keys():
+      self.sln[key] = [SLN]
+    else:
+      self.sln[key].append(SLN)
 
   def set_subfolder(self, subfolder):
     self.subfolder = subfolder
 
-  def set_association_one(self, score):
-    self.association_one[score] = np.zeros((self.nodes, self.nodes))
-    # print(self.labels)
-    for key, nodes in self.rcover[score].items():
-      for i in np.arange(len(nodes)):
-        for j in np.arange(i+1, len(nodes)):
-          # print(nodes[i])
-          # print(np.where(self.labels == nodes[i]))
-          x = np.where(self.labels == nodes[i])[0][0]
-          y = np.where(self.labels == nodes[j])[0][0]
-          if key != -1:
-            self.association_one[score][x, y] += 1
-            self.association_one[score][y, x] += 1
-          else:
-            self.association_one[score][x, y] -= 1
-            self.association_one[score][y, x] -= 1
+  def set_hierarchical_association(self, Z, it, perm=(False, None)):
+    for z in np.arange(1, self.nodes):
+      node_partition = cut_tree(Z, n_clusters=z).ravel().astype(int)
+      if perm[0]:
+        node_partition = node_partition[invert_permutation(perm[1])]
+      communities = Counter(node_partition)
+      communities = [k for k in communities.keys() if communities[k] > 1]
+      for k in communities:
+        nodes = np.where(node_partition == k)[0]
+        x, y = np.meshgrid(nodes, nodes)
+        keep = x != y
+        x = x[keep]
+        y = y[keep]
+        self.hierarchical_association[it, x, y] = Z[self.nodes - 1 - z, 2]
+
+  def set_association_one(self, direction : str):
+    self.association_one[direction] = {key: np.zeros((self.nodes, self.nodes)) for key in self.rcover[direction].keys()}
+    for score, covers in self.rcover[direction].items():
+      for nodes in covers.values():
+        for i in np.arange(len(nodes)):
+          for j in np.arange(i+1, len(nodes)):
+            x = np.where(self.labels == nodes[i])[0][0]
+            y = np.where(self.labels == nodes[j])[0][0]
+            if score != -1:
+              self.association_one[direction][score][x, y] += 1
+              self.association_one[direction][score][y, x] += 1
+            else:
+              self.association_one[direction][score][x, y] -= 1
+              self.association_one[direction][score][y, x] -= 1
   
-  def set_association_zero(self, score, cover : dict):
+  def set_association_zero(self, score, cover : dict, direction : str):
     for key, nodes in cover.items():
       for i in np.arange(len(nodes)):
         for j in np.arange(i+1, len(nodes)):
           x = np.where(self.labels == nodes[i])[0][0]
           y = np.where(self.labels == nodes[j])[0][0]
           if key != -1:
-            self.association_zero[score][x, y] += 1
-            self.association_zero[score][y, x] += 1
+            self.association_zero[direction][score][x, y] += 1
+            self.association_zero[direction][score][y, x] += 1
           else:
-            self.association_zero[score][x, y] -= 1
-            self.association_zero[score][y, x] -= 1
+            self.association_zero[direction][score][x, y] -= 1
+            self.association_zero[direction][score][y, x] -= 1
 
   def set_various_labels(self, NET_H : Hierarchy):
     for i in np.arange(NET_H.kr.shape[0]):
-      r = NET_H.kr.R.iloc[i]
       score = NET_H.kr.score.iloc[i]
-      rlabels = get_labels_from_Z(self.Z, r)
-      overlap_labels = NET_H.overlap.labels.loc[NET_H.overlap.score == score].to_numpy()
-      self.set_overlap_data_one(overlap_labels, score)
-      self.set_nodes_labels(rlabels, score)
-      # Cover
-      self.set_cover_one(NET_H.cover[score], score)
+
+      # NOCs----
+      overlap_labels = NET_H.overlap.labels.loc[
+        (NET_H.overlap.score == score) & (NET_H.overlap.direction == "source")
+      ].to_numpy()
+      self.set_overlap_data_one(overlap_labels, score, "source")
+      overlap_labels = NET_H.overlap.labels.loc[
+        (NET_H.overlap.score == score) & (NET_H.overlap.direction == "target")
+      ].to_numpy()
+      self.set_overlap_data_one(overlap_labels, score, "target")
+      overlap_labels = NET_H.overlap.labels.loc[
+        (NET_H.overlap.score == score) & (NET_H.overlap.direction == "both")
+      ].to_numpy()
+      self.set_overlap_data_one(overlap_labels, score, "both")
+
+      # Cover ----
+      self.set_cover_one(NET_H.cover, score, "target")
+      self.set_cover_one(NET_H.cover, score, "source")
+      self.set_cover_one(NET_H.cover, score, "both")
+
+      # Rlabels ----
+      if "source" in list(NET_H.rlabels.keys()):
+        self.set_nodes_labels(NET_H.rlabels["source"]["labels"], score, "source")
+      if "target" in list(NET_H.rlabels.keys()):
+        self.set_nodes_labels(NET_H.rlabels["target"]["labels"], score, "target")
+      if "both" in list(NET_H.rlabels.keys()):
+        self.set_nodes_labels(NET_H.rlabels["both"]["labels"], score, "both")
 
   def set_entropy_one(self, s):
-    dim = s[0].shape[1]
-    self.node_entropy = pd.concat(
-      [
-        self.node_entropy,
-        pd.DataFrame(
-          {
-            "S" : np.hstack([s[0].ravel(), s[1].ravel()]), "data" : ["1"] * 4 * dim,
-            "c" : ["node_hierarchy"] * 2 * dim  + ["node_hierarch_H"] * 2 * dim,
-            "dir" : ["H"] * dim + ["V"] * dim + ["H"] * dim + ["V"] * dim,
-            "level" : np.tile(np.arange(dim, 0, -1), 4), "iter" : [np.nan] * 4 * dim
-          } 
-        )
-      ], ignore_index=True
-    )
-    dim = s[2].shape[1]
-    self.link_entropy = pd.concat(
-      [
-        self.link_entropy,
-        pd.DataFrame(
-          {
-            "S" : np.hstack([s[2].ravel(), s[3].ravel()]), "data" : ["1"] * 4 * dim,
-            "c" : ["link_hierarchy"] * 2 * dim  + ["link_hierarch_H"] * 2 * dim,
-            "dir" : ["H"] * dim + ["V"] * dim + ["H"] * dim + ["V"] * dim,
-            "level" : np.tile(np.arange(dim, 0, -1), 4), "iter" : [np.nan] * 4 * dim
-          }
-        )
-      ], ignore_index=True
-    )
+    if len(s) > 0:
+      dim = s[0].shape[1]
+      self.node_entropy = pd.concat(
+        [
+          self.node_entropy,
+          pd.DataFrame(
+            {
+              "S" : np.hstack([s[0].ravel(), s[1].ravel()]), "data" : ["1"] * 4 * dim,
+              "c" : ["node_hierarchy"] * 2 * dim  + ["node_hierarch_H"] * 2 * dim,
+              "dir" : ["H"] * dim + ["V"] * dim + ["H"] * dim + ["V"] * dim,
+              "level" : np.tile(np.arange(0, dim), 4), "iter" : [np.nan] * 4 * dim
+            } 
+          )
+        ], ignore_index=True
+      )
+      dim = s[2].shape[1]
+      self.link_entropy = pd.concat(
+        [
+          self.link_entropy,
+          pd.DataFrame(
+            {
+              "S" : np.hstack([s[2].ravel(), s[3].ravel()]), "data" : ["1"] * 4 * dim,
+              "c" : ["link_hierarchy"] * 2 * dim  + ["link_hierarch_H"] * 2 * dim,
+              "dir" : ["H"] * dim + ["V"] * dim + ["H"] * dim + ["V"] * dim,
+              "level" : np.tile(np.arange(0, dim), 4), "iter" : [np.nan] * 4 * dim
+            }
+          )
+        ], ignore_index=True
+      )
 
   def set_entropy_zero(self, s):
     dim = s[0].shape[1]
@@ -138,7 +193,7 @@ class HRH:
             "S" : np.hstack([s[0].ravel(), s[1].ravel()]), "data" : ["0"] * 4 * dim,
             "c" : ["node_hierarchy"] * 2 * dim  + ["node_hierarch_H"] * 2 * dim,
             "dir" : ["H"] * dim + ["V"] * dim + ["H"] * dim + ["V"] * dim,
-            "level" : np.tile(np.arange(dim, 0, -1), 4),
+            "level" : np.tile(np.arange(0, dim), 4),
             "iter" : [(self.iter+1)] * dim + [-(self.iter+1)] * dim + [(self.iter+1)] * dim + [-(self.iter+1)] * dim
           } 
         )
@@ -153,7 +208,7 @@ class HRH:
             "S" : np.hstack([s[2].ravel(), s[3].ravel()]), "data" : ["0"] * 4 * dim,
             "c" : ["link_hierarchy"] * 2 * dim  + ["link_hierarch_H"] * 2 * dim,
             "dir" : ["H"] * dim + ["V"] * dim + ["H"] * dim + ["V"] * dim,
-            "level" : np.tile(np.arange(dim, 0, -1), 4),
+            "level" : np.tile(np.arange(0, dim), 4),
             "iter" : [(self.iter+1)] * dim + [-(self.iter+1)] * dim + [(self.iter+1)] * dim + [-(self.iter+1)] * dim
           }
         )
@@ -198,13 +253,14 @@ class HRH:
       ignore_index=True
     )
   
-  def set_overlap_data_one(self, overlap, score):
+  def set_overlap_data_one(self, overlap, score, direction):
     w = [i for i, nd in enumerate(self.labels) if nd in overlap]
     subdata = pd.DataFrame(
       {
         "Areas" : self.labels[w],
         "data" : ["1"] * len(w),
-        "score" : [score] * len(w)
+        "score" : [score] * len(w),
+        "direction" : [direction] * len(w)
       }
     )
     self.data_overlap = pd.concat(
@@ -212,14 +268,16 @@ class HRH:
       ignore_index=True
     )
 
-  def set_cover_one(self, cover, score):
-    self.cover[score] = cover
+  def set_cover_one(self, cover, score, direction):
+    if score in list(cover[direction].keys()):
+      self.cover[direction][score] = cover[direction][score]
 
-  def set_nodes_labels(self, labels, score):
+  def set_nodes_labels(self, labels, score, direction):
     sublabels = pd.DataFrame(
       {
         "id" : labels,
-        "score" : [score] * len(labels)
+        "score" : [score] * len(labels),
+        "direction" : [direction] * len(labels)
       }
     )
     self.labels_nc = pd.concat(
@@ -238,11 +296,6 @@ class HRH:
       ignore_index=True
     )
 
-  def set_labels_average(self, WSBM, K, R, on=False):
-    if on:
-      print("Set data labels for average-linkage")
-      self.labels_nc = WSBM.pick_pair(K, R)
-
   def minus_one_labels(self, dA, labels):
     d = pd.DataFrame(
       {
@@ -257,19 +310,23 @@ class HRH:
   def set_iter(self, it):
     self.iter = it
 
-  def set_clustering_similarity(self, l2, cover, score):
-    labels = self.labels_nc.id.loc[self.labels_nc.score == score].to_numpy()
+  def set_clustering_similarity(self, l2, cover, score, direction : str):
+    labels = self.labels_nc.id.loc[
+      (self.labels_nc.score == score) & (self.labels_nc.direction == direction)
+    ].to_numpy()
     #create subdata ----
     subdata = pd.DataFrame(
       {
         "sim" : ["NMI", "OMEGA"],
         "values" : [
-          AD_NMI_overlap(labels, l2, self.cover[score], cover),
-          omega_index(cover, self.cover[score])
+          AD_NMI_overlap(labels, l2),
+          # modAD_NMI_overlap(cover, self.cover[direction][score]),
+          omega_index(cover, self.cover[direction][score])
         ],
         "c" : ["node community"] * 2,
         "iter" : [self.iter] * 2,
-        "score" : [score] * 2
+        "score" : [score] * 2,
+        "direction" : [direction] * 2
       }
     )
     # Merge with data ----
@@ -278,7 +335,7 @@ class HRH:
       ignore_index=True
     )
 
-  def set_pickle_path(self, H : Hierarchy, bias=0):
+  def set_pickle_path(self, H : Hierarchy):
      # Get pickle location ----
     pickle_path = H.pickle_path.split("/")
     self.pickle_path = ""
@@ -290,10 +347,10 @@ class HRH:
     self.pickle_path = join(
       self.pickle_path, H.mode, H.subfolder
     )
-    self.pickle_path = join(self.pickle_path, f"b_{bias}")
+    self.pickle_path = join(self.pickle_path, H.discovery)
     Path(self.pickle_path).mkdir(exist_ok=True, parents=True)
 
-  def set_plot_path(self, H : Hierarchy, bias=0):
+  def set_plot_path(self, H : Hierarchy):
     plot_path = H.plot_path.split("/")
     self.plot_path = ""
     for i in np.arange(len(plot_path)):
@@ -304,17 +361,18 @@ class HRH:
     self.plot_path = join(
       self.plot_path, H.mode, H.subfolder
     )
-    self.plot_path = join(self.plot_path, f"b_{bias}")
+    self.plot_path = join(self.plot_path, H.discovery)
     Path(self.plot_path).mkdir(exist_ok=True, parents=True)
 
-  def set_overlap_data_zero(self, overlap, score):
+  def set_overlap_data_zero(self, overlap, score, direction):
     if len(overlap) > 0:
       w = [i for i, nd in enumerate(self.labels) if nd in overlap]
       subdata = pd.DataFrame(
         {
           "Areas" : self.labels[w],
           "data" : ["0"] * len(w),
-          "score" : [score] * len(w)
+          "score" : [score] * len(w),
+          "direction": [direction] * len(w)
         }
       )
       self.data_overlap = pd.concat(

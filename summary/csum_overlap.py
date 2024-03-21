@@ -17,21 +17,22 @@ from pathlib import Path
 from various.network_tools import *
 
 # Declare iter variables ----
+benchmark = ["WN", "WDN"]
 number_of_nodes = [100, 150]
 topologies = ["MIX"]
-indices = ["D1_2_4"]
-MUT = [0.1, 0.3]
+indices = ["Hellinger2"]
+MUT = np.linspace(0.1, 0.8, 10)
 NMIN = [5]
 NMAX = [25]
-ON = [0.1, 0.2]
+ON = [0.1]
 OM = [2, 3, 4]
-discovery = ["discovery_3", "discovery_4", "discovery_6"]
+discovery = ["discovery_7"]
 list_of_lists = itertools.product(
-  *[number_of_nodes, topologies, indices, MUT, NMIN, NMAX, ON, OM, discovery]
+  *[benchmark, number_of_nodes, topologies, indices, MUT, NMIN, NMAX, ON, OM, discovery]
 )
 list_of_lists = np.array(list(list_of_lists))
 # Constant parameters ---
-MAXI = 51
+MAXI = 100
 linkage = "single"
 nlog10 = F
 lookup = F
@@ -46,11 +47,11 @@ _cut = ""
 if nlog10: l10 = "_l10"
 if lookup: lup = "_lup"
 if cut: _cut = "_cut"
-opt_score = ["_D", "_S"]
+opt_score = ["_S"]
 if __name__ == "__main__":
   # Extract data ----
   THE_DF = pd.DataFrame()
-  for __nodes__, topology, index, mut, nmin, nmax, on, om, dis in list_of_lists:
+  for mark, __nodes__, topology, index, mut, nmin, nmax, on, om, dis in list_of_lists:
     __nodes__ = int(__nodes__)
     nmin = int(nmin)
     nmax = int(nmax)
@@ -66,16 +67,17 @@ if __name__ == "__main__":
       "-maxk" : "20",
       "-mut" : f"{mut}",
       "-muw" : "0.01",
-      "-beta" : "3",
+      "-beta" : "2",
       "-t1" : "2",
-      "-t2" : "1",
+      "-t2" : "3",
       "-nmin" : f"{nmin}",
       "-nmax" : f"{nmax}",
       "-on" : f"{on}",
       "-om" : f"{om}"
     }
     data = read_class(
-      "../pickle/RAN/scalefree/-N_{}/-k_{}/-maxk_{}/-mut_{}/-muw_{}/-beta_{}/-t1_{}/-t2_{}/-nmin_{}/-nmax_{}/-on_{}/-om_{}/{}/{}/{}/{}/{}".format(
+      "../pickle/RAN/scalefree/{}/-N_{}/-k_{}/-maxk_{}/-mut_{}/-muw_{}/-beta_{}/-t1_{}/-t2_{}/-nmin_{}/-nmax_{}/-on_{}/-om_{}/{}/{}/{}/{}/{}".format(
+        mark,
         str(__nodes__),
         par["-k"], par["-maxk"],
         par["-mut"], par["-muw"],
@@ -86,54 +88,72 @@ if __name__ == "__main__":
       ),
       "series_{}".format(MAXI)
     )
+
     if isinstance(data, int): continue
-    # print(data.data.shape[0])
-    # nnmi = data.data.loc[data.data.sim == "NMI"].shape[0]
-    nomega = data.data.loc[data.data.sim == "NMI"].shape[0]
+
+    omega_label = r"$\omega$"
+    mut_label = r"$\mu_{t}$"
+    
+
+    filtered_data = data.data.loc[
+      (data.data["c"] == "_D") &
+      (data.data["sim"] == "OMEGA") 
+    ]
+
+    nrows = filtered_data.shape[0]
+
     THE_DF = pd.concat(
       [
         THE_DF, 
         pd.DataFrame(
           {
-            "val" : data.data["values"].loc[data.data.sim == "OMEGA"].to_numpy().astype(float),
-            "sim" : ["OMEGA"] * nomega,
-            "score" : [f"{index}{s}" for s in data.data.c.loc[data.data.sim == "OMEGA"]],
-            "topology": [f"{topology}"] * (nomega),
-            "mut" : [mut] * (nomega),
-            "size" : [f"{nmin}_{nmax}"] * (nomega),
-            "overlapping" : [f"{on}_{om}"] * (nomega),
-            "discovery" : [dis] * nomega
+            omega_label : filtered_data["values"].to_numpy().astype(float),
+            mut_label : [np.round(mut, 2)] * (nrows),
+            "Om" : [f"{om}"] * (nrows),
+            "nodes" : [int(__nodes__)] * (nrows),
+            "benchmark" : [mark] * (nrows)
           }
         )
       ], ignore_index=T
     )
-  THE_DF.val.loc[np.isnan(THE_DF.val)] = 0
-  list_of_lists = itertools.product(*[number_of_nodes, topologies, ON, OM])
-  for __nodes__, tp, on, om in list_of_lists:
-    __nodes__ = int(__nodes__)
-    on = float(on)
-    on = int(__nodes__ * on)
-    print(tp, on, om)
-    # Prepare path ----
-    IM_ROOT =  "../plots/RAN/scalefree/-N_{}/-k_7.0/-maxk_20/{}/{}{}{}{}/{}_{}".format(
-      str(__nodes__), MAXI, linkage.upper(), l10, lup, _cut, on, om
+
+  # Prepare plot ----
+  IM_ROOT =  "../plots/RAN/scalefree/"
+
+  # sns.set_context("talk")
+  sns.set_style("whitegrid")
+ 
+  g=sns.relplot(
+    data=THE_DF,
+    kind="line",
+    col="nodes", row="benchmark",
+    hue="Om", x=mut_label, y=omega_label,
+    alpha=0.8
+  )
+
+  par = [("WN", 100), ("WN", 150), ("WDN", 100), ("WDN", 150)]
+
+  for i, ax in enumerate(g.axes.flatten()):
+    b, n = par[i]
+    subdata = THE_DF.loc[(THE_DF["benchmark"] == b) & (THE_DF["nodes"] == n)]
+    subdata = subdata.groupby([mut_label, "Om"])[omega_label].mean().reset_index()
+    sns.scatterplot(
+      data=subdata,
+      x=mut_label, y=omega_label,
+      hue="Om",
+      s=50,
+      ax=ax
     )
-    # Prepare data ----
-    x = THE_DF.loc[(THE_DF.topology == tp) & (THE_DF.overlapping == f"{on}_{om}")]
-    if x.shape[0] == 0: continue
-    sns.catplot(
-      data=x,
-      x="val",
-      y="score",
-      col="discovery",
-      # row="sim",
-      hue="mut",
-      kind="box"
-    )
-    Path(IM_ROOT).mkdir(exist_ok=True, parents=True)
-    plt.savefig(
-      os.path.join(
-        IM_ROOT, f"O_{tp}_{__mode__}.png"
-      ),
-      dpi = 300
-    )
+
+
+  plt.gcf().tight_layout()
+
+  Path(IM_ROOT).mkdir(exist_ok=True, parents=True)
+  plt.savefig(
+    os.path.join(
+      IM_ROOT, "omega.svg"
+    ),
+    # dpi = 300,
+    transparent=T
+  )
+  plt.close()

@@ -1,10 +1,10 @@
 # Standard libs ----
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 #  Personal libs ----
 from various.network_tools import *
 from various.discovery_channel import *
-import copy
 from modules.simanalysis import Sim
 from process_hclust import ph
 from la_arbre_a_merde import noeud_arbre
@@ -12,7 +12,7 @@ from h_entropy import h_entropy as HE
 
 class Hierarchy(Sim):
   def __init__(
-    self, G, A, R, D, nodes, linkage, mode, lookup=0, alpha=0, undirected=False
+    self, G, A, R, D, nodes, linkage, mode, lookup=0, alpha=0, undirected=False, index="Hellinger2"
   ):
     # Initialize Sim ---
     super().__init__(
@@ -23,23 +23,23 @@ class Hierarchy(Sim):
     # Set parameters
     self.linkage = linkage
     self.cut = G.cut
-    self.alpha = G.Alpha
-    self.beta = G.Beta
     self.pickle_path = G.pickle_path
     self.plot_path = G.plot_path
     self.subfolder = G.subfolder
+    self.discovery = G.discovery
     self.analysis = G.analysis
     # Compute similarity matrix ----
     self.similarity_by_feature_cpp()
     # Compute distance matrix ----
-    self.dist_mat = 1 - self.linksim_matrix
-    # self.dist_mat = self.linksim_matrix
-    # ###
-    # self.dist_mat[self.dist_mat != 0] -= np.nanmax(self.dist_mat[self.dist_mat != 0]) + 0.001
-    # ##
-    # self.dist_mat[self.dist_mat == 0] = np.nan
-    # self.dist_mat = np.nanmax(self.dist_mat) - self.dist_mat
-    # self.dist_mat[np.isnan(self.dist_mat)] = np.nanmax(self.dist_mat) + 1
+    if index == "D1_2_4" or index == "dist_sim":
+      np.seterr(divide='ignore', invalid='ignore')
+      self.dist_mat = (1 / self.linksim_matrix) - 1
+      self.dist_mat[self.dist_mat == np.Inf] = np.max(self.dist_mat[self.dist_mat < np.Inf]) * 1.001
+    else:
+      self.dist_mat = 1 - self.linksim_matrix
+
+    # print()
+    # print(np.sum(self.dist_mat == -np.Inf))
     # Compute hierarchy ----
     self.H = self.get_hierarchy()
     self.delete_linksim_matrix()
@@ -66,25 +66,90 @@ class Hierarchy(Sim):
     self.stat_cor()
     # Overlaps ----
     self.overlap = pd.DataFrame()
+    # Rlabels ----
+    self.rlabels = {}
     # Cover ---
-    self.cover = {}
+    self.cover = {"source" : {}, "target" : {}, "both" : {}}
     # KR ----
     self.kr = pd.DataFrame()
     # Entropy ----
     self.entropy = []
-    # Discovery channel ----
-    self.discovery_channel = {
-      "discovery_3" : discovery_3,
-      "discovery_4" : discovery_4,
-      "discovery_5" : discovery_5,
-      "discovery_6" : discovery_6
-    }
 
   def delete_linksim_matrix(self):
     self.linksim_matrix = 0
     
   def delete_dist_matrix(self):
     self.dist_mat = 0
+
+  def get_h21merge(self):
+    from scipy.cluster.hierarchy import cut_tree
+    self.h21merge = np.zeros(self.nodes)
+    for i in np.arange(self.nodes):
+      h2i = 1.01
+      for k in np.arange(self.Z.shape[0], 0, -1):
+        partition = cut_tree(self.Z, n_clusters=k).ravel()
+        if np.sum(partition == partition[i]) > 1:
+          h2i = self.Z[self.Z.shape[0] - k, 2]
+          # h2i = k
+          break 
+      self.h21merge[i] = h2i
+
+  def get_data_firstmerge(self, SLN : npt.NDArray, cover : dict, labels):
+
+    Z = len(cover.keys())
+    membership_matrix = np.arange(Z**2).reshape(Z, Z)
+    h = []
+    b = []
+    source = []
+    target = []
+    connection_memberships = []
+
+    # print(dendrogram)
+
+    cover_indices = {c: match(l, labels) for c, l in cover.items()}
+
+    for c1, li1 in cover_indices.items():
+      for c2, li2 in cover_indices.items():
+        for i in li1:
+          for j in li2:
+            if i == j: continue
+            if self.A[i, j] != 0 and not np.isnan(SLN[i,j]):
+              connection_memberships.append(membership_matrix[c1, c2])
+              # if labels[i] == "v1" and labels[j] == "rl":
+              #   print(h2_1merge[i], h2_1merge[j], SLN[i,j])
+              b.append(SLN[i,j])
+              h_diff = self.h21merge[i] - self.h21merge[j]
+              h.append(h_diff)
+              source.append(labels[i])
+              target.append(labels[j])
+
+    b = np.array(b)
+    if np.sum(np.isnan(b)) > 0:
+      raise RuntimeError("There area nans in the SLN matrix.")
+    h = np.array(h)
+    connection_memberships = np.array(connection_memberships).astype(int).astype(str)
+
+    return pd.DataFrame({
+      "SLN" : b,
+      fr"$H^{2}_i-H^{2}_j$ @ first merge" : h,
+      "group" : connection_memberships,
+      "source" : source,
+      "target" : target
+    })
+  
+  def get_sln_matrix(self, data, cover : dict):
+    Z = len(cover)
+    membership_matrix = np.arange(Z**2).reshape(Z, Z)
+    average_sln_membership = np.zeros((Z,Z))
+
+    for zi in np.arange(Z):
+      for zj in np.arange(Z):
+        x = data["SLN"].loc[data["group"] == membership_matrix[zi, zj].astype(int).astype(str)]
+        if x.shape[0] > 0:
+          average_sln_membership[zi, zj] = np.mean(x)
+        else: average_sln_membership[zi, zj] = np.nan
+
+    return average_sln_membership
 
   def set_kr(self, k, r, score=""):
     self.kr = pd.concat(
@@ -103,6 +168,8 @@ class Hierarchy(Sim):
   def get_hierarchy(self):
     print("Compute link hierarchical agglomeration ----")
     from scipy.cluster.hierarchy import linkage
+    from scipy.spatial.distance import squareform
+    # print(squareform(self.dist_mat))
     return linkage(self.dist_mat, self.linkage)
 
   def area(self, x, y):
@@ -319,8 +386,8 @@ class Hierarchy(Sim):
     self.BH.append(
       pd.DataFrame(
         {
-          "alpha" : np.zeros(results_no_mu.shape[1]),
-          "beta" : np.zeros(results_no_mu.shape[1]),
+          # "alpha" : np.zeros(results_no_mu.shape[1]),
+          # "beta" : np.zeros(results_no_mu.shape[1]),
           "K" : results_no_mu[0, :],
           "height" : results_no_mu[1, :],
           "NEC" : results_no_mu[2, :],
@@ -446,16 +513,23 @@ class Hierarchy(Sim):
 
     entropy.arbre(dist)
     max_level = entropy.get_max_level()
+
+    ento = entropy.get_entropy_h()[(self.leaves - max_level-1):]
+    ento_h = entropy.get_entropy_v()[(self.leaves - max_level-1):]
     self.link_entropy = np.array(
-      [entropy.get_entropy_h()[(self.leaves - max_level-1):], entropy.get_entropy_v()[(self.leaves - max_level-1):]]
+      [np.hstack([ento[1:], ento[0]]), np.hstack([ento_h[1:], ento_h[0]])]
     )
     total_entropy = np.sum(self.link_entropy)
     self.link_entropy = self.link_entropy / total_entropy
+
+    ento = entropy.get_entropy_h_H()[(self.leaves - max_level-1):]
+    ento_h = entropy.get_entropy_v_H()[(self.leaves - max_level-1):]
     self.link_entropy_H = np.array(
-      [entropy.get_entropy_h_H()[(self.leaves - max_level-1):], entropy.get_entropy_v_H()[(self.leaves - max_level-1):]]
+       [np.hstack([ento[1:], ento[0]]), np.hstack([ento_h[1:], ento_h[0]])]
     )
     total_entropy_H = np.sum(self.link_entropy_H)
     self.link_entropy_H = self.link_entropy_H / total_entropy_H
+
     sh = np.nansum(self.link_entropy[0, :])
     sv = np.nansum(self.link_entropy[1, :])
     print(f"\n\tlink entropy :  Sh : {sh:.4f}, and Sv : {sv:.4f}\n")
@@ -479,16 +553,23 @@ class Hierarchy(Sim):
 
     entropy.arbre(dist)
     max_level = entropy.get_max_level()
+
+    ento = entropy.get_entropy_h()[(self.nodes - max_level-1):]
+    ento_h = entropy.get_entropy_v()[(self.nodes - max_level-1):]
     self.node_entropy = np.array(
-      [entropy.get_entropy_h()[(self.nodes - max_level-1):], entropy.get_entropy_v()[(self.nodes - max_level-1):]]
+      [np.hstack([ento[1:], ento[0]]), np.hstack([ento_h[1:], ento_h[0]])]
     )
     total_entropy = np.sum(self.node_entropy)
     self.node_entropy = self.node_entropy / total_entropy
+
+    ento = entropy.get_entropy_h_H()[(self.nodes - max_level-1):]
+    ento_h = entropy.get_entropy_v_H()[(self.nodes - max_level-1):]
     self.node_entropy_H = np.array(
-      [entropy.get_entropy_h_H()[(self.nodes - max_level-1):], entropy.get_entropy_v_H()[(self.nodes - max_level-1):]]
+      [np.hstack([ento[1:], ento[0]]), np.hstack([ento_h[1:], ento_h[0]])]
     )
     total_entropy_H = np.sum(self.node_entropy_H)
     self.node_entropy_H = self.node_entropy_H / total_entropy_H
+    
     sh = np.nansum(self.node_entropy[0, :])
     sv = np.nansum(self.node_entropy[1, :])
     print(f"\n\tNode entropy :  Sh : {sh:.4f}, and Sv : {sv:.4f}\n")
@@ -497,7 +578,7 @@ class Hierarchy(Sim):
     print(f"\n\tNode entropy H: Sh : {sh:.4f}, and Sv : {sv:.4f}\n")
 
 
-  def la_abre_a_merde_cpp(self, features, sp=25):
+  def la_abre_a_merde_cpp(self, features, undirected=None, sp=25):
     print("Compute node hierarchy ----")
     # Get network dataframe ----
     dA =  self.dA.copy()
@@ -509,6 +590,12 @@ class Hierarchy(Sim):
     else:
       linkage = -1
       raise ValueError("Link community model has not been tested with the input linkage.")
+    if not undirected: undirected = self.undirected
+
+    if isinstance(undirected, bool):
+      if undirected: undirected = 1
+      else: undirected = 0
+      
     # Run la_abre_a_merde_vite ----
     if features.K.iloc[-1] != 1:
       features = pd.concat(
@@ -542,7 +629,7 @@ class Hierarchy(Sim):
       linkage,
       features.shape[0],
       sp,
-      self.undirected
+      undirected
     )
     self.Z = NH.get_node_hierarchy()
     self.Z = np.array(self.Z)
@@ -607,7 +694,10 @@ class Hierarchy(Sim):
     model = LinearRegression()
     from scipy.stats import pearsonr
     ## Similarities ----
-    r = pearsonr(dOUT, dIN)
+    if np.unique(dOUT).shape[0] == 1 or np.unique(dIN).shape[0] == 1:
+      r = [np.nan] *2
+    else:
+      r = pearsonr(dOUT, dIN)
     model.fit(dOUT.reshape(-1, 1), dIN)
     r2 = model.score(dOUT.reshape(-1, 1), dIN)
     self.stats = pd.DataFrame(
@@ -620,7 +710,10 @@ class Hierarchy(Sim):
       }
     )
     ## t. similarity - distance ----
-    r = pearsonr(dD, dIN)
+    if np.unique(dD).shape[0] == 1 or np.unique(dIN).shape[0] == 1:
+      r = [np.nan] *2
+    else:
+      r = pearsonr(dD, dIN)
     model.fit(dD.reshape(-1, 1), dIN)
     r2 = model.score(dD.reshape(-1, 1), dIN)
     self.stats = pd.concat(
@@ -639,7 +732,10 @@ class Hierarchy(Sim):
     )
     
     ## s. similarity - distance ----
-    r = pearsonr(dD, dOUT)
+    if np.unique(dD).shape[0] == 1 or np.unique(dOUT).shape[0] == 1:
+      r = [np.nan] *2
+    else:
+      r = pearsonr(dD, dOUT)
     model.fit(dD.reshape(-1, 1), dOUT)
     r2 = model.score(dD.reshape(-1, 1), dOUT)
     self.stats = pd.concat(
@@ -703,11 +799,12 @@ class Hierarchy(Sim):
       ignore_index=True
     )
 
-  def set_overlap_labels(self, labels, score):
+  def set_overlap_labels(self, labels, score, direction):
     subdata = pd.DataFrame(
       {
         "labels": labels,
-        "score" : [score] * len(labels)
+        "score" : [score] * len(labels),
+        "direction" : [direction] * len(labels)
       }
     )
     self.overlap = pd.concat(
@@ -715,10 +812,54 @@ class Hierarchy(Sim):
       ignore_index=True
     )
   
-  def set_cover(self, cover, score):
-    self.cover[score] = cover
+  def set_cover(self, cover, score, direction : str):
+    self.cover[direction][score] = cover
+
+  def set_rlabels(self, rlabels, score, direction):
+    none = np.sum(rlabels == -1)
+    labels = rlabels.copy()
+    labels[labels == -1] = np.arange(np.max(labels) + 1, np.max(labels) + 1 + none)
+    self.rlabels[direction] = {"labels" : labels, "score" : score}
 
   def get_ocn(self, *args):
     labels = self.colregion.labels[:self.nodes]
     overlap = skim_partition(args[0])
     return np.array([labels[i] for i, l in enumerate(overlap) if l == -1])
+  
+  def set_data_sln(self, data):
+    self.data_sln = data
+
+  def align_sln_covers_R(self, SLN : npt.NDArray, cover : dict, csv_path : str, output_name="cover_sln_order.csv"):
+    from pathlib import Path
+    import subprocess
+    from os.path import join
+
+    sln_path = join(csv_path, "sln")
+    cover_sln_matrix_name = "cover_sln_matrix.csv"
+    cover_sln_order_name = output_name
+    Path(sln_path).mkdir(exist_ok=True, parents=True)
+
+    labels = [f"C{i}" for i in np.arange(len(cover))]
+    sln_pd = pd.DataFrame(SLN, index=labels, columns=labels).to_csv(join(sln_path, cover_sln_matrix_name))
+
+
+    subprocess.run(["Rscript", "R/beta_binomial_SLN.R", sln_path, cover_sln_matrix_name, cover_sln_order_name])
+
+    coefs = pd.read_csv(join(sln_path, cover_sln_order_name), header=0, index_col=0)
+    beta = coefs["beta"].values
+    ord = np.argsort(-beta)
+    pos_ord = np.array([np.where(ord == i)[0][0] for i in np.arange(len(cover))])
+
+    cover_aligned = {pos_ord[i]: val for i, (k, val) in enumerate(cover.items())} 
+    return cover_aligned, pos_ord
+  
+  def reorder_nodes_in_cover_H2(self, cover : dict, labels : npt.ArrayLike):
+    cov = cover.copy()
+    for c, areas in cover.items():
+      nd_areas = np.array([np.where(labels == a)[0][0] for a in areas])
+      h2_areas = self.h21merge[nd_areas]
+      ord_h2 = np.argsort(h2_areas)
+      cov[c] = [areas[ord_h2[i]] for i in np.arange(len(areas))]
+
+    return cov
+    

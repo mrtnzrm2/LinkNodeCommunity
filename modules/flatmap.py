@@ -6,21 +6,19 @@ from pathlib import Path
 import seaborn as sns
 
 class FLATMAP:
-  def __init__(self, NET, regions, **kwargs) -> None:
+  def __init__(self, nodes, version, labels, regions, plot_path, **kwargs) -> None:
     # Get NET parameters ----
-    self.nodes = NET.nodes
-    self.version = NET.version
+    self.nodes = nodes
+    self.version = version
     if "EC" in kwargs.keys():
       if kwargs["EC"]:
-        self.struct_labels = NET.struct_labels[:NET.nodes]
+        self.struct_labels = labels[:nodes]
       else:
-        self.struct_labels = NET.struct_labels
+        self.struct_labels = labels
     else:
-      self.struct_labels = NET.struct_labels
+      self.struct_labels = labels
     self.struct_labels = np.char.lower(self.struct_labels.astype(str))    # Pay attention: could vary!!!
-    self.overlap = NET.overlap
-    self.overlap = np.char.lower(self.overlap.astype(str))     # Pay attention: could vary!!!
-    self.plot_path = join(NET.plot_path, "flatmap")
+    self.plot_path = join(plot_path, "flatmap")
     # Set attributes ----
     self.regions = regions
 
@@ -69,7 +67,7 @@ class FLATMAP:
       (self.regions["AREA"] != "v4lf")
     ]
     # Add new areas ----
-    ## structu_labels
+    ## struct_labels
     self.struct_labels = np.hstack(
       (
         self.struct_labels,
@@ -212,8 +210,11 @@ class FLATMAP:
       data[i, 1] = P[1]
     return start, end, x, y, name, total_areas, data, uname
 
-  def plot_flatmap(self, **kwargs):
+  def plot_flatmap(self, direction="source", cmap_name="deep", **kwargs):
     sns.set_theme()
+    plt.style.use("dark_background")
+    sns.set_context("talk")
+    import matplotlib.patheffects as path_effects
     # Format network area names ----
     self.struct_labels = self.format_areas(
       self.struct_labels
@@ -226,34 +227,38 @@ class FLATMAP:
     start, end, x, y, name, total_areas, data, uname = self.read_data_newseg_2022(**kwargs)
     # Define colormap ----
     nc = len(np.unique(self.labels))
-    cm = sns.color_palette("hls", nc)
+    cm = sns.color_palette(cmap_name, nc)
     # Creating layout ----
     fsize = 10 
-    _, axFlatmap = plt.subplots(
-      1, 1, figsize=(fsize, fsize)
-    )
+    _, axFlatmap = plt.subplots(1, 1, figsize=(fsize, fsize))
     # Start plotting!!! ----
     for index in np.arange(total_areas):
       px = x[start[index]:(end[index] + 1)]
       py = y[start[index]:(end[index] + 1)]
       vertices = np.column_stack((px, py))
-      aindex = self.get_area_index(
-        name[start[index]], self.struct_labels
-      )
-      if aindex != -1 and self.labels[aindex] != -1 and self.struct_labels[aindex] not in self.overlap:
+      aindex = self.get_area_index(name[start[index]], self.struct_labels)
+      if aindex != -1 and self.labels[aindex] != -1:
         color = cm[self.labels[aindex]]
+        # color = np.hstack([color, [0.4]])
+
         color = list(color)
         color = tuple(color)
+        # color = tuple((1, 1, 1, 1))
         pattern=""
-      elif self.struct_labels[aindex] in self.overlap and aindex != -1:
+      elif aindex != -1:
+        color = tuple((1, 1, 1, 1))
+        pattern=""
         color = tuple((153/255, 0, 18/255, 0.5))
         pattern="////"
-      elif self.labels[aindex] == -1 and aindex != -1 and self.struct_labels[aindex] not in self.overlap:
-        color = tuple((0, 158/255, 115/255, 0.5))
-        pattern="////"
+      elif self.labels[aindex] == -1 and aindex != -1:
+        # color = tuple((0, 158/255, 115/255, 0.5))
+        color = tuple((1, 1, 1, 1))
+        # pattern="////"
+        pattern=""
       else:
         pattern = "\\\\\\"
         color = tuple((.5, .5, .5, 0.3))
+        # color = tuple((1, 1, 1, 1))
       axFlatmap.add_patch(
         plt.Polygon(
           vertices,
@@ -265,15 +270,209 @@ class FLATMAP:
         )
       )
     for i, nme in enumerate(uname):
-      axFlatmap.text(data[i, 0], data[i, 1], nme, fontsize=6)
+      txt = axFlatmap.text(data[i, 0], data[i, 1], nme, fontsize=6)
+      txt.set_path_effects(
+        [
+          path_effects.Stroke(linewidth=1, foreground='black'),
+          path_effects.Normal()
+        ]
+      )
+    axFlatmap.set_aspect("equal")
+    axFlatmap.autoscale()
+    axFlatmap.set_axis_off()
+
+    fname = join(self.plot_path,"K_{}".format(self.K), "{}_{}.png".format(self.R, direction))
+    print(fname)
+    plt.savefig(fname, dpi=300)
+    plt.close()
+
+  def plot_flatmap_index(self, pivot, values, max_value=None, index_name="Hellinger2", cmap_name="flare", **kwargs):
+    sns.set_theme()
+    # plt.style.use("dark_background")
+    sns.set_context("talk")
+
+    import matplotlib.patheffects as path_effects
+    from matplotlib.cm import ScalarMappable
+    from matplotlib.colors import Normalize
+    # Format network area names ----
+    self.struct_labels = self.format_areas(
+      self.struct_labels
+    )
+    # Format Area regions ----
+    self.regions["AREA"] = self.format_areas(
+      self.regions["AREA"].to_numpy()
+    )
+    # Read data ----
+    start, end, x, y, name, total_areas, data, uname = self.read_data_newseg_2022(**kwargs)
+    # Define colormap ----
+    cm = sns.color_palette(cmap_name, as_cmap=True)
+    # Creating layout ----
+    # fsize = 5
+    _, axFlatmap = plt.subplots(1, 1)
+    # Start plotting!!! ----
+    pindex = aindex = self.get_area_index(pivot, self.struct_labels)
+    for index in np.arange(total_areas):
+      px = x[start[index]:(end[index] + 1)]
+      py = y[start[index]:(end[index] + 1)]
+      vertices = np.column_stack((px, py))
+      aindex = self.get_area_index(name[start[index]], self.struct_labels)
+
+      pattern=""
+      edgecolor =  [0, 0 , 0]
+      linewidth = 0.5
+
+      if aindex != -1 and aindex != pindex and aindex < values.shape[0]:
+        if max_value:
+          color = cm(values[aindex]/max_value)
+        else:
+          color = cm(values[aindex])
+        # color = np.hstack([color, [0.4]])
+        color = list(color)
+        color = tuple(color)
+        
+      elif aindex != -1 and aindex == pindex and aindex < values.shape[0]:
+        color = cm(0)
+        edgecolor = "#ff0033"
+        linewidth = 2
+
+      else:
+        pattern = "\\\\\\"
+        color = tuple((.5, .5, .5, 0.3))
+      axFlatmap.add_patch(
+        plt.Polygon(
+          vertices,
+          closed=True,
+          edgecolor=edgecolor,
+          linewidth=linewidth,
+          facecolor=color,
+          hatch=pattern
+        )
+      )
+    for i, nme in enumerate(uname):
+      axFlatmap.text(data[i, 0], data[i, 1], nme, fontsize=5)
+
+    axFlatmap.set_aspect("equal")
+    axFlatmap.autoscale()
+    axFlatmap.set_axis_off()
+
+    # Add colorbar ---
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
+    divider = make_axes_locatable(axFlatmap)
+    ax_cb = divider.append_axes("right", size="5%", pad=0.05)
+
+    if max_value:
+      plt.colorbar(ScalarMappable(norm=Normalize(vmin=0, vmax=max_value), cmap=cm), ax=axFlatmap, cax=ax_cb)
+    else:
+      plt.colorbar(ScalarMappable(cmap=cm), ax=axFlatmap, cax=ax_cb)
+
+    plt.tight_layout()
+
+    # Arrange path ----
+    plot_path = join(self.plot_path, index_name)
+    # Crate path ----
+    
+    Path(
+      plot_path
+    ).mkdir(exist_ok=True, parents=True)
+
+    pivot = pivot.replace("/", "_")
+    print(join(plot_path, "{}.png".format(pivot)))
+    plt.savefig(
+      join(plot_path, "{}.png".format(pivot)),
+      dpi=300
+    )
+    plt.close()
+
+  def plot_regions(self, direction="source", cmap_name="deep", **kwargs):
+    # sns.set_theme()
+    plt.style.use("dark_background")
+    import matplotlib.patheffects as path_effects
+    # Format network area names ----
+    self.struct_labels = self.format_areas(
+      self.struct_labels
+    )
+    # Format Area regions ----
+    self.regions["AREA"] = self.format_areas(
+      self.regions["AREA"].to_numpy()
+    )
+    # Read data ----
+    start, end, x, y, name, total_areas, data, uname = self.read_data_newseg_2022(**kwargs)
+    # Creating layout ----
+    fsize = 10
+    _, axFlatmap = plt.subplots(1, 1, figsize=(fsize, fsize))
+    # Start plotting!!! ----
+    for index in np.arange(total_areas):
+      px = x[start[index]:(end[index] + 1)]
+      py = y[start[index]:(end[index] + 1)]
+      vertices = np.column_stack((px, py))
+      aindex = self.get_area_index(name[start[index]], self.struct_labels)
+      if aindex != -1:
+        color = self.regions["COLOR"].loc[self.regions["AREA"] == self.labels[aindex]].to_numpy()[0]
+        # color = np.hstack([color, [0.4]])
+        # color = list(color)
+        # color = tuple(color)
+        pattern=""
+      else:
+        pattern = "\\\\\\"
+        color = tuple((.5, .5, .5, 0.3))
+      axFlatmap.add_patch(
+        plt.Polygon(
+          vertices,
+          closed=True,
+          edgecolor=[1, 1, 1],
+          linewidth=.5,
+          facecolor=color,
+          hatch=pattern
+        )
+      )
+
+    fontsize=15
+    for i, nme in enumerate(uname):
+      if nme == "v1fpuf_2": continue
+      elif nme == "v1fplf":
+        txt = axFlatmap.text(data[i, 0] - 20, data[i, 1] - 10, nme, fontsize=fontsize, font="Times New Roman")
+      elif nme == "v1pcuf_2": continue
+      elif nme == "ento_2": continue
+      elif nme == "ento_3": continue
+      elif nme == "46v_1": continue
+      elif nme == "v1fpuf_1":
+        txt = axFlatmap.text(data[i, 0] - 25, data[i, 1], "v1fpuf", fontsize=fontsize, font="Times New Roman")
+      elif nme == "v1pcuf_1":
+        txt = axFlatmap.text(data[i, 0] - 20, data[i, 1], "v1pcuf", fontsize=fontsize, font="Times New Roman")
+      elif nme == "v2pclf":
+        txt = axFlatmap.text(data[i, 0] - 25, data[i, 1] - 5, "v2pclf", fontsize=10, font="Times New Roman")
+      elif nme == "v2fplf":
+        txt = axFlatmap.text(data[i, 0] - 25, data[i, 1], "v2fplf", fontsize=fontsize, font="Times New Roman")
+      elif nme == "v2pcuf": 
+        txt = axFlatmap.text(data[i, 0] - 25, data[i, 1], "v2pcuf", fontsize=fontsize, font="Times New Roman")
+      elif nme == "v2c":
+        txt = axFlatmap.text(data[i, 0] - 15, data[i, 1] - 35, "v2c", fontsize=fontsize, font="Times New Roman")
+      elif nme == "v6":
+        txt = axFlatmap.text(data[i, 0] - 10, data[i, 1] - 25, "v6", fontsize=fontsize, font="Times New Roman")
+      elif nme == "v1pclf":
+        txt = axFlatmap.text(data[i, 0] - 30, data[i, 1] - 10, "v1pclf", fontsize=fontsize, font="Times New Roman")
+      elif nme == "v3fpuf":
+        txt = axFlatmap.text(data[i, 0] - 30, data[i, 1], "v2fpuf", fontsize=fontsize, font="Times New Roman")
+      elif nme == "v2fpuf":
+        txt = axFlatmap.text(data[i, 0] - 30, data[i, 1], "v2fpuf", fontsize=fontsize, font="Times New Roman")
+      elif nme == "v4uf":
+        txt = axFlatmap.text(data[i, 0] - 15, data[i, 1]+10, "v4uf", fontsize=fontsize, font="Times New Roman")
+      else:
+        txt = axFlatmap.text(data[i, 0], data[i, 1], nme, fontsize=fontsize, font="Times New Roman")
+      txt.set_path_effects(
+        [ 
+          path_effects.Stroke(linewidth=1, foreground='black'),
+          path_effects.Normal()
+        ]
+      )
     axFlatmap.set_aspect("equal")
     axFlatmap.autoscale()
     axFlatmap.set_axis_off()
     plt.savefig(
       join(
         self.plot_path,
-        "K_{}".format(self.K),
-        "{}.png".format(self.R)
+        "flat_map_regions.svg"
       ),
-      dpi=300
+      dpi=300, transparent=True
     )
+    plt.close()

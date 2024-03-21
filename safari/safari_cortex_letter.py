@@ -11,22 +11,54 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 sns.set_theme()
+# plt.style.use("dark_background")
 from pathlib import Path
 # Personal libraries ----
-from networks.structure import MAC
+from networks.structure import STR
 from various.network_tools import *
 
-def omega(plot_path, mode="ALPHA", iterations=500):
-  path = f"../pickle/RAN/distbase/MAC/57d106/LN/tracto16/EXPMLE/BIN_12/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/discovery_6"
+def fit_poly(x, y, grid, order, n_boot=1000, seed=None, units=None):
+        import seaborn.algorithms as algo
+        """Regression using numpy polyfit for higher-order trends."""
+        def reg_func(_x, _y):
+            return np.polyval(np.polyfit(_x, _y, order), grid)
+
+        yhat = reg_func(x, y)
+
+        yhat_boots = algo.bootstrap(x, y,
+                                    func=reg_func,
+                                    n_boot=n_boot,
+                                    units=units,
+                                    seed=seed)
+        return yhat, yhat_boots
+
+def omega(plot_path, common_features, mode="ZERO", iterations=500):
+  path = "../pickle/RAN/distbase/{}/{}/{}/{}/{}/BIN_12/{}/{}/MIX_Hellinger2_trivial/discovery_7".format(
+     common_features["subject"],
+     common_features["version"],
+     common_features["structure"],
+     common_features["distance"],
+     common_features["model_distbase"],
+     common_features["subfolder"],
+     mode
+  )
   H_EDR = read_class(path, f"series_{iterations}")
-  path = f"../pickle/RAN/swaps/MAC/57d106/LN/tracto16/1k/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/discovery_6"
+  path = "../pickle/RAN/swaps/{}/{}/{}/{}/{}/{}/{}/MIX_Hellinger2_trivial/discovery_7".format(
+     common_features["subject"],
+     common_features["version"],
+     common_features["structure"],
+     common_features["distance"],
+     common_features["model_swaps"],
+     common_features["subfolder"],
+     mode
+  )
   H_CONG = read_class(path, f"series_{iterations}")
   edr_data =H_EDR.data
   cong_data = H_CONG.data
   edr_data["score"] = [s.replace("_", "") for s in edr_data["score"]]
   cong_data["score"] = [s.replace("_", "") for s in cong_data["score"]]
-  edr_data = edr_data.loc[(edr_data.score == "S") & (edr_data.sim == "OMEGA")]
-  cong_data = cong_data.loc[(cong_data.score == "S") & (cong_data.sim == "OMEGA")]
+  edr_data = edr_data.loc[(edr_data.score == "S") & (edr_data.sim == "OMEGA") & (edr_data.direction == "both")]
+  cong_data = cong_data.loc[(cong_data.score == "S") & (cong_data.sim == "OMEGA") & (cong_data.direction == "both")]
 
   data = pd.DataFrame(
     {
@@ -37,35 +69,87 @@ def omega(plot_path, mode="ALPHA", iterations=500):
 
   print(data.groupby("model").mean())
 
+  from scipy.stats import ttest_ind, ttest_1samp
+
+  test = ttest_ind(data.omega.loc[data.model == "EDR"], data.omega.loc[data.model == "Configuration"], alternative="greater", equal_var=False)
+  test_conf = ttest_1samp(data.omega.loc[data.model == "Configuration"], 0)
+
+  # sns.set_context("talk")
+  sns.set_style("whitegrid")
+  # plt.style.use("dark_background")
   sns.histplot(
     data=data,
     x="omega",
     hue="model",
-    stat="probability",
+    stat="density",
+    palette="deep",
     common_bins=False,
     common_norm=False
   )
 
   ax = plt.gca()
-  ax.set_xlabel("Omega index")
+
+  if  not np.isnan(test.pvalue): 
+    if test.pvalue > 0.05:
+      a = "n.s."
+    elif test.pvalue <= 0.05 and test.pvalue > 0.001:
+      a = "*" 
+    elif test.pvalue <= 0.001 and test.pvalue > 0.0001:
+      a = "**" 
+    else:
+      a = "***"
+  else:
+    a = "nan"
+
+  width_min = ax.get_xbound()[0]
+  width_max = ax.get_xbound()[1]
+
+
+  omega_mean = np.nanmean(data.omega.loc[data.model == "EDR"])
+  omega_t = (omega_mean - width_min) / (width_max - width_min)
+  ax.text(omega_t, 1.005, f"{omega_mean:.2f}\n{a}", transform=ax.transAxes, horizontalalignment="center")
+  plt.axvline(omega_mean, linestyle="--", color="r")
+
+  if  not np.isnan(test_conf.pvalue): 
+    if test_conf.pvalue > 0.05:
+      a = "ns"
+    elif test_conf.pvalue <= 0.05 and test_conf.pvalue > 0.001:
+      a = "*" 
+    elif test_conf.pvalue <= 0.001 and test_conf.pvalue > 0.0001:
+      a = "**" 
+    else:
+      a = "***"
+  else:
+    a = "nan" 
+
+  omega_mean = np.nanmean(data.omega.loc[data.model == "Configuration"])
+  omega_t = (omega_mean - width_min) / (width_max - width_min)
+  ax.text(omega_t, 1.005, f"{omega_mean:.2f}\n{a}", transform=ax.transAxes, horizontalalignment="center")
+  plt.axvline(omega_mean, linestyle="--", color="r")
+
+  # ax.set_xlabel(r"Omega index $(\omega)$")
+  ax.set_xlabel(r"$\omega$")
+
   fig = plt.gcf()
   fig.set_figheight(7)
   fig.set_figwidth(10)
   fig.tight_layout()
-  plot_path = plot_path + "cortex_letter/"
+  
+  plot_path = plot_path + "/cortex_letter/"
+  # print(plot_path)
   Path(plot_path).mkdir(exist_ok=True, parents=True)
   plt.savefig(
     join(
-      plot_path, "omega.png"
+      plot_path, "omega.svg"
     ),
-    dpi=300
+    dpi=300, transparent=T
   )
   plt.close()
 
 def entropy(plot_path, mode="ALPHA", iterations=500):
-  path = f"../pickle/RAN/distbase/MAC/57d106/LN/tracto16/EXPMLE/BIN_12/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/discovery_6"
+  path = f"../pickle/RAN/distbase/MAC/57d106/FLN/tracto16/EXPMLE/BIN_12/SINGLE_106_57_l10/{mode}/MIX_Hellinger2_trivial/b_0.0/discovery_7"
   H_EDR = read_class(path, f"series_{iterations}")
-  path = f"../pickle/RAN/swaps/MAC/57d106/LN/tracto16/1k/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/discovery_6"
+  path = f"../pickle/RAN/swaps/MAC/57d106/FLN/tracto16/1k/SINGLE_106_57_l10/{mode}/MIX_Hellinger2_trivial/b_0.0/discovery_7"
   H_CONG = read_class(path, f"series_{iterations}")
   edr_data = pd.concat([H_EDR.node_entropy, H_EDR.link_entropy])
   cong_data = pd.concat([H_CONG.node_entropy, H_CONG.link_entropy])
@@ -84,9 +168,11 @@ def entropy(plot_path, mode="ALPHA", iterations=500):
 
   data = pd.concat([edr_data, cong_data, cortex_data])
 
+  sns.set_context("talk")
+
   g = sns.FacetGrid(
     data=data,
-    row = "c",
+    col = "c",
     hue = "model",
     sharex=False,
     sharey=False
@@ -98,21 +184,25 @@ def entropy(plot_path, mode="ALPHA", iterations=500):
     style="data",
     alpha=0.4
   )
+
   g.add_legend()
-  sns.move_legend( g, "lower center", bbox_to_anchor=(0.5, 0), ncol=3, title=None, frameon=False)
+  sns.move_legend(g, "lower center", bbox_to_anchor=(0.5, 1), ncol=3, title=None, frameon=False)
+
   g.axes[0, 0].set_ylabel(r"$s_{H}$")
-  g.axes[1, 0].set_ylabel(r"$s_{H}$")
+  g.axes[0, 1].set_ylabel(r"$s_{H}$")
+
   fig = plt.gcf()
+  fig.set_figheight(5)
+  fig.set_figwidth(13)
   fig.tight_layout()
-  fig.set_figheight(8)
-  fig.set_figwidth(8)
+
   plot_path = plot_path + "cortex_letter/"
   Path(plot_path).mkdir(exist_ok=True, parents=True)
   plt.savefig(
     join(
       plot_path, "Entropy_levels.png"
     ),
-    dpi=300
+    dpi=300, bbox_extra_artists=(g._legend,), bbox_inches='tight'
   )
   plt.close()
 
@@ -120,7 +210,7 @@ def read_scalefree_entropy(MAXI : int, mode="ALPHA"):
     import itertools
     from networks_serial.scalehrh import SCALEHRH
     topologies = ["MIX"]
-    indices = ["D1_2_4"]
+    indices = ["Hellinger2"]
     nodes = [150]
     KAV = [7]
     MUT = [0.1]
@@ -191,9 +281,9 @@ def read_scalefree_entropy(MAXI : int, mode="ALPHA"):
 
 
 def entropy_networks_220830(plot_path, mode="ALPHA", iterations=500):
-    path = f"../pickle/RAN/distbase/MAC/57d106/LN/tracto16/EXPMLE/BIN_12/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/discovery_6"
+    path = f"../pickle/RAN/distbase/MAC/57d106/FLN/tracto16/EXPMLE/BIN_12/SINGLE_106_57_l10/{mode}/MIX_Hellinger2_trivial/b_0.0/discovery_7"
     H_EDR = read_class(path, f"series_{iterations}")
-    path = f"../pickle/RAN/swaps/MAC/57d106/LN/tracto16/1k/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/discovery_6"
+    path = f"../pickle/RAN/swaps/MAC/57d106/FLN/tracto16/1k/SINGLE_106_57_l10/{mode}/MIX_Hellinger2_trivial/b_0.0/discovery_7"
     H_CONG = read_class(path, f"series_{iterations}")
     edr_data = pd.concat([H_EDR.node_entropy, H_EDR.link_entropy])
     cong_data = pd.concat([H_CONG.node_entropy, H_CONG.link_entropy])
@@ -209,11 +299,11 @@ def entropy_networks_220830(plot_path, mode="ALPHA", iterations=500):
     cong_data["model"] = "Configuration"
     ###
 
-    path = "../pickle/TOY/ER/SINGLE_128_128_cut/ALPHA/MIX_jacp_trivial/b_0.0/"
-    H_ER_jacp = read_class(path, "series_500")
+    path = "../pickle/TOY/ER/SINGLE_100_100_cut/ZERO/MIX_Hellinger2_trivial/b_0.0/"
+    H_ER_jacp = read_class(path, "series_50_0.60_100")
 
-    path = "../pickle/TOY/HRG/SINGLE_640_640_cut/ALPHA/MIX_jacp_trivial/b_0.0/"
-    H_HRG_jacp = read_class(path, "series_500")
+    path = "../pickle/TOY/HRG/SINGLE_640_640_cut/ZERO/MIX_Hellinger2_trivial/b_0.0/"
+    H_HRG_jacp = read_class(path, "series_25")
     
     erjacp_data = pd.concat([H_ER_jacp.node_entropy, H_ER_jacp.link_entropy])
     hrgjacp_data = pd.concat([H_HRG_jacp.node_entropy, H_HRG_jacp.link_entropy])
@@ -233,7 +323,7 @@ def entropy_networks_220830(plot_path, mode="ALPHA", iterations=500):
 
     # ###
 
-    path = f"../pickle/RAN/distbase/MAC/57d106/LN/tracto16/EXPMLE/BIN_12/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/discovery_6"
+    path = f"../pickle/RAN/distbase/MAC/57d106/FLN/tracto16/EXPMLE/BIN_12/SINGLE_106_57_l10/{mode}/MIX_Hellinger2_trivial/b_0.0/discovery_7"
     H_EDR = read_class(path, f"series_{iterations}")
     mac_data = pd.concat([H_EDR.node_entropy, H_EDR.link_entropy])
     mac_data = mac_data.loc[
@@ -247,23 +337,36 @@ def entropy_networks_220830(plot_path, mode="ALPHA", iterations=500):
     michelle = pd.DataFrame(
       {
         "model" : np.repeat(networks, 2),
-        "S" : [0.2645, 0.2645, 0.4299, 0.4734, 0.4712, 0.2984],
+        "S" : [0.2332, 0.1792, 0.4113, 0.4691, 0.4712, 0.2984],
         "c" : np.tile(hierarchy, 3)
       }
     )
 
     ##
 
-    # lbf = read_scalefree_entropy(50, mode=mode)
+    lfr = read_scalefree_entropy(50, mode=mode)
 
-    # lbf_models = list(np.unique(lbf.model))
+    lfr_models = list(np.unique(lfr.model))
 
     data = pd.concat(
-       [erjacp_data, hrgjacp_data, edr_data, cong_data, mac_data, michelle]
+       [erjacp_data, hrgjacp_data, edr_data, cong_data, mac_data, michelle, lfr]
     )
     fig = plt.gcf()
-    ax = plt.gca()
-    order = ["Zachary", "ER", "HRG", "HSF", "Configuration", "EDR", "data", "Tractography"] #+ lbf_models
+    order = ["Zachary", "ER", "HRG", "HSF"]+ lfr_models + ["Configuration", "EDR", "data", "Tractography"]
+    sns.set_context("talk")
+    g = sns.barplot(
+       data=data,
+       x="model",
+       y="S",
+       hue="c",
+       estimator="median",
+       errorbar="sd",
+       order=order,
+       alpha=0.4
+    )
+
+    g.legend_.remove()
+
     sns.violinplot(
        data=data,
        x="model",
@@ -271,23 +374,60 @@ def entropy_networks_220830(plot_path, mode="ALPHA", iterations=500):
        hue="c",
        errorbar="sd",
        order=order,
-       ax=ax
+       ax=g
     )
-    sns.barplot(
-       data=data,
-       x="model",
-       y="S",
-       hue="c",
-       errorbar="sd",
-       order=order,
-       alpha=0.4,
-       ax=ax
-    )
-    ax.set_ylabel(r"$s_{H}$")
-    ax.set_xticklabels(ax.get_xticklabels(), rotation=45, size=20)
+
+    g.set_ylabel(r"$s_{H}$")
+    g.set_xticklabels(g.get_xticklabels(), rotation=45, size=20)
+
+
+    from scipy.stats import ttest_1samp
+
+    
+
+    yheight = {"link_hierarchy": 0.85, "node_hierarchy" : 0.9}
+    xwidht = {"EDR" : 0.7, "Configuration" : 0.57}
+    for i, m in enumerate(["EDR", "Configuration"]):
+       for j, l in enumerate(["link_hierarchy", "node_hierarchy"]):
+          d = data["S"].loc[(data.model == m) & (data.c == l)]
+          da = data["S"].loc[(data.model == "data") & (data.c == l)]
+
+          test = ttest_1samp(d, popmean=np.mean(da))
+
+          if  not np.isnan(test.pvalue): 
+            if test.pvalue > 0.05:
+              a = "ns"
+            elif test.pvalue <= 0.05 and test.pvalue > 0.001:
+              a = "*" 
+            elif test.pvalue <= 0.001 and test.pvalue > 0.0001:
+              a = "**" 
+            else:
+              a = "***"
+          else:
+            a = "nan"
+          if l == "link_hierarchy" : L = "LH"
+          else: L = "NH"
+          g.text(xwidht[m], yheight[l], f"{L}: {a}", transform=g.transAxes)
+
+
+    sns.move_legend(g, "upper left", bbox_to_anchor=(0.01, 0.95), ncol=1, title=None)
+
     fig.set_figheight(9)
     fig.set_figwidth(12)
     fig.tight_layout()
+
+    # import scipy.stats as stats
+
+    # xlink = data["S"].loc[(data.model == "EDR") & (data.c == "link_hierarchy")]
+    # xnode = data["S"].loc[(data.model == "EDR") & (data.c == "node_hierarchy")]
+
+
+    # mac_link = mac_data["S"].loc[mac_data.c  == "link_hierarchy"]
+
+    # mac_node = mac_data["S"].loc[mac_data.c  == "node_hierarchy"]
+
+    # print(stats.ttest_1samp(xlink, mac_link))
+    # print(stats.ttest_1samp(xnode, mac_node))
     
     plot_path = plot_path + "cortex_letter/"
     Path(plot_path).mkdir(exist_ok=True, parents=True)
@@ -458,50 +598,78 @@ def entropy_networks_40d91(plot_path):
     plt.close()
 
 def sim_histogram(plot_path, mode="ALPHA"):
-    path = f"../pickle/MAC/57d106/LN/original/tracto16/57/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/discovery_6"
+    path = f"../pickle/MUS/19d47/FLN/original/MAP3D/19/SINGLE_47_19/{mode}/MIX_Hellinger2_trivial/b_0.0/discovery_7"
     H = read_class(path, "hanalysis")
-    src = H.source_sim_matrix
-    tgt = H.target_sim_matrix
+
+    wlabel = r"$H^{2}$"
+
+    # src = np.log(H.source_sim_matrix)
+    # tgt = np.log(H.target_sim_matrix)
+
+    src = 1 - H.source_sim_matrix
+    tgt = 1 - H.target_sim_matrix
     
     src = adj2df(src)
     tgt = adj2df(tgt)
 
     src = src.loc[src.source > src.target]
     tgt = tgt.loc[tgt.source > tgt.target]
+    import matplotlib
+    matplotlib.rcParams['axes.unicode_minus'] = False
+    from matplotlib import rc
+    rc('text', usetex=False)
+
+    label_source = r"$H^{2}_{+}$"
+    label_target = r"$H^{2}_{-}$"
 
     data = pd.DataFrame(
        {
-        r"$D_{1/2}$" : list(np.log(1 / src.weight - 1)) + list(np.log(1 / tgt.weight - 1)) ,
-        "direction" : ["outgoing"] * src.shape[0] + ["incoming"] * tgt.shape[0]
+        wlabel : list(src.weight) + list(tgt.weight) ,
+        "direction" : [label_source] * src.shape[0] + [label_target] * tgt.shape[0]
        }
     )
 
+    # sns.set_style("whitegrid")
+    sns.set_context("talk")
+    plt.style.use("dark_background")
+
     sns.histplot(
        data=data,
-       x=r"$D_{1/2}$",
+       x=wlabel,
        hue="direction",
        stat="density",
+       palette="pastel",
        common_norm=False
     )
+
+
+
+    s = np.percentile(data[wlabel].loc[data.direction == label_source], 16.5)
+    t = np.percentile(data[wlabel].loc[data.direction == label_target], 16.5)
+    a = np.mean([s, t])
+
     fig = plt.gcf()
-    ax = plt.gca()
-    ax.set_xlabel(r"$\log(D_{1/2})$")
+    ax = plt.gca() 
+    ax.plot([a, a], [0.1, 0.5], 'red', linestyle="-", linewidth=5.5)
+    ax.scatter(a, 0.2, marker="v", c="red", s=120)
+    ax.text(0.3, 0.4, r"$p_{16.5}=$"+f"{a:.2f}", transform=ax.transAxes, size=30)
+    ax.set_xlabel(wlabel)
     fig.set_figheight(7)
     fig.set_figwidth(10)
     fig.tight_layout()
 
-    plot_path = plot_path + "cortex_letter/"
+    plot_path = plot_path + "cortex_letter/MUS/"
     Path(plot_path).mkdir(exist_ok=True, parents=True)
     plt.savefig(
       join(
-        plot_path, "D1_2_2_dir.png"
+        plot_path, "H2_bin_dark.svg"
       ),
-      dpi=300
+      dpi=300, transparent=T
     )
     plt.close()
 
 def sim_dist(plot_path, mode="ALPHA"):
-    path = f"../pickle/MAC/57d106/LN/original/tracto16/57/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/discovery_6"
+    path = f"../pickle/MUS/19d47/FLN/original/MAP3D/19/SINGLE_47_19/{mode}/MIX_Hellinger2_trivial/b_0.0/discovery_7"
     H = read_class(path, "hanalysis")
     src = H.source_sim_matrix
     tgt = H.target_sim_matrix
@@ -537,7 +705,7 @@ def sim_dist(plot_path, mode="ALPHA"):
     fig.set_figwidth(10)
     fig.tight_layout()
 
-    plot_path = plot_path + "cortex_letter/"
+    plot_path = plot_path + "cortex_letter/MUS/"
     Path(plot_path).mkdir(exist_ok=True, parents=True)
     plt.savefig(
       join(
@@ -547,108 +715,271 @@ def sim_dist(plot_path, mode="ALPHA"):
     )
     plt.close()
 
-def sim_dist_bin(plot_path, mode="ALPHA"):
+def  fair_dist_bin(plot_path, pickle_path, ci=95, mode="ZERO", cmap="deep"):
     import statsmodels.api as sm
     from sklearn.preprocessing import StandardScaler
-    path = f"../pickle/MAC/57d106/LN/original/tracto16/57/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/discovery_6"
+    from seaborn import utils
+    import ctools as ct
+
+    path = pickle_path
     H = read_class(path, "hanalysis")
-    src = H.source_sim_matrix
-    tgt = H.target_sim_matrix
-    D = H.D[:NET.nodes, :]
+
+    w_inset = r"$D_{1/2}$"
+
+    src = np.sqrt(1 - H.source_sim_matrix)
+    tgt = np.sqrt(1 - H.target_sim_matrix)
+    D = H.D[:NET.nodes, :NET.nodes]
+
+    src_inset = np.zeros(src.shape)
+    tgt_inset = np.zeros(tgt.shape)
+
+    for i in np.arange(src_inset.shape[0]):
+       for j in np.arange(i + 1, src_inset.shape[1]):
+          src_inset[i, j] = ct.D1_2_4(H.A[i, :], H.A[j, :], i, j)
+          src_inset[j, i] = src_inset[i, j]
+
+          tgt_inset[i, j] = ct.D1_2_4(H.A[:, i], H.A[:, j], i, j)
+          tgt_inset[j, i] = tgt_inset[i, j]
+
+    np.seterr(divide='ignore', invalid='ignore')
+    src_inset = (1 / src_inset) - 1
+    np.seterr(divide='ignore', invalid='ignore')
+    tgt_inset = (1 / tgt_inset) - 1
     
     src = adj2df(src)
     tgt = adj2df(tgt)
+    src_inset = adj2df(src_inset)
+    tgt_inset = adj2df(tgt_inset)
     D = adj2df(D)
 
-    src = 1 / src.loc[src.source > src.target].weight.to_numpy() - 1
-    src[src > 100] = np.nan
-    tgt = 1 / tgt.loc[tgt.source > tgt.target].weight.to_numpy() - 1
-    D = D.loc[D.source > D.target].weight.to_numpy()
-
-    ## linear regression statistics ----
-    scale= StandardScaler()
-    X = NET.D.copy()
-    X[X <= 0] = np.nan
-    n = X.shape[0]
-    X = scale.fit_transform(X.reshape(-1, 1))
-    X = X.reshape(n, n)
-    X = X[:__nodes__, :__nodes__]
-    X = adj2df(X)
-    X = X.loc[X.source > X.target].weight.to_numpy()
-    yup_d = ~np.isnan(X)
-    Ysrc = src.copy()
-    yup_src = (~np.isnan(Ysrc)) & (Ysrc != np.inf) & (yup_d)
-    Ysrc = Ysrc[yup_src]
-    Ytgt = tgt.copy()
-    yup_tgt = (~np.isnan(Ytgt)) & (Ytgt != np.inf) & (yup_d)
-    Ytgt = Ytgt[yup_tgt]
-    Xsrc = X[yup_src].reshape(-1,1)
-    Xtgt = X[yup_tgt].reshape(-1,1)
-    # Xsrc = np.hstack([Xsrc, np.power(Xsrc, 3.)])
-    # Xtgt = np.hstack([Xtgt, np.power(Xtgt, 3.)])
-    Xsrc = sm.add_constant(Xsrc)
-    Xtgt = sm.add_constant(Xtgt)
-    est_src = sm.OLS(Ysrc, Xsrc).fit()
-    est_tgt = sm.OLS(Ytgt, Xtgt).fit()
-    print(est_src.summary())
-    print(est_tgt.summary())
-
-    data_resid =pd.DataFrame(
-       {
-          "residuals" : list(est_src.resid) + list(est_tgt.resid),
-          r"$D_{1/2}$" : list(Ysrc) + list(Ytgt),
-          "direction" : ["outgoing"] * len(Ysrc) + ["incoming"] * len(Ytgt)
-       }
-    )
+    src = src["weight"].loc[src.source > src.target].to_numpy()
+    tgt = tgt["weight"].loc[tgt.source > tgt.target].to_numpy()
+    src_inset = src_inset["weight"].loc[src_inset.source > src_inset.target].to_numpy()
+    tgt_inset = tgt_inset["weight"].loc[tgt_inset.source > tgt_inset.target].to_numpy()
+    D = D["weight"].loc[D.source > D.target].to_numpy()
 
     ### ----
 
     data = pd.DataFrame(
        {
-        r"$D_{1/2}$" : list(src) + list(tgt) ,
-        "direction" : ["outgoing"] * src.shape[0] + ["incoming"] * tgt.shape[0],
-        "interareal tractography distance [mm]" : list(D) + list(D) 
+        w_inset: list(src_inset) + list(tgt_inset),
+        "direction" : ["source"] * src.shape[0] + ["target"] * tgt.shape[0],
+        "interareal distance [mm]" : list(D) + list(D) 
        }
     )
 
     # Binarize ----
     nbin = 15
-    dD = (np.max(D) - np.min(D)) / nbin
-    d_range = np.arange(np.min(D), np.max(D), dD)
+    D_min, D_max = np.min(D), np.max(D)
+    d_range = np.linspace(D_min, D_max, nbin)
+    dD = d_range[1] - d_range[0]
     d_range[-1] += 0.0001
-    src_bin = [np.nanmean(src[np.where((D >= d_range[i]) & (D < d_range[i+1]))[0]]) for i in np.arange(nbin - 1)]
-    tgt_bin = [np.nanmean(tgt[np.where((D >= d_range[i]) & (D < d_range[i+1]))[0]]) for i in np.arange(nbin - 1)]
+    src_bin = np.array([np.nanmean(src[np.where((D >= d_range[i]) & (D < d_range[i+1]))[0]]) for i in np.arange(nbin - 1)])
+    tgt_bin = np.array([np.nanmean(tgt[np.where((D >= d_range[i]) & (D < d_range[i+1]))[0]]) for i in np.arange(nbin - 1)])
+    src_inset_bin = np.array([np.nanmean(src_inset[np.where((D >= d_range[i]) & (D < d_range[i+1]))[0]]) for i in np.arange(nbin - 1)])
+    tgt_inset_bin = np.array([np.nanmean(tgt_inset[np.where((D >= d_range[i]) & (D < d_range[i+1]))[0]]) for i in np.arange(nbin - 1)])
     d_range[-1] -= 0.0001
     d_range = d_range[:-1]
     d_range = d_range + dD / 2
     data_bin = pd.DataFrame(
        {
-          r"$D_{1/2}$" : list(src_bin) + list(tgt_bin) ,
-          "direction" : ["outgoing"] * len(src_bin) + ["incoming"] * len(src_bin),
-          "interareal tractography distance [mm]" : list(d_range) + list(d_range) 
+          w_inset : list(src_inset_bin) + list(tgt_inset_bin),
+          "direction" : ["source"] * len(src_bin) + ["target"] * len(src_bin),
+          "interareal distance [mm]" : list(d_range) + list(d_range) 
        }
     )
 
+    data_ref = data.loc[data[w_inset] < np.Inf]
+
+    data_ref_src = data_ref["interareal distance [mm]"].loc[data_ref["direction"] == "source"].to_numpy()
+    data_ref_tgt = data_ref["interareal distance [mm]"].loc[data_ref["direction"] == "target"].to_numpy()
+
+    scale= StandardScaler()
+    # mu_d_range = np.mean(d_range)
+    sd_d_range_src = np.std(data_ref_src)
+    sd_d_range_tgt = np.std(data_ref_tgt)
+    Xsrc = scale.fit_transform(data_ref_src.reshape(-1, 1))
+    Xsrc = sm.add_constant(Xsrc)
+    Xtgt = scale.fit_transform(data_ref_tgt.reshape(-1, 1))
+    Xtgt = sm.add_constant(Xtgt)
+    est_src = sm.OLS(data_ref[w_inset].loc[data_ref["direction"] == "source"], Xsrc).fit()
+    est_tgt = sm.OLS(data_ref[w_inset].loc[data_ref["direction"] == "target"], Xtgt).fit()
+    print(est_src.params[1] / sd_d_range_src)
+    print(est_tgt.params[1] / sd_d_range_tgt)
+
+    labmda_src = np.round(est_src.params[1] / sd_d_range_src, 2)
+    labmda_tgt = np.round(est_tgt.params[1] / sd_d_range_tgt, 2)
+
+    # par_tgt = est_tgt.params[1] / sd_d_range
+    # par_tgt /= 2
+    # char_length = (2 + est_tgt.params[0]) * sd_d_range / est_tgt.params[1] - mu_d_range
+
+    # a = np.sqrt(1 - np.exp(-1))
+
+    # line of H(d) using the one in D_1/2(d) ----
+    # grid = np.linspace(d_range[0], d_range[-1], 100)
+
+    # yhat_src, yhat_src_boots = fit_poly(d_range, src_inset_bin, grid, order=1)
+    # yhat_tgt, yhat_tgt_boots = fit_poly(d_range, tgt_bin, grid, order=3)
+
+    # err_src_bands = utils.ci(yhat_src_boots, ci, axis=0)
+    # err_tgt_bands = utils.ci(yhat_tgt_boots, ci, axis=0)
+
+    # yhat_src = np.sqrt(1-np.exp(-0.5 * yhat_src))
+    # yhat_tgt = np.sqrt(1-np.exp(-0.5 * yhat_tgt))
+
+    # err_src_bands = np.sqrt(1-np.exp(-0.5 * err_src_bands))
+    # err_tgt_bands = np.sqrt(1-np.exp(-0.5 * err_tgt_bands))
+
+    # char_length_lowess = [d for d, y in zip(grid, yhat_tgt) if y >= a - 0.001 and y < a + 0.001][0]
+
+    sns.set_context("talk")
+    sns.set_style("whitegrid")
+    # plt.style.use("dark_background")
+
     fig, ax = plt.subplots(1, 1)
     
-    sns.lmplot(
-       data=data_bin,
-       x="interareal tractography distance [mm]",
-       y = r"$D_{1/2}$",
-       hue="direction",
-       scatter_kws={"alpha":0.9, "s":8},
-       line_kws={"linewidth":1},
-       legend=False,
-       aspect=1.3
-    )
+    # sns.scatterplot(
+    #   data=data,
+    #   x="interareal distance [mm]",
+    #   y= wlabel,
+    #   hue="direction",
+    #   hue_order=["source", "target"],
+    #   alpha=0.4,
+    #   palette=cmap,
+    #   s=6,
+    #   ax=ax
+    # )
+
+    # ax.scatter(d_range, src_bin, color=sns.color_palette(cmap, as_cmap=True)[0], s=30)
+    # ax.scatter(d_range, tgt_bin, color=sns.color_palette(cmap, as_cmap=True)[1], s=30)
+
+    # ax.plot(grid, yhat_src, color=sns.color_palette(cmap, as_cmap=True)[0])
+    # ax.fill_between(grid, *err_src_bands, facecolor=sns.color_palette(cmap, as_cmap=True)[0], alpha=.15)
+
+    # ax.plot(grid, yhat_tgt, color=sns.color_palette(cmap, as_cmap=True)[1])
+    # ax.fill_between(grid, *err_tgt_bands, facecolor=sns.color_palette(cmap, as_cmap=True)[1], alpha=.15)
+
+
+
+    # sns.regplot(
+    #    data=data_bin.loc[data_bin.direction == "target"],
+    #    x="interareal distance [mm]",
+    #    y = wlabel,
+    #    scatter_kws={"alpha":0.6, "s":30},
+    #    line_kws={"linewidth":1},
+    #   #  lowess=True,
+    #   order=3,
+    #    color=sns.color_palette(cmap, as_cmap=True)[1],
+    #    ax=ax
+    # )
+
+    # sns.regplot(
+    #    data=data_bin.loc[data_bin.direction == "source"],
+    #    x="interareal distance [mm]",
+    #    y = wlabel,
+    #    scatter_kws={"alpha":0.6, "s":30},
+    #    line_kws={"linewidth":1},
+    #   #  lowess=True,
+    #   order=3,
+    #    color=sns.color_palette(cmap, as_cmap=True)[0],
+    #    ax=ax
+    # )
+
+    # axinset = ax.inset_axes([0.5, 0.1, 0.45, 0.4], transform=ax.transAxes)
+
     sns.scatterplot(
-       data=data,
-       x="interareal tractography distance [mm]",
-      y= r"$D_{1/2}$",
+      data=data,
+      x="interareal distance [mm]",
+      y= w_inset,
       hue="direction",
-      alpha=0.3,
-      s=4
+      hue_order=["source", "target"],
+      alpha=0.4,
+      palette=cmap,
+      s=35,
+      ax=ax
     )
+
+    # sns.lineplot(
+    #    data=data_bin.loc[data_bin.direction == "target"],
+    #    x="interareal distance [mm]",
+    #    y = w_inset,
+    #   #  lowess=True,
+    #   linestyle = "--",
+    #    linewidth=1,
+    #    color=sns.color_palette(cmap, as_cmap=True)[1],
+    #    ax=ax
+    # )
+
+    # sns.lineplot(
+    #    data=data_bin.loc[data_bin.direction == "source"],
+    #    x="interareal distance [mm]",
+    #    y = w_inset,
+    #   #  lowess=True,
+    #   linewidth=1,
+    #   linestyle = "--",
+    #    color=sns.color_palette(cmap, as_cmap=True)[0],
+    #    ax=ax
+    # )
+
+    sns.regplot(
+       data=data.loc[data.direction == "target"],
+       x="interareal distance [mm]",
+       y = w_inset,
+       scatter_kws={"s":0},
+       line_kws={"linewidth":2},
+      #  lowess=True,
+       color=sns.color_palette(cmap, as_cmap=True)[1],
+       ax=ax
+    )
+
+    sns.regplot(
+       data=data.loc[data.direction == "source"],
+       x="interareal distance [mm]",
+       y = w_inset,
+       scatter_kws={"s":0},
+       line_kws={"linewidth":2},
+      #  lowess=True,
+       color=sns.color_palette(cmap, as_cmap=True)[0],
+       ax=ax
+    )
+
+    sns.scatterplot(
+       data=data_bin.loc[data_bin.direction == "target"],
+       x="interareal distance [mm]",
+       y = w_inset,
+       s =60,
+       color=sns.color_palette(cmap, as_cmap=True)[1],
+       ax=ax
+    )
+
+    sns.scatterplot(
+       data=data_bin.loc[data_bin.direction == "source"],
+       x="interareal distance [mm]",
+       y = w_inset,
+       s= 60,
+       color=sns.color_palette(cmap, as_cmap=True)[0],
+       ax=ax
+    )
+    # axinset.get_legend().remove()
+    # axinset.set_xlabel("")
+
+    # sns.move_legend(ax, "lower center", bbox_to_anchor=(0.5, 1), ncol=2, title=None, frameon=False)
+
+    # if char_length > char_length_lowess:
+    #   marker_high = char_length
+    #   marker_low = char_length_lowess
+    # else:
+    #   marker_high = char_length_lowess
+    #   marker_low = char_length
+    # ax.plot([marker_low, marker_high], [a, a], linestyle="-", linewidth=3, alpha=0.4, c=sns.color_palette("deep")[3])
+    # ax.plot([marker_low, marker_low], [0, a], linestyle="-", linewidth=3, alpha=0.4, c=sns.color_palette("deep")[3])
+    # ax.plot([marker_high, marker_high], [0, a], linestyle="-", linewidth=3, alpha=0.4, c=sns.color_palette("deep")[3])
+    # # ax.scatter(marker_low, a, marker="<", s=120, alpha=0.4, c=sns.color_palette("deep")[3])
+    # ax.text(0.1, 0.15, f"L: {np.round(marker_low, 1)}", size=20, transform=ax.transAxes)
+    # ax.text(0.1, 0.1, f"R: {np.round(marker_high, 1)}", size=20, transform=ax.transAxes)
+    # ax.text(0.5, a-0.01, r"$H=$"+f"{a:.2f}", size=20)
+
     # g = sns.lmplot(
     #    data=data_resid,
     #    x=r"$D_{1/2}$" ,
@@ -659,63 +990,368 @@ def sim_dist_bin(plot_path, mode="ALPHA"):
     # )
     # ax.set_xlabel("tractography distance [mm]")
     # # ax[1] = g.axes[0, 0]
-    # fig.set_figheight(5)
-    # fig.set_figwidth(9.5)
-    # fig.tight_layout()
 
-    plot_path = plot_path + "cortex_letter/"
+    # plt.xticks(fontsize=20)
+    # plt.yticks(fontsize=20)
+
+    ax.text(
+       0.5, 1.02, r"$\lambda_{-}=$" + f"{labmda_tgt}," + "   " +  r"$\lambda_{+}=$" + f"{labmda_src}" + "   " + "[nats/mm]", transform=ax.transAxes,
+       horizontalalignment='center',
+      #  verticalalignment = "top"
+    )
+
+    fig.set_figheight(7)
+    fig.set_figwidth(10)
+    fig.tight_layout()
+
+    # plt.show()
+ 
+    plot_path = plot_path + "/cortex_letter/"
     Path(plot_path).mkdir(exist_ok=True, parents=True)
     plt.savefig(
       join(
-        plot_path, "D1_2_2_dist_bin.png"
+        plot_path, "fair_dist_bin.svg"
       ),
-      dpi=300
+      dpi=300, transparent=T
+    )
+    plt.close()
+
+def  sim_dist_bin(plot_path, pickle_path, ci=95, mode="ALPHA", cmap="deep"):
+    import statsmodels.api as sm
+    from sklearn.preprocessing import StandardScaler
+    from seaborn import utils
+    import ctools as ct
+
+    path = pickle_path
+    H = read_class(path, "hanalysis")
+
+    wlabel = r"$H$"
+    w_inset = r"$D_{1/2}$"
+
+    src = np.sqrt(1 - H.source_sim_matrix)
+    tgt = np.sqrt(1 - H.target_sim_matrix)
+    D = H.D[:NET.nodes, :NET.nodes]
+
+    src_inset = np.zeros(src.shape)
+    tgt_inset = np.zeros(tgt.shape)
+
+    for i in np.arange(src_inset.shape[0]):
+       for j in np.arange(i + 1, src_inset.shape[1]):
+          src_inset[i, j] = ct.D1_2_4(H.A[i, :], H.A[j, :], i, j)
+          src_inset[j, i] = src_inset[i, j]
+
+          tgt_inset[i, j] = ct.D1_2_4(H.A[:, i], H.A[:, j], i, j)
+          tgt_inset[j, i] = tgt_inset[i, j]
+
+    np.seterr(divide='ignore', invalid='ignore')
+    src_inset = (1 / src_inset) - 1
+    np.seterr(divide='ignore', invalid='ignore')
+    tgt_inset = (1 / tgt_inset) - 1
+    
+    src = adj2df(src)
+    tgt = adj2df(tgt)
+    src_inset = adj2df(src_inset)
+    tgt_inset = adj2df(tgt_inset)
+    D = adj2df(D)
+
+    src = src["weight"].loc[src.source > src.target].to_numpy()
+    tgt = tgt["weight"].loc[tgt.source > tgt.target].to_numpy()
+    src_inset = src_inset["weight"].loc[src_inset.source > src_inset.target].to_numpy()
+    tgt_inset = tgt_inset["weight"].loc[tgt_inset.source > tgt_inset.target].to_numpy()
+    D = D["weight"].loc[D.source > D.target].to_numpy()
+
+    ### ----
+
+    data = pd.DataFrame(
+       {
+        wlabel : list(src) + list(tgt) ,
+        w_inset: list(src_inset) + list(tgt_inset),
+        "direction" : ["source"] * src.shape[0] + ["target"] * tgt.shape[0],
+        "interareal distance [mm]" : list(D) + list(D) 
+       }
+    )
+
+    # Binarize ----
+    nbin = 15
+    D_min, D_max = np.min(D), np.max(D)
+    d_range = np.linspace(D_min, D_max, nbin)
+    dD = d_range[1] - d_range[0]
+    d_range[-1] += 0.0001
+    src_bin = np.array([np.nanmean(src[np.where((D >= d_range[i]) & (D < d_range[i+1]))[0]]) for i in np.arange(nbin - 1)])
+    tgt_bin = np.array([np.nanmean(tgt[np.where((D >= d_range[i]) & (D < d_range[i+1]))[0]]) for i in np.arange(nbin - 1)])
+    src_inset_bin = np.array([np.nanmean(src_inset[np.where((D >= d_range[i]) & (D < d_range[i+1]))[0]]) for i in np.arange(nbin - 1)])
+    tgt_inset_bin = np.array([np.nanmean(tgt_inset[np.where((D >= d_range[i]) & (D < d_range[i+1]))[0]]) for i in np.arange(nbin - 1)])
+    d_range[-1] -= 0.0001
+    d_range = d_range[:-1]
+    d_range = d_range + dD / 2
+    data_bin = pd.DataFrame(
+       {
+          wlabel : list(src_bin) + list(tgt_bin) ,
+          w_inset : list(src_inset_bin) + list(tgt_inset_bin),
+          "direction" : ["source"] * len(src_bin) + ["target"] * len(src_bin),
+          "interareal distance [mm]" : list(d_range) + list(d_range) 
+       }
+    )
+
+    data_bin = data_bin.loc[data_bin[w_inset] < np.Inf]
+
+    d_range_src = data_bin["interareal distance [mm]"].loc[data_bin["direction"] == "source"].to_numpy()
+    d_range_tgt = data_bin["interareal distance [mm]"].loc[data_bin["direction"] == "target"].to_numpy()
+
+    scale= StandardScaler()
+    mu_d_range = np.mean(d_range)
+    sd_d_range = np.std(d_range)
+    Xsrc = scale.fit_transform(d_range_src.reshape(-1, 1))
+    Xsrc = sm.add_constant(Xsrc)
+    Xtgt = scale.fit_transform(d_range_tgt.reshape(-1, 1))
+    Xtgt = sm.add_constant(Xtgt)
+    est_src = sm.OLS(data_bin[w_inset].loc[data_bin["direction"] == "source"], Xsrc).fit()
+    est_tgt = sm.OLS(data_bin[w_inset].loc[data_bin["direction"] == "target"], Xtgt).fit()
+    print(est_src.params[1] / sd_d_range)
+    print(est_tgt.params[1] / sd_d_range)
+
+    par_tgt = est_tgt.params[1] / sd_d_range
+    par_tgt /= 2
+    char_length = (2 + est_tgt.params[0]) * sd_d_range / est_tgt.params[1] - mu_d_range
+
+    a = np.sqrt(1 - np.exp(-1))
+
+    # line of H(d) using the one in D_1/2(d) ----
+    grid = np.linspace(d_range[0], d_range[-1], 100)
+
+    # yhat_src, yhat_src_boots = fit_poly(d_range, src_inset_bin, grid, order=1)
+    yhat_tgt, yhat_tgt_boots = fit_poly(d_range, tgt_bin, grid, order=3)
+
+    # err_src_bands = utils.ci(yhat_src_boots, ci, axis=0)
+    # err_tgt_bands = utils.ci(yhat_tgt_boots, ci, axis=0)
+
+    # yhat_src = np.sqrt(1-np.exp(-0.5 * yhat_src))
+    # yhat_tgt = np.sqrt(1-np.exp(-0.5 * yhat_tgt))
+
+    # err_src_bands = np.sqrt(1-np.exp(-0.5 * err_src_bands))
+    # err_tgt_bands = np.sqrt(1-np.exp(-0.5 * err_tgt_bands))
+
+    char_length_lowess = [d for d, y in zip(grid, yhat_tgt) if y >= a - 0.01 and y < a + 0.01][-1]
+
+    # sns.set_context("talk")
+    sns.set_style("whitegrid")
+    # plt.style.use("dark_background")
+
+    fig, ax = plt.subplots(1, 1)
+    
+    sns.scatterplot(
+      data=data,
+      x="interareal distance [mm]",
+      y= wlabel,
+      hue="direction",
+      hue_order=["source", "target"],
+      alpha=0.4,
+      palette=cmap,
+      s=6,
+      ax=ax
+    )
+
+    # ax.scatter(d_range, src_bin, color=sns.color_palette(cmap, as_cmap=True)[0], s=30)
+    # ax.scatter(d_range, tgt_bin, color=sns.color_palette(cmap, as_cmap=True)[1], s=30)
+
+    # ax.plot(grid, yhat_src, color=sns.color_palette(cmap, as_cmap=True)[0])
+    # ax.fill_between(grid, *err_src_bands, facecolor=sns.color_palette(cmap, as_cmap=True)[0], alpha=.15)
+
+    # ax.plot(grid, yhat_tgt, color=sns.color_palette(cmap, as_cmap=True)[1])
+    # ax.fill_between(grid, *err_tgt_bands, facecolor=sns.color_palette(cmap, as_cmap=True)[1], alpha=.15)
+
+
+
+    sns.regplot(
+       data=data_bin.loc[data_bin.direction == "target"],
+       x="interareal distance [mm]",
+       y = wlabel,
+       scatter_kws={"alpha":0.6, "s":30},
+       line_kws={"linewidth":1},
+      #  lowess=True,
+      order=3,
+       color=sns.color_palette(cmap, as_cmap=True)[1],
+       ax=ax
+    )
+
+    sns.regplot(
+       data=data_bin.loc[data_bin.direction == "source"],
+       x="interareal distance [mm]",
+       y = wlabel,
+       scatter_kws={"alpha":0.6, "s":30},
+       line_kws={"linewidth":1},
+      #  lowess=True,
+      order=3,
+       color=sns.color_palette(cmap, as_cmap=True)[0],
+       ax=ax
+    )
+
+    axinset = ax.inset_axes([0.5, 0.1, 0.45, 0.4], transform=ax.transAxes)
+
+    sns.scatterplot(
+      data=data,
+      x="interareal distance [mm]",
+      y= w_inset,
+      hue="direction",
+      hue_order=["source", "target"],
+      alpha=0.4,
+      palette=cmap,
+      s=6,
+      ax=axinset
+    )
+
+    sns.regplot(
+       data=data_bin.loc[data_bin.direction == "target"],
+       x="interareal distance [mm]",
+       y = w_inset,
+       scatter_kws={"alpha":0.6, "s":30},
+       line_kws={"linewidth":1},
+      #  lowess=True,
+       color=sns.color_palette(cmap, as_cmap=True)[1],
+       ax=axinset
+    )
+
+    sns.regplot(
+       data=data_bin.loc[data_bin.direction == "source"],
+       x="interareal distance [mm]",
+       y = w_inset,
+       scatter_kws={"alpha":0.6, "s":30},
+       line_kws={"linewidth":1},
+      #  lowess=True,
+       color=sns.color_palette(cmap, as_cmap=True)[0],
+       ax=axinset
+    )
+    axinset.get_legend().remove()
+    axinset.set_xlabel("")
+
+    sns.move_legend(ax, "lower center", bbox_to_anchor=(0.5, 1), ncol=2, title=None, frameon=False)
+
+    if char_length > char_length_lowess:
+      marker_high = char_length
+      marker_low = char_length_lowess
+    else:
+      marker_high = char_length_lowess
+      marker_low = char_length
+    # ax.plot([marker_low, marker_high], [a, a], linestyle="-", linewidth=3, alpha=0.4, c=sns.color_palette("deep")[3])
+    # ax.plot([marker_low, marker_low], [0, a], linestyle="-", linewidth=3, alpha=0.4, c=sns.color_palette("deep")[3])
+    # ax.plot([marker_high, marker_high], [0, a], linestyle="-", linewidth=3, alpha=0.4, c=sns.color_palette("deep")[3])
+    # ax.scatter(marker_low, a, marker="<", s=120, alpha=0.4, c=sns.color_palette("deep")[3])
+    # ax.text(0.1, 0.15, f"L: {np.round(marker_low, 1)}", size=20, transform=ax.transAxes)
+    # ax.text(0.1, 0.1, f"R: {np.round(marker_high, 1)}", size=20, transform=ax.transAxes)
+    # ax.text(0.5, a-0.01, r"$H=$"+f"{a:.2f}", size=20)
+
+    # g = sns.lmplot(
+    #    data=data_resid,
+    #    x=r"$D_{1/2}$" ,
+    #    y="residuals",
+    #    hue="direction",
+    #    scatter_kws= {"s" : 3, "alpha" : 0.5},
+    #    lowess=True
+    # )
+    # ax.set_xlabel("tractography distance [mm]")
+    # # ax[1] = g.axes[0, 0]
+
+    # plt.xticks(fontsize=20)
+    # plt.yticks(fontsize=20)
+
+    fig.set_figheight(7)
+    fig.set_figwidth(10)
+    fig.tight_layout()
+
+    # plt.show()
+ 
+    plot_path = plot_path + "/cortex_letter/"
+    Path(plot_path).mkdir(exist_ok=True, parents=True)
+    plt.savefig(
+      join(
+        plot_path, "H_dist_bin.png"
+      ),
+      dpi=300#, transparent=T
     )
     plt.close()
 
 
-def overlap(plot_path, mode="ALPHA", iterations=500):
-    path = f"../pickle/RAN/distbase/MAC/57d106/LN/tracto16/EXPMLE/BIN_12/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/discovery_6"
+def overlap(plot_path, common_features, mode="ALPHA", iterations=500):
+    
+    path = "../pickle/RAN/distbase/{}/{}/FLN/{}/EXPMLE/BIN_12/{}/{}/MIX_Hellinger2_trivial/discovery_7".format(
+      common_features["subject"],
+      common_features["version"],
+      common_features["distance"],
+      common_features["subfolder"],
+      mode
+    )
     H_EDR = read_class(path, f"series_{iterations}")
-    path = f"../pickle/RAN/swaps/MAC/57d106/LN/tracto16/1k/SINGLE_106_57_l10/{mode}/MIX_D1_2_4_trivial/b_0.0/discovery_6"
+    path = "../pickle/RAN/swaps/{}/{}/FLN/{}/1k/{}/{}/MIX_Hellinger2_trivial/discovery_7".format(
+      common_features["subject"],
+      common_features["version"],
+      common_features["distance"],
+      common_features["subfolder"],
+      mode
+    )
     H_CONG = read_class(path, f"series_{iterations}")
 
     edr_overlap = H_EDR.data_overlap.loc[
-      H_EDR.data_overlap.score == "_S"
+      (H_EDR.data_overlap.score == "_S") & (H_EDR.data_overlap.direction == "both")
     ]
     cong_overlap = H_CONG.data_overlap.loc[
-      H_CONG.data_overlap.score == "_S"
+      (H_CONG.data_overlap.score == "_S") & (H_CONG.data_overlap.direction == "both")
     ]
 
     mac_overlap = edr_overlap.loc[edr_overlap.data == "1"]
     edr_overlap = edr_overlap.loc[edr_overlap.data == "0"]
     edr_overlap["model"] = 'EDR'
+
+    order = edr_overlap["Areas"].value_counts().sort_values(ascending=False)
+    # edr_overlap["Areas"] = pd.Categorical(edr_overlap['Areas'], list(order.index))
+
     cong_overlap = cong_overlap.loc[cong_overlap.data == "0"]
     cong_overlap["model"] = "Configuration"
 
-    data = pd.concat([edr_overlap, cong_overlap])
+    order_conf = [s for s in np.unique(cong_overlap.Areas) if s not in order.index]
+
+    # cong_overlap["Areas"] = pd.Categorical(cong_overlap['Areas'], list(order.index) + order_conf)
+
+    # sns.set_context("talk")
+    # plt.style.use("dark_background")
+    sns.set_style("whitegrid")
+
+    data = pd.concat([cong_overlap, edr_overlap], ignore_index=True)
+    data["Areas"] = pd.Categorical(data['Areas'], list(order.index) + order_conf)
+
+    fig, ax = plt.subplots(1, 1)
 
     sns.histplot(
-        data = data,
+        data = data.loc[data.direction == "both"],
         x = "Areas",
         hue = "model",
         stat = "count",
+        discrete=True,
+        hue_order=["EDR", "Configuration"],
         common_norm=False,
+        palette="pastel",
+        ax=ax
     )
-    fig = plt.gcf()
-    fig.set_figheight(7)
-    fig.set_figwidth(12)
-    ax = plt.gca()
-    ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
-    [t.set_color("red") for i, t in enumerate(ax.xaxis.get_ticklabels()) if np.isin(t.get_text(), mac_overlap.Areas)]
-    plt.ylabel("NOC count")
-    plot_path = plot_path + "cortex_letter/"
+
+    l = list(order.index) + order_conf
+    [t.set_color("red") for i, t in enumerate(ax.xaxis.get_ticklabels()) if np.isin(l[i], mac_overlap.Areas)]
+
+    plt.xticks(rotation=90)
+   
+    
+    plt.ylabel("NOC probability")
+
+    fig.set_figheight(9)
+    fig.set_figwidth(15)
+    fig.tight_layout()
+
+    plot_path = plot_path + "/cortex_letter/"
     Path(plot_path).mkdir(exist_ok=True, parents=True)
     plt.savefig(
       join(
         plot_path, "overlap.png"
       ),
-      dpi=300
+      dpi=300#,
+      # transparent=T
     )
     plt.close()
 
@@ -964,31 +1600,32 @@ def directed_average_count(path, NET):
     dpi=300
 )
 
-
 # Declare global variables ----
 linkage = "single"
-nlog10 = T
+nlog10 = F
 lookup = F
-prob = F
+prob = T
 cut = F
-structure = "LN"
+subject = "MAC"
+structure = "FLNe"
 mode = "ZERO"
-distance = "tracto16"
+distance = "MAP3D"
 nature = "original"
 imputation_method = ""
 topology = "MIX"
+discovery = "discovery_7"
 mapping = "trivial"
-index  = "D1_2_4"
+index  = "Hellinger2"
 bias = float(0)
 alpha = 0.
-opt_score = ["_X", "_S"]
-save_data = T
-version = "57d106"
-__nodes__ = 57
-__inj__ = 57
+__nodes__ = 40
+__inj__ = 40
+version = f"{__nodes__}" + "d" + "91"
+model_distbase = "M"
+model_swaps = "TWOMX_FULL"
 
 if __name__ == "__main__":
-    NET = MAC[f"MAC{__inj__}"](
+    NET = STR[f"{subject}{__inj__}"](
       linkage, mode,
       nlog10 = nlog10,
       structure = structure,
@@ -998,6 +1635,7 @@ if __name__ == "__main__":
       model = imputation_method,
       distance = distance,
       inj = __inj__,
+      discovery = discovery,
       topology = topology,
       index = index,
       mapping = mapping,
@@ -1005,13 +1643,27 @@ if __name__ == "__main__":
       b = bias,
       alpha = alpha
     )
-    cortex_letter_path = "../plots/MAC/57d106/LN/original/tracto16/57/SINGLE_106_57_l10/"
-    # entropy(cortex_letter_path, mode=mode)
-    # omega(cortex_letter_path, mode=mode, iterations=1000)
-    # overlap(cortex_letter_path, mode=mode, iterations=1000)
+    pickle_path = NET.pickle_path
+    cortex_letter_path = os.path.join(
+       "../plots", subject, version,
+       structure, nature, distance, f"{__inj__}", NET.analysis
+    )
+    conf = {
+       "subject" : NET.subject,
+       "structure" : NET.structure,
+       "version" : NET.version,
+       "distance" : NET.distance,
+       "subfolder" : NET.analysis,
+       "model_distbase" : model_distbase,
+       "model_swaps" : model_swaps
+    }
+    # entropy(cortex_letter_path, mode=mode, iterations=1000)
+    omega(cortex_letter_path, conf, mode=mode, iterations=1000)
+    # overlap(cortex_letter_path, conf,  mode=mode, iterations=1000)
     # entropy_networks_220830(cortex_letter_path, mode=mode, iterations=1000)
     # sim_dist(cortex_letter_path, mode=mode)
-    # sim_dist_bin(cortex_letter_path, mode=mode)
+    # sim_dist_bin(cortex_letter_path, pickle_path, mode=mode)
+    fair_dist_bin(cortex_letter_path, pickle_path, mode=mode)
     # sim_histogram(cortex_letter_path, mode=mode)
-    directed_average_count(cortex_letter_path, NET)
+    # directed_average_count(cortex_letter_path, NET)
     

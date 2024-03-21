@@ -12,7 +12,8 @@ class PLOT_S:
   def __init__(self, hrh : HRH) -> None:
     # Get attributes from hrh ----
     self.data = hrh.data
-    self.stats = hrh.stats
+    if hasattr(hrh, "stats"):
+      self.stats = hrh.stats
     self.measures = hrh.data_measures
     self.node_entropy = hrh.node_entropy
     self.link_entropy = hrh.link_entropy
@@ -66,9 +67,10 @@ class PLOT_S:
     if on:
       print("Plot clustering similarity histogram!!!")
       subdata = self.data.copy()
+      print(subdata.groupby(["sim", "score", "direction"])["values"].mean())
       # Average score ----
-      mean_results = subdata.groupby(["sim", "score"]).mean().reset_index()
-      print(mean_results)
+      # mean_results = subdata.groupby(["sim", "score", "direction"]).mean().reset_index()
+      # print(mean_results)
       # ## MAXMU
       # mean_nmi = mean_results["values"].loc[(mean_results.sim == "NMI") & (mean_results.score == "_maxmu")].to_numpy()
       # mean_nmi = np.round(mean_nmi, 3)[0]
@@ -88,6 +90,7 @@ class PLOT_S:
         g = sns.FacetGrid(
           data=subdata,
           col="sim",
+          row="direction",
           hue="score",
           sharex=False, sharey=False,
           aspect=1.3, height=6
@@ -359,7 +362,7 @@ class PLOT_S:
       plt.close()
     else: print("No D iterations")
 
-  def plot_measurements_S(self, on=False, **kwargs):
+  def Plot_measurements_S(self, on=False, **kwargs):
     if on:
       print("Plot S iterations")
       data = self.measures[["K", "S", "data", "iter"]]

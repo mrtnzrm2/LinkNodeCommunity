@@ -97,7 +97,6 @@ def worker_HRG(
     hrg.A = hrg.A[perm, :][:, perm]
     # Create TOY ---
     NET = TOY(hrg.A, linkage, **properties)
-    NET.set_alpha([6, 15, 30])
     NET.create_plot_directory()
     NET.set_labels(labels)
     H = Hierarchy(

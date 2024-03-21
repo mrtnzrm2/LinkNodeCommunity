@@ -7,9 +7,10 @@ class DISTBASE(EDR):
   def __init__(
     self, nodes, total_nodes, linkage,
     bin, mode, iter, nlog10=False, lookup=False, cut=False,
-    topology="MIX", mapping="R1", index="jacp", discovery="discovery_5", lb=0.19, **kwargs
+    topology="MIX", mapping="trivial", index="Hellinger2", discovery="discovery_7",
+    lb=0.19, rho=0.59, **kwargs
   ) -> None:
-    super().__init__(nodes, lb=lb, **kwargs)
+    super().__init__(nodes, lb=lb, rho=rho, **kwargs)
     self.random = "distbase"
     self.iter = str(iter)
     self.nlog10 = nlog10
@@ -19,6 +20,7 @@ class DISTBASE(EDR):
     self.index = index
     self.cut = cut
     self.rows = 0
+    self.discovery = discovery
     self.subfolder = f"{topology}_{index}_{mapping}"
     # Define class attributes ----
     self.bin = bin
@@ -71,7 +73,9 @@ class DISTBASE(EDR):
     self.overlap = np.array(["UNKNOWN"] * self.nodes)
     # dict sample_dist ----
     self.distbase_dict = {
+      "DATA-DRIVEN" : self.random_data_driven,
       "EXPMLE" : self.random_net,
+      "EXPMLESQRT" : self.random_net_sqrt,
       "EXPTRUNC" : self.random_exp_trunc,
       "PARETO" : self.random_pareto,
       "PARETOTRUNC" : self.random_pareto_trunc,
@@ -292,6 +296,93 @@ class DISTBASE(EDR):
       print("NET density: {:.5f}".format(self.den(NET)))
     return NET
   
+  def random_data_driven(self, D, *args, run=True, **kwargs):
+    path = os.path.join(
+      self.csv_path, "Count.csv"
+    )
+    if run:
+      if not os.path.exists(path):
+        # Prepare data ----
+        dD = adj2df(D.copy())
+        dD = dD.loc[
+          dD["source"] < dD["target"]
+        ]
+        # Get bin ranges ----
+        bin_ranges = self.binnarize(D)
+        bin_ranges[-1] += 0.001
+        dD = dD.to_numpy()
+
+        # Get CMF
+        pmf = np.zeros(self.bin-1)
+        for i in np.arange(args[0].shape[0]):
+          for j in np.arange(args[0].shape[1]):
+            if i == j: continue
+            for k in np.arange(self.bin - 2):
+              if bin_ranges[k] <= D[i, j] and bin_ranges[k+1] > D[i, j]:
+                pmf[k] += args[0][i, j]
+      
+        bin_ranges[-1] -= 0.001
+        pmf /= np.sum(pmf)
+
+        cmf = np.zeros(self.bin)
+        for i in np.arange(self.bin-1):
+          cmf[i+1] = np.sum(pmf[:i])
+
+        # Initiate samplenet ----
+        from rand_network import sample_data_driven
+        NET = sample_data_driven(
+          dD, cmf, bin_ranges, self.bin,
+          D.shape[0], args[0].shape[1], dD.shape[0],  self.rho
+        )
+        NET = np.array(NET)
+        print("NET density: {:.5f}".format(self.den(NET)))
+        print("NET Density: {:.5f}".format(self.Den(NET)))
+        if "on_save_csv" in kwargs.keys():
+          if kwargs["on_save_csv"]:
+            np.savetxt(path, NET, delimiter=",")
+      else:
+        NET = np.genfromtxt(path, delimiter=",")
+        print("NET density: {:.5f}".format(self.den(NET)))
+    else:
+      NET = np.genfromtxt(path, delimiter=",")
+      print("NET density: {:.5f}".format(self.den(NET)))
+    return NET
+  
+  def random_net_sqrt(self, D, *args, run=True, **kwargs):
+    path = os.path.join(
+      self.csv_path, "Count.csv"
+    )
+    if run:
+      if not os.path.exists(path):
+        # Prepare data ----
+        dD = adj2df(D.copy())
+        dD = dD.loc[
+          dD["source"] < dD["target"]
+        ]
+        # Get bin ranges ----
+        bin_ranges = self.binnarize(D)
+        dD = dD.to_numpy()
+        # Initiate samplenet ----
+        from rand_network import sample_distbase_sqrt
+        NET = sample_distbase_sqrt(
+          dD, bin_ranges, self.bin,
+          D.shape[0], args[0].shape[1], dD.shape[0],  self.rho,
+          self.lb
+        )
+        NET = np.array(NET)
+        print("NET density: {:.5f}".format(self.den(NET)))
+        print("NET Density: {:.5f}".format(self.Den(NET)))
+        if "on_save_csv" in kwargs.keys():
+          if kwargs["on_save_csv"]:
+            np.savetxt(path, NET, delimiter=",")
+      else:
+        NET = np.genfromtxt(path, delimiter=",")
+        print("NET density: {:.5f}".format(self.den(NET)))
+    else:
+      NET = np.genfromtxt(path, delimiter=",")
+      print("NET density: {:.5f}".format(self.den(NET)))
+    return NET
+  
   def random_exp_trunc(self, D, *args, run=True, **kwargs):
     path = os.path.join(
       self.csv_path, "Count.csv"
@@ -343,7 +434,7 @@ class DISTBASE(EDR):
         dD = dD.to_numpy()
         # Leaves!!!
         if np.sum(np.isnan(args[0])) > 0:
-          counting_edges = np.sum(~np.isnan(args[0])).astype(int)
+          counting_edges = np.sum((not np.isnan(args[0]) ) & ( args[0] > 0)).astype(int)
         else:
           counting_edges = np.sum(args[0] != 0).astype(int)
         # Initiate samplenet ----
