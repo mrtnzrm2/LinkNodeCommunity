@@ -214,11 +214,13 @@ class MAC29(base):
     new_labs = col_labs + [r for r in row_labs if r not in col_labs]
     file = file.loc[new_labs, :]
     C = file.to_numpy()
+    # C = np.ceil(C)
     A = C / np.sum(C, axis=0)
     self.rows = C.shape[0]
     self.nodes = C.shape[1]
     self.struct_labels = new_labs
     self.struct_labels = np.char.lower(self.struct_labels)
+    
     # np.savetxt(f"{self.csv_path}/labels29.csv", self.struct_labels,  fmt='%s')
     return C.astype(float), A.astype(float)
 

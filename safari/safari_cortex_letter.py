@@ -74,8 +74,8 @@ def omega(plot_path, common_features, mode="ZERO", iterations=500):
   test = ttest_ind(data.omega.loc[data.model == "EDR"], data.omega.loc[data.model == "Configuration"], alternative="greater", equal_var=False)
   test_conf = ttest_1samp(data.omega.loc[data.model == "Configuration"], 0)
 
-  # sns.set_context("talk")
-  sns.set_style("whitegrid")
+  sns.set_context("talk")
+  sns.set_style("ticks")
   # plt.style.use("dark_background")
   sns.histplot(
     data=data,
@@ -130,6 +130,129 @@ def omega(plot_path, common_features, mode="ZERO", iterations=500):
   # ax.set_xlabel(r"Omega index $(\omega)$")
   ax.set_xlabel(r"$\omega$")
 
+  sns.despine(top=True, right=True)
+
+  fig = plt.gcf()
+  fig.set_figheight(7)
+  fig.set_figwidth(9)
+  fig.tight_layout()
+  
+  plot_path = plot_path + "/cortex_letter/"
+  # print(plot_path)
+  Path(plot_path).mkdir(exist_ok=True, parents=True)
+  plt.savefig(
+    join(
+      plot_path, "omega.svg"
+    ),
+    dpi=300, transparent=T
+  )
+  plt.savefig(
+    join(
+      plot_path, "omega.png"
+    ),
+    dpi=300, transparent=T
+  )
+  plt.close()
+
+def EHMI(plot_path, common_features, mode="ZERO", iterations=500):
+  # H_data = read_class(NET.pickle_path, "hanalysis")
+
+  path = "../pickle/RAN/distbase/{}/{}/{}/{}/{}/BIN_12/{}/{}/MIX_Hellinger2_trivial/discovery_7".format(
+     common_features["subject"],
+     common_features["version"],
+     common_features["structure"],
+     common_features["distance"],
+     common_features["model_distbase"],
+     common_features["subfolder"],
+     mode
+  )
+  H_EDR = read_class(path, f"series_{iterations}")
+  path = "../pickle/RAN/swaps/{}/{}/{}/{}/{}/{}/{}/MIX_Hellinger2_trivial/discovery_7".format(
+     common_features["subject"],
+     common_features["version"],
+     common_features["structure"],
+     common_features["distance"],
+     common_features["model_swaps"],
+     common_features["subfolder"],
+     mode
+  )
+  H_CONG = read_class(path, f"series_{iterations}")
+  edr_data = np.array(H_EDR.hp)# / H_data.ehmi
+  cong_data = np.array(H_CONG.hp)# / H_data.ehmi
+  
+
+  data = pd.DataFrame(
+    {
+      "EHMI" : np.hstack([edr_data, cong_data]),
+      "model" : ["EDR"] * iterations + ["Configuration"] * iterations
+    }
+  )
+
+  print(data.groupby("model").mean())
+
+  from scipy.stats import ttest_ind, ttest_1samp
+
+  test = ttest_ind(data["EHMI"].loc[data.model == "EDR"], data["EHMI"].loc[data.model == "Configuration"], alternative="greater", equal_var=False)
+  test_conf = ttest_1samp(data["EHMI"].loc[data.model == "Configuration"], 0)
+
+  sns.set_context("talk")
+  sns.set_style("ticks")
+  # plt.style.use("dark_background")
+  sns.histplot(
+    data=data,
+    x="EHMI",
+    hue="model",
+    stat="density",
+    palette="deep",
+    common_bins=False,
+    common_norm=False
+  )
+
+  ax = plt.gca()
+
+  if  not np.isnan(test.pvalue): 
+    if test.pvalue > 0.05:
+      a = "n.s."
+    elif test.pvalue <= 0.05 and test.pvalue > 0.001:
+      a = "*" 
+    elif test.pvalue <= 0.001 and test.pvalue > 0.0001:
+      a = "**" 
+    else:
+      a = "***"
+  else:
+    a = "nan"
+
+  width_min = ax.get_xbound()[0]
+  width_max = ax.get_xbound()[1]
+
+
+  omega_mean = np.nanmean(data["EHMI"].loc[data.model == "EDR"])
+  omega_t = (omega_mean - width_min) / (width_max - width_min)
+  ax.text(omega_t, 1.005, f"{omega_mean:.2f}\n{a}", transform=ax.transAxes, horizontalalignment="center")
+  plt.axvline(omega_mean, linestyle="--", color="r")
+
+  if  not np.isnan(test_conf.pvalue): 
+    if test_conf.pvalue > 0.05:
+      a = "ns"
+    elif test_conf.pvalue <= 0.05 and test_conf.pvalue > 0.001:
+      a = "*" 
+    elif test_conf.pvalue <= 0.001 and test_conf.pvalue > 0.0001:
+      a = "**" 
+    else:
+      a = "***"
+  else:
+    a = "nan" 
+
+  omega_mean = np.nanmean(data["EHMI"].loc[data.model == "Configuration"])
+  omega_t = (omega_mean - width_min) / (width_max - width_min)
+  ax.text(omega_t, 1.005, f"{omega_mean:.2f}\n{a}", transform=ax.transAxes, horizontalalignment="center")
+  plt.axvline(omega_mean, linestyle="--", color="r")
+
+  # ax.set_xlabel(r"Omega index $(\omega)$")
+  ax.set_xlabel("normalized EHMI")
+
+  sns.despine(offset=10, trim=True)
+
   fig = plt.gcf()
   fig.set_figheight(7)
   fig.set_figwidth(10)
@@ -140,7 +263,13 @@ def omega(plot_path, common_features, mode="ZERO", iterations=500):
   Path(plot_path).mkdir(exist_ok=True, parents=True)
   plt.savefig(
     join(
-      plot_path, "omega.svg"
+      plot_path, "EHMI.svg"
+    ),
+    dpi=300, transparent=T
+  )
+  plt.savefig(
+    join(
+      plot_path, "EHMI.png"
     ),
     dpi=300, transparent=T
   )
@@ -725,26 +854,33 @@ def  fair_dist_bin(plot_path, pickle_path, ci=95, mode="ZERO", cmap="deep"):
     H = read_class(path, "hanalysis")
 
     w_inset = r"$D_{1/2}$"
+    distance_label = "Interareal tractography distance [mm]"
 
-    src = np.sqrt(1 - H.source_sim_matrix)
-    tgt = np.sqrt(1 - H.target_sim_matrix)
+   
     D = H.D[:NET.nodes, :NET.nodes]
 
-    src_inset = np.zeros(src.shape)
-    tgt_inset = np.zeros(tgt.shape)
+    src = np.zeros(D.shape)
+    tgt = np.zeros(D.shape)
+
+    src_inset = np.zeros(D.shape)
+    tgt_inset = np.zeros(D.shape)
 
     for i in np.arange(src_inset.shape[0]):
        for j in np.arange(i + 1, src_inset.shape[1]):
-          src_inset[i, j] = ct.D1_2_4(H.A[i, :], H.A[j, :], i, j)
+          src[i, j] = np.sqrt(ct.Hellinger2(H.A[i, :], H.A[j, :], i, j))
+          src[j, i] = src[i, j]
+          src_inset[i, j] = -2 * np.log(ct.Hellinger2(H.A[i, :], H.A[j, :], i, j))
           src_inset[j, i] = src_inset[i, j]
 
-          tgt_inset[i, j] = ct.D1_2_4(H.A[:, i], H.A[:, j], i, j)
+          tgt[i, j] = np.sqrt(ct.Hellinger2(H.A[:, i], H.A[:, j], i, j))
+          tgt[j, i] = tgt[i, j]
+          tgt_inset[i, j] = -2 * np.log(ct.Hellinger2(H.A[:, i], H.A[:, j], i, j))
           tgt_inset[j, i] = tgt_inset[i, j]
 
-    np.seterr(divide='ignore', invalid='ignore')
-    src_inset = (1 / src_inset) - 1
-    np.seterr(divide='ignore', invalid='ignore')
-    tgt_inset = (1 / tgt_inset) - 1
+    # np.seterr(divide='ignore', invalid='ignore')
+    # src_inset = (1 / src_inset) - 1
+    # np.seterr(divide='ignore', invalid='ignore')
+    # tgt_inset = (1 / tgt_inset) - 1
     
     src = adj2df(src)
     tgt = adj2df(tgt)
@@ -763,8 +899,8 @@ def  fair_dist_bin(plot_path, pickle_path, ci=95, mode="ZERO", cmap="deep"):
     data = pd.DataFrame(
        {
         w_inset: list(src_inset) + list(tgt_inset),
-        "direction" : ["source"] * src.shape[0] + ["target"] * tgt.shape[0],
-        "interareal distance [mm]" : list(D) + list(D) 
+        "Direction" : ["+"] * src.shape[0] + ["-"] * tgt.shape[0],
+        distance_label : list(D) + list(D) 
        }
     )
 
@@ -784,15 +920,15 @@ def  fair_dist_bin(plot_path, pickle_path, ci=95, mode="ZERO", cmap="deep"):
     data_bin = pd.DataFrame(
        {
           w_inset : list(src_inset_bin) + list(tgt_inset_bin),
-          "direction" : ["source"] * len(src_bin) + ["target"] * len(src_bin),
-          "interareal distance [mm]" : list(d_range) + list(d_range) 
+          "Direction" : ["+"] * len(src_bin) + ["-"] * len(src_bin),
+          distance_label : list(d_range) + list(d_range) 
        }
     )
 
     data_ref = data.loc[data[w_inset] < np.Inf]
 
-    data_ref_src = data_ref["interareal distance [mm]"].loc[data_ref["direction"] == "source"].to_numpy()
-    data_ref_tgt = data_ref["interareal distance [mm]"].loc[data_ref["direction"] == "target"].to_numpy()
+    data_ref_src = data_ref[distance_label].loc[data_ref["Direction"] == "+"].to_numpy()
+    data_ref_tgt = data_ref[distance_label].loc[data_ref["Direction"] == "-"].to_numpy()
 
     scale= StandardScaler()
     # mu_d_range = np.mean(d_range)
@@ -802,13 +938,13 @@ def  fair_dist_bin(plot_path, pickle_path, ci=95, mode="ZERO", cmap="deep"):
     Xsrc = sm.add_constant(Xsrc)
     Xtgt = scale.fit_transform(data_ref_tgt.reshape(-1, 1))
     Xtgt = sm.add_constant(Xtgt)
-    est_src = sm.OLS(data_ref[w_inset].loc[data_ref["direction"] == "source"], Xsrc).fit()
-    est_tgt = sm.OLS(data_ref[w_inset].loc[data_ref["direction"] == "target"], Xtgt).fit()
+    est_src = sm.OLS(data_ref[w_inset].loc[data_ref["Direction"] == "+"], Xsrc).fit()
+    est_tgt = sm.OLS(data_ref[w_inset].loc[data_ref["Direction"] == "-"], Xtgt).fit()
     print(est_src.params[1] / sd_d_range_src)
     print(est_tgt.params[1] / sd_d_range_tgt)
 
-    labmda_src = np.round(est_src.params[1] / sd_d_range_src, 2)
-    labmda_tgt = np.round(est_tgt.params[1] / sd_d_range_tgt, 2)
+    labmda_src = np.round(est_src.params[1] / sd_d_range_src, 3)
+    labmda_tgt = np.round(est_tgt.params[1] / sd_d_range_tgt, 3)
 
     # par_tgt = est_tgt.params[1] / sd_d_range
     # par_tgt /= 2
@@ -834,7 +970,7 @@ def  fair_dist_bin(plot_path, pickle_path, ci=95, mode="ZERO", cmap="deep"):
     # char_length_lowess = [d for d, y in zip(grid, yhat_tgt) if y >= a - 0.001 and y < a + 0.001][0]
 
     sns.set_context("talk")
-    sns.set_style("whitegrid")
+    sns.set_style("ticks")
     # plt.style.use("dark_background")
 
     fig, ax = plt.subplots(1, 1)
@@ -862,38 +998,38 @@ def  fair_dist_bin(plot_path, pickle_path, ci=95, mode="ZERO", cmap="deep"):
 
 
 
-    # sns.regplot(
-    #    data=data_bin.loc[data_bin.direction == "target"],
-    #    x="interareal distance [mm]",
-    #    y = wlabel,
-    #    scatter_kws={"alpha":0.6, "s":30},
-    #    line_kws={"linewidth":1},
-    #   #  lowess=True,
-    #   order=3,
-    #    color=sns.color_palette(cmap, as_cmap=True)[1],
-    #    ax=ax
-    # )
+    sns.regplot(
+       data=data.loc[data.Direction == "-"],
+       x=distance_label,
+       y = w_inset,
+       scatter_kws={"s":0},
+       line_kws={"linewidth":3},
+      #  lowess=True,
+      # order=3,
+       color=sns.color_palette(cmap, as_cmap=True)[1],
+       ax=ax
+    )
 
-    # sns.regplot(
-    #    data=data_bin.loc[data_bin.direction == "source"],
-    #    x="interareal distance [mm]",
-    #    y = wlabel,
-    #    scatter_kws={"alpha":0.6, "s":30},
-    #    line_kws={"linewidth":1},
-    #   #  lowess=True,
-    #   order=3,
-    #    color=sns.color_palette(cmap, as_cmap=True)[0],
-    #    ax=ax
-    # )
+    sns.regplot(
+       data=data.loc[data.Direction == "+"],
+       x=distance_label,
+       y = w_inset,
+       scatter_kws={ "s":0},
+       line_kws={"linewidth":3},
+      #  lowess=True,
+      # order=1,
+       color=sns.color_palette(cmap, as_cmap=True)[0],
+       ax=ax
+    )
 
     # axinset = ax.inset_axes([0.5, 0.1, 0.45, 0.4], transform=ax.transAxes)
 
     sns.scatterplot(
       data=data,
-      x="interareal distance [mm]",
+      x=distance_label,
       y= w_inset,
-      hue="direction",
-      hue_order=["source", "target"],
+      hue="Direction",
+      hue_order=["+", "-"],
       alpha=0.4,
       palette=cmap,
       s=35,
@@ -922,42 +1058,48 @@ def  fair_dist_bin(plot_path, pickle_path, ci=95, mode="ZERO", cmap="deep"):
     #    ax=ax
     # )
 
-    sns.regplot(
-       data=data.loc[data.direction == "target"],
-       x="interareal distance [mm]",
-       y = w_inset,
-       scatter_kws={"s":0},
-       line_kws={"linewidth":2},
-      #  lowess=True,
-       color=sns.color_palette(cmap, as_cmap=True)[1],
-       ax=ax
-    )
+    # sns.lineplot(
+    #    data=data_bin.loc[data_bin.Direction == "-"],
+    #    x=distance_label,
+    #    y = w_inset,
+    #   #  scatter_kws={"s":0},
+    #   #  line_kws={"linewidth":0},
+    #   #  lowess=True,
+    #   linestyle="--",
+    #    color=sns.color_palette(cmap, as_cmap=True)[1],
+    #    ax=ax
+    # )
 
-    sns.regplot(
-       data=data.loc[data.direction == "source"],
-       x="interareal distance [mm]",
-       y = w_inset,
-       scatter_kws={"s":0},
-       line_kws={"linewidth":2},
-      #  lowess=True,
-       color=sns.color_palette(cmap, as_cmap=True)[0],
-       ax=ax
-    )
+    # sns.lineplot(
+    #    data=data_bin.loc[data_bin.Direction == "+"],
+    #    x=distance_label,
+    #    y = w_inset,
+    #   #  scatter_kws={"s":0},
+    #   #  line_kws={"linewidth":0},
+    #   #  lowess=True,
+    #   linestyle="--",
+    #    color=sns.color_palette(cmap, as_cmap=True)[0],
+    #    ax=ax
+    # )
 
     sns.scatterplot(
-       data=data_bin.loc[data_bin.direction == "target"],
-       x="interareal distance [mm]",
+       data=data_bin.loc[data_bin.Direction == "-"],
+       x=distance_label,
        y = w_inset,
        s =60,
-       color=sns.color_palette(cmap, as_cmap=True)[1],
+       edgecolor="black",
+       linewidth=1,
+        color=sns.color_palette(cmap, as_cmap=True)[1],
        ax=ax
     )
 
     sns.scatterplot(
-       data=data_bin.loc[data_bin.direction == "source"],
-       x="interareal distance [mm]",
+       data=data_bin.loc[data_bin.Direction == "+"],
+       x=distance_label,
        y = w_inset,
        s= 60,
+       edgecolor="black",
+       linewidth=1,
        color=sns.color_palette(cmap, as_cmap=True)[0],
        ax=ax
     )
@@ -1000,6 +1142,8 @@ def  fair_dist_bin(plot_path, pickle_path, ci=95, mode="ZERO", cmap="deep"):
       #  verticalalignment = "top"
     )
 
+    sns.despine(offset=10, trim=True)
+
     fig.set_figheight(7)
     fig.set_figwidth(10)
     fig.tight_layout()
@@ -1011,6 +1155,12 @@ def  fair_dist_bin(plot_path, pickle_path, ci=95, mode="ZERO", cmap="deep"):
     plt.savefig(
       join(
         plot_path, "fair_dist_bin.svg"
+      ),
+      dpi=300, transparent=T
+    )
+    plt.savefig(
+      join(
+        plot_path, "fair_dist_bin.png"
       ),
       dpi=300, transparent=T
     )
@@ -1084,6 +1234,7 @@ def  sim_dist_bin(plot_path, pickle_path, ci=95, mode="ALPHA", cmap="deep"):
     d_range[-1] -= 0.0001
     d_range = d_range[:-1]
     d_range = d_range + dD / 2
+
     data_bin = pd.DataFrame(
        {
           wlabel : list(src_bin) + list(tgt_bin) ,
@@ -1232,6 +1383,7 @@ def  sim_dist_bin(plot_path, pickle_path, ci=95, mode="ALPHA", cmap="deep"):
     else:
       marker_high = char_length_lowess
       marker_low = char_length
+
     # ax.plot([marker_low, marker_high], [a, a], linestyle="-", linewidth=3, alpha=0.4, c=sns.color_palette("deep")[3])
     # ax.plot([marker_low, marker_low], [0, a], linestyle="-", linewidth=3, alpha=0.4, c=sns.color_palette("deep")[3])
     # ax.plot([marker_high, marker_high], [0, a], linestyle="-", linewidth=3, alpha=0.4, c=sns.color_palette("deep")[3])
@@ -1273,7 +1425,7 @@ def  sim_dist_bin(plot_path, pickle_path, ci=95, mode="ALPHA", cmap="deep"):
 
 def overlap(plot_path, common_features, mode="ALPHA", iterations=500):
     
-    path = "../pickle/RAN/distbase/{}/{}/FLN/{}/EXPMLE/BIN_12/{}/{}/MIX_Hellinger2_trivial/discovery_7".format(
+    path = "../pickle/RAN/distbase/{}/{}/FLNe/{}/M/BIN_12/{}/{}/MIX_Hellinger2_trivial/discovery_7".format(
       common_features["subject"],
       common_features["version"],
       common_features["distance"],
@@ -1281,7 +1433,7 @@ def overlap(plot_path, common_features, mode="ALPHA", iterations=500):
       mode
     )
     H_EDR = read_class(path, f"series_{iterations}")
-    path = "../pickle/RAN/swaps/{}/{}/FLN/{}/1k/{}/{}/MIX_Hellinger2_trivial/discovery_7".format(
+    path = "../pickle/RAN/swaps/{}/{}/FLNe/{}/1k/{}/{}/MIX_Hellinger2_trivial/discovery_7".format(
       common_features["subject"],
       common_features["version"],
       common_features["distance"],
@@ -1311,16 +1463,16 @@ def overlap(plot_path, common_features, mode="ALPHA", iterations=500):
 
     # cong_overlap["Areas"] = pd.Categorical(cong_overlap['Areas'], list(order.index) + order_conf)
 
-    # sns.set_context("talk")
+    sns.set_context("talk")
     # plt.style.use("dark_background")
-    sns.set_style("whitegrid")
+    sns.set_style("ticks")
 
     data = pd.concat([cong_overlap, edr_overlap], ignore_index=True)
     data["Areas"] = pd.Categorical(data['Areas'], list(order.index) + order_conf)
 
     fig, ax = plt.subplots(1, 1)
 
-    sns.histplot(
+    a = sns.histplot(
         data = data.loc[data.direction == "both"],
         x = "Areas",
         hue = "model",
@@ -1328,30 +1480,56 @@ def overlap(plot_path, common_features, mode="ALPHA", iterations=500):
         discrete=True,
         hue_order=["EDR", "Configuration"],
         common_norm=False,
-        palette="pastel",
+        palette="deep",
         ax=ax
     )
 
     l = list(order.index) + order_conf
-    [t.set_color("red") for i, t in enumerate(ax.xaxis.get_ticklabels()) if np.isin(l[i], mac_overlap.Areas)]
+    
+    ax_tick_loc = np.arange(57, step=2)
+    ax.set_xticks(ax_tick_loc)
+    ax.set_xticklabels([a for i, a in enumerate(l) if i % 2 == 0], rotation=90)
 
-    plt.xticks(rotation=90)
+    [t.set_color("red") for i, t in enumerate(ax.xaxis.get_ticklabels()) if np.isin(t.get_text(), mac_overlap.Areas)]
+
+
+    ax2 = ax.twiny()
+    ax2.set_xlim(0, 56)
+    ax2_tick_loc = np.linspace(4, 52, 28)
+    ax2.set_xticks(ax2_tick_loc)
+    ax2.set_xticklabels([a for i, a in enumerate(l) if i % 2 == 1], rotation=90)
+
+    [t.set_color("red") for i, t in enumerate(ax2.xaxis.get_ticklabels()) if np.isin(t.get_text(), mac_overlap.Areas)]
+
+    ax.tick_params(axis="x", which="minor", bottom=False)
+
+    # l = list(order.index) + order_conf
+    # [t.set_color("red") for i, t in enumerate(ax.xaxis.get_ticklabels()) if np.isin(l[i], mac_overlap.Areas)]
+
+    # plt.xticks(rotation=90)
    
     
     plt.ylabel("NOC probability")
 
-    fig.set_figheight(9)
-    fig.set_figwidth(15)
+    fig.set_figheight(7)
+    fig.set_figwidth(9)
     fig.tight_layout()
 
     plot_path = plot_path + "/cortex_letter/"
     Path(plot_path).mkdir(exist_ok=True, parents=True)
     plt.savefig(
       join(
-        plot_path, "overlap.png"
+        plot_path, "overlap.svg"
       ),
       dpi=300#,
       # transparent=T
+    )
+    plt.savefig(
+      join(
+        plot_path, "overlap.png"
+      ),
+      dpi=300,
+      transparent=T
     )
     plt.close()
 
@@ -1609,7 +1787,6 @@ cut = F
 subject = "MAC"
 structure = "FLNe"
 mode = "ZERO"
-distance = "MAP3D"
 nature = "original"
 imputation_method = ""
 topology = "MIX"
@@ -1618,11 +1795,12 @@ mapping = "trivial"
 index  = "Hellinger2"
 bias = float(0)
 alpha = 0.
-__nodes__ = 40
-__inj__ = 40
-version = f"{__nodes__}" + "d" + "91"
+__nodes__ = 57
+__inj__ = 57
+distance = "tracto16"
+version = f"{__nodes__}" + "d" + "106"
 model_distbase = "M"
-model_swaps = "TWOMX_FULL"
+model_swaps = "1k" #  TWOMX_FULL 1K_DENSE
 
 if __name__ == "__main__":
     NET = STR[f"{subject}{__inj__}"](
@@ -1657,13 +1835,16 @@ if __name__ == "__main__":
        "model_distbase" : model_distbase,
        "model_swaps" : model_swaps
     }
+
+    H = read_class(NET.pickle_path, "hanalysis")
     # entropy(cortex_letter_path, mode=mode, iterations=1000)
-    omega(cortex_letter_path, conf, mode=mode, iterations=1000)
+    # omega(cortex_letter_path, conf, mode=mode, iterations=1000)
+    # EHMI(cortex_letter_path, conf, mode=mode, iterations=1000)
     # overlap(cortex_letter_path, conf,  mode=mode, iterations=1000)
     # entropy_networks_220830(cortex_letter_path, mode=mode, iterations=1000)
     # sim_dist(cortex_letter_path, mode=mode)
-    # sim_dist_bin(cortex_letter_path, pickle_path, mode=mode)
-    fair_dist_bin(cortex_letter_path, pickle_path, mode=mode)
+    sim_dist_bin(cortex_letter_path, pickle_path, mode=mode)
+    # fair_dist_bin(cortex_letter_path, pickle_path, mode=mode)
     # sim_histogram(cortex_letter_path, mode=mode)
     # directed_average_count(cortex_letter_path, NET)
     

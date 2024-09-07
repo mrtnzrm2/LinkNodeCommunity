@@ -108,7 +108,7 @@ class OVERLAPPING(SCALEFREE):
       import random
       from datetime import datetime
       random.seed(datetime.now().timestamp())
-      seed = random.randint(0, 100000)
+      seed = random.randint(0, 1000000)
 
     else: seed = 12345
 

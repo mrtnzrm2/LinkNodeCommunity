@@ -40,7 +40,7 @@ def worker_swaps(
   __inj__ = number_of_inj
   __nodes__ = number_of_nodes
   __version__ = data_version
-  __model__ = "TWOMIX_FULL"
+  __model__ = "TWOMX_FULL" # TWOMX_FULL 1k
   # Print summary ----
   print(f"Number of iterations: {MAXI}")
   print("For NET parameters:")
@@ -88,6 +88,9 @@ def worker_swaps(
   L = colregion(NET, labels_name=f"labels{__inj__}")
   # Create hrh class ----
   data = HRH(NET_H, L, MAXI)
+  if sln:
+    data.set_corr_sln_one(NET_H.data_sln, NET_H.cover["both"]["_S"])
+    data.set_cover_corr_sln_one(NET_H.data_sln, NET_H.cover["both"]["_S"])
   RAND_H = 0
   # RANDOM networks ----
   serie = np.arange(MAXI)
@@ -102,7 +105,7 @@ def worker_swaps(
       mode, i,
       structure = structure,
       version = __version__,
-      topology=topology,
+      topology = topology,
       nature = nature,
       distance = distance,
       model = __model__,
@@ -117,10 +120,10 @@ def worker_swaps(
 
     # Create network ----
     print("Create random graph")
-    RAND.random_one_k_TWOMX(NET.SLN, run=run, swaps=100000, on_save_csv=F)   #****
-    # RAND.random_one_k_dense(run=run, swaps=100000, on_save_csv=F)   #****
+    # RAND.random_one_k_TWOMX(NET.SLN, run=run, swaps=1000000, on_save_csv=F)   #****
+    # RAND.random_one_k_dense(run=run, swaps=1000000, on_save_csv=F)   #****
     # RAND.random_dir_weights(run=run, swaps=100000, on_save_csv=F)   #****
-    # RAND.random_one_k(run=run, swaps=100000, on_save_csv=F)
+    RAND.random_one_k(run=run, swaps=1000000, on_save_csv=F)
 
     # Transform data for analysis ----
     R, lookup, _ = maps[mapping](
@@ -148,6 +151,7 @@ def worker_swaps(
     # Stats ----
     data.set_data_measurements_zero(RAND_H, i)
     data.set_hierarchical_association(RAND_H.Z, i)
+    # data.set_hp(NET_H.hp, NET_H.ehmi, RAND_H.Z, RAND_H.nodes)
     data.set_stats(RAND_H)
     # Set entropy ----
     data.set_entropy_zero(
@@ -164,7 +168,7 @@ def worker_swaps(
         rlabels = get_labels_from_Z(RAND_H.Z, r)
         rlabels = skim_partition(rlabels)
         # Overlap ----
-        for direction in ["source", "target", "both"]:
+        for direction in ["source", "target", "both"]: # 
           print("***", direction)
           ocn, subcover, _, rlabels2 = discovery_channel[discovery](
             RAND_H, k, rlabels, direction=direction, index=index
@@ -175,21 +179,29 @@ def worker_swaps(
           data.set_overlap_data_zero(ocn, SCORE, direction)
           if direction == "both" and sln:
             R_data = len(NET_H.cover[direction][SCORE])
-            random_partition = random_partition_R(NET.nodes, R_data)
+            random_partition = random_partition_R(NET.nodes, R_data, RAND_H.colregion.labels[:RAND_H.nodes])
 
+            RAND_H.run_beta_binomial_model(
+              RAND.B[:RAND.nodes, :][:, :RAND.nodes], NET.csv_path + "/sln/", RAND_H.colregion.labels[:RAND_H.nodes],
+            )
+            betas_conf = RAND_H.get_beta_bbmodel(NET.csv_path + "/sln/", RAND_H.colregion.labels[:RAND_H.nodes])
             data_sln = RAND_H.get_data_firstmerge(
-              RAND.B, NET_H.cover[direction][SCORE], RAND_H.colregion.labels[:RAND_H.nodes]
+              RAND.B, NET_H.cover[direction][SCORE], RAND_H.colregion.labels[:RAND_H.nodes], betas_conf
             )
 
             data.set_sln_matrix_zero(
               RAND_H.get_sln_matrix(data_sln, NET_H.cover[direction][SCORE]), key="conf"
             )
-
+            data.set_corr_sln_zero(data_sln, NET_H.cover[direction][SCORE], i, "conf")
+            data.set_cover_corr_sln_zero(data_sln, NET_H.cover[direction][SCORE], i, "conf")
+            
             data_sln = RAND_H.get_data_firstmerge(
-              NET.SLN, random_partition, RAND_H.colregion.labels[:RAND_H.nodes]
+              NET.SLN, random_partition, RAND_H.colregion.labels[:RAND_H.nodes], betas=NET.beta
             )
 
             data.set_sln_matrix_zero(RAND_H.get_sln_matrix(data_sln, random_partition), key="shuffle")
+            data.set_corr_sln_zero(data_sln, random_partition, i, "shuffle")
+            data.set_cover_corr_sln_zero(data_sln, random_partition, i, "shuffle")
   # Save ----
   if isinstance(RAND_H, Hierarchy):
     data.set_subfolder(RAND_H.subfolder)

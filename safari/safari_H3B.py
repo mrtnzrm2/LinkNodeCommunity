@@ -111,12 +111,13 @@ if __name__ == "__main__":
     )
 
   N = __nodes__
+  SLN = NET.SLN
 
   source = []
   target = []
   h = []
-  b = []
-  b2 = []
+  esln = []
+  sln = []
   connection_memberships = []
   connection_classification = []
 
@@ -157,75 +158,137 @@ if __name__ == "__main__":
     for k in np.arange(N-1, 0, -1):
       partition = cut_tree(H.Z, n_clusters=k).ravel()
       if np.sum(partition == partition[i]) > 1:
-        h2i = H.Z[N - k, 2]
+        h2i = H.Z[N - k - 1, 2]
         break
     h2_1merge[i] = h2i
+
+  def what1():
+    sns.scatterplot(
+      x=h2_1merge,
+      y=-beta
+    )
+
+    ax = plt.gca()
+
+    from scipy.stats import pearsonr
+
+    hax = h2_1merge
+    bax = -beta
+    r, pval = pearsonr(hax, bax)
+    pval = pvalue2asterisks(pval)
+    ax.set_title(ax.get_title() + "\n" + fr"$\rho = {r:.2f}$   ({pval})")
+    
+    ax.set_xlabel(r"$H^{2}_i$")
+    ax.set_ylabel(r"$\beta_{i}$")
+    
+    plt.show()
 
   for i in np.arange(N):
     for j in np.arange(N):
       if i == j : continue
       if NET.A[i, j] != 0:
-        b.append(norm.cdf(beta[i] - beta[j]))
-        b2.append(NET.SLN[i, j])
-        h_diff = h2_1merge[i] - h2_1merge[j]
+        esln.append(norm.cdf(beta[i] - beta[j]))
+        sln.append(SLN[i, j])
+        h_diff = h2_1merge[j] - h2_1merge[i]
         h.append(h_diff)
         source.append(i)
         target.append(j)
 
-  b = np.array(b)
-  b2 = np.array(b2)
+  esln = np.array(esln)
+  sln = np.array(sln)
   h = np.array(h)
+
+  h = h - np.min(h)
+  h /= np.max(h)
+
   source = np.array(source)
   target = np.array(target)
 
   from pathlib import Path
   Path(f"{NET.plot_path}/sln").mkdir(parents=True, exist_ok=True)
 
+  ne = sln.shape[0]
+
+  empirical_sln_label = "Empirical " + r"$SLN(i,j)$"
+  sln_bb_label = r"$SLN_{BB}(i,j)$"
+  node_community_label = r"$\Delta \hat{S}(i,j)$"
 
   data = pd.DataFrame({
-    "eb_dist" : b,
-    "b_dist" : b2,
-    "h_dist" : h,
-    # "source" : total_new_labels[source],
-    # "target" : total_new_labels[target]
+    empirical_sln_label : list(sln) * 2,
+    "value" : list(esln) + list(h),
+    "feature" : [sln_bb_label] * ne + [node_community_label] * ne
   })
 
   # print(data)
+  sns.set_style("white")
+  sns.set_context("talk")
 
-  ax = plt.gca()
+  fig, axes = plt.subplots(2, 1)
 
   sns.scatterplot(
     data=data,
-    x="h_dist",
-    y="b_dist",
-    s=50
+    x="value",
+    y=empirical_sln_label,
+    hue="feature",
+    s=50,
+    alpha=0.7,
+    ax=axes[0]
   )
 
+  # box = axes[0].get_position()
+  # axes[0].set_position([box.x0, box.y0, box.width * 0.8, box.height])
+  # axes[0].legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
   from scipy.stats import pearsonr
 
-  hax = data["h_dist"]
-  bax = data["b_dist"]
+  hax = data["value"].loc[data["feature"] == sln_bb_label]
+  bax = data[empirical_sln_label].loc[data["feature"] == sln_bb_label]
   r, pval = pearsonr(hax, bax)
+  print(pval)
   pval = pvalue2asterisks(pval)
-  ax.set_title(ax.get_title() + "\n" + fr"$\rho = {r:.2f}$   ({pval})")
+  axes[0].set_title(r"$\rho_{BB} = $" + f"{r:.2f} ({pval})")
+  # ax.set_title(fr"$\rho_{bb}= {r:.2f}$   ({pval})")
 
-  plt.gcf().tight_layout()
-  ax.set_xlabel(r"$H^{2}_i - H^{2}_j$")
-  # ax.set_xlabel("Estimated "+ r"$SLN\left(i,j\right)$")
-  # ax.set_ylabel("Estimated "+ r"$SLN\left(i,j\right)$")
-  ax.set_ylabel(r"$SLN\left(i,j\right)$")
-
-
-  plt.savefig(
-    f"{NET.plot_path}/sln/sln_asym_h2_1merging3.svg",
-    # f"{NET.plot_path}/sln/esln_asym_h2_1merging3.svg",
-    # f"{NET.plot_path}/sln/sln_esln_3.svg",
-
-    transparent=True
-  )
+  hax = data["value"].loc[data["feature"] == node_community_label]
+  bax = data[empirical_sln_label].loc[data["feature"] == node_community_label]
+  r, pval = pearsonr(hax, bax)
+  print(pval)
+  pval = pvalue2asterisks(pval)
   
+  axes[0].set_title(axes[0].get_title() + "\t" +r"$\rho_{S} = $" + f"{r:.2f}   ({pval})")
 
-  plt.close()
+  sns.histplot(
+    data=data,
+    x="value",
+    hue="feature",
+    ax=axes[1]
+  )
+
+  from scipy.stats import kstest
+
+  r = kstest(esln, h, N=h.shape[0], alternative="two-sided")
+
+  print(r)
+  
+  axes[1].set_title(f"KS = {pvalue2asterisks(r.pvalue)}")
+
+
+  fig.set_figwidth(7)
+  fig.set_figheight(11)
+  fig.tight_layout()
+
+  # plt.gcf().tight_layout()
+  # ax.set_xlabel(r"$H^{2}_i - H^{2}_j$")
+  # ax.set_ylabel("Estimated "+ r"$SLN\left(i,j\right)$")
+  # ax.set_ylabel(r"$SLN\left(i,j\right)$")
+
+
+  # plt.savefig(
+  #   # f"{NET.plot_path}/sln/sln_asym_h2_1merging2.svg",
+  #   f"{NET.plot_path}/sln/sln_and_models_3B.svg",
+
+  #   transparent=True
+  # )
+  # plt.show()
   
   

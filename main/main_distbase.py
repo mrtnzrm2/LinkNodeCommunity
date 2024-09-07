@@ -19,14 +19,14 @@ from various.network_tools import *
 from various.fit_tools import fitters
 from modules.discovery import discovery_channel
 # Declare global variables ----
-__iter__ = 0
+__iter__ = 1
 linkage = "single"
 nlog10 = F
 lookup = F
-prob = T
+prob = F
 cut = F
-structure = "FLN"
-distance = "tracto16"
+structure = "FLNe"
+distance = "MAP3D"
 nature = "original"
 __mode__ = "ZERO"
 topology = "MIX"
@@ -37,12 +37,12 @@ imputation_method = ""
 opt_score = ["_S"]
 save_datas = T
 # Declare global variables DISTBASE ----
-__model__ = "DATA-DRIVEN"
-total_nodes = 106
-__inj__ = 57
-__nodes__ = 57
-__bin__ = 20
-__version__ = "57d106"
+__model__ = "M"
+total_nodes = 91
+__inj__ = 40
+__nodes__ = 40
+__bin__ = 12
+__version__ = f"{__inj__}d{total_nodes}"
 bias = 0.
 alpha = 0.
 ## Very specific!!! Be careful ----
@@ -71,8 +71,9 @@ if __name__ == "__main__":
     cut=cut, b=bias,
     discovery=discovery
   )
-  _, _, _, _, est = fitters["EXPMLE"](REF.D, REF.CC, REF.nodes, __bin__)
+  _, _, _, _, est = fitters["EXPMLE"](REF.D, REF.CC, __bin__)
   lb = est.coef_[0]
+  loc= est.loc
   # Create EDR network ----
   NET = DISTBASE(
     __inj__, total_nodes,
@@ -93,7 +94,7 @@ if __name__ == "__main__":
   # Create network ----
   print("Create random graph")
   Gn = NET.distbase_dict[__model__](
-      D, REF.CC, run=T, on_save_csv=F
+      D, REF.CC, loc=loc, run=T, on_save_csv=F
     )
   Ga = column_normalize(Gn)
   # Transform data for analysis ----
@@ -145,17 +146,27 @@ if __name__ == "__main__":
   # HS.zdict2newick(HS.tree, weighted=T, on=T)
   # plot_h.plot_newick_R(HS.newick, weighted=T, on=T)
   # plot_h.plot_measurements_Entropy(on=T)
-  plot_h.plot_measurements_D(on=T)
-  plot_h.plot_measurements_S(on=T)
+  # plot_h.plot_measurements_D(on=T)
+  # plot_h.plot_measurements_S(on=T)
   # plot_h.plot_measurements_X(on=T)
   # Plot N ----
+
+  RN = Ga[:__nodes__, :__nodes__].copy()
+  RN[RN > 0] = -np.log(RN[RN > 0])
+  np.fill_diagonal(RN, 0.)
+
+  RW = Ga.copy()
+  RW[RW > 0] = -np.log(RW[RW > 0])
+  np.fill_diagonal(RW, 0.)
+
+  RW10 = Ga.copy()
+  RW10[RW10 > 0] = -np.log10(RW10[RW10 > 0])
+  np.fill_diagonal(RW10, 0.)
+
   plot_n = Plot_N(NET, H)
-  plot_n.A_vs_dis(np.log(Ga[:, :__nodes__]), on=T)
-  # plot_n.A_vs_dis(Gn[:, :__nodes__], name="count", on=F)
-  GG = Ga.copy()
-  GG[GG == 0] = np.nan
-  plot_n.histogram_weight(np.log(GG), on=T, label="logFLN")
-  # plot_n.histogram_weight(np.log(1 + Gn), on=T, label="LN")
+  plot_n.A_vs_dis(-RW, on=T)
+
+  plot_n.histogram_weight(-RW10, on=T, label="logFLNe")
   # plot_n.histogram_dist(on=F)
   plot_n.projection_probability(
     Gn[:, :__nodes__], "EXPMLE", bins=__bin__, on=T
@@ -178,18 +189,17 @@ if __name__ == "__main__":
       H.set_rlabels(rlabels2, score, direction)
       H.set_overlap_labels(NET.overlap, score, direction)
     # Plot N ----
-      R = Ga[:__nodes__, :__nodes__].copy()
-      R[R > 0] = -np.log(R[R > 0])
+
       plot_n.plot_network_covers(
-        k, R, rlabels2,
+        k, RN, rlabels2, rlabels,
         data_nocs, noc_sizes, H.colregion.labels[:H.nodes],
         score=score, direction=direction, cmap_name="hls", on=T, figsize=(8,8)
       )
     ## Single linkage ----
-    plot_h.heatmap_dendro(r, np.log(Ga[:, :__nodes__]), on=T, score="logFLN")
+    plot_h.heatmap_dendro(r, -RN, on=T, score="logFLNe")
     plot_h.lcmap_dendro(k, r, on=T, font_size = 12)
-    plot_h.flatmap_dendro(
-      NET, k, r, rlabels2, direction=direction, on=T, EC=T, cmap_name="hls" #
+    plot_h.flatmap_dendro_91(
+      NET, H, cmap_name="hls" #
     )
   # save_class(
   #   H, NET.pickle_path,

@@ -49,12 +49,13 @@ class SCALEHRH:
     )
 
   def set_data_measurements(self, HH : Hierarchy, iter):
-    H = get_H_from_BH_with_maxmu(HH)[
-      ["K", "mu", "X", "D", "S", "SD"]
-    ]
-    H["iter"] = [str(iter)] * H.shape[0]
+    h = pd.DataFrame()
+    for i in np.arange(len(HH.BH)):
+      h = pd.concat([h, HH.BH[i]], ignore_index=True)
+    h = h[["K", "S", "D"]]
+    h["iter"] = [str(iter)] * h.shape[0]
     self.data_measures = pd.concat(
-      [self.data_measures, H],
+      [self.data_measures, h],
       ignore_index=True
     )
 

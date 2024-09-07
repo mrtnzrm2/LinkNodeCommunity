@@ -135,20 +135,20 @@ array_scalefree = pd.DataFrame(
 ## overlap -----------------
 worker = ["overlap"]
 cut = [F]
-number_of_nodes = [100, 150]
-benchmark = ["WN", "WDN"]
+number_of_nodes = [1000] # [100, 150]
+benchmark = ["WDN"]
 topology = ["MIX"]
 indices = ["Hellinger2"]
 mode = ["ZERO"]
 discovery = ["discovery_7"]
-kav = [5, 7, 10]
-# mut = [0.3]
+kav = [10]
+# mut = [0.8, 0.1]
 mut = np.linspace(0.1, 0.8, 10)
 muw = [0.01]
-on = [0.1]
-om = [2, 3, 4]
-nmin = [5]
-nmax = [25]
+on = [0.1] # 0.1
+om = [3, 5, 8] # 3, 5, 8
+nmin = [10] # 10
+nmax = [50] # 50
 list_of_lists = itertools.product(
   *[cut, mode, topology, indices,
     kav, mut, muw, on, om,
@@ -336,7 +336,7 @@ def NoGodsNoMaster(number_of_iterations, network, t):
     number_of_inj = 40
     number_of_nodes = 40
     total_number_nodes = 91
-    distance = "MAP3D"
+    distance = "tracto91"
     version = f"{number_of_inj}d{total_number_nodes}"
     nlog10 = F
     lookup = F
@@ -355,8 +355,8 @@ def NoGodsNoMaster(number_of_iterations, network, t):
     )
   elif array.loc["worker"] == "swaps":
     subject = "MAC"
-    number_of_inj = 29
-    number_of_nodes = 29
+    number_of_inj = 40
+    number_of_nodes = 40
     total_number_nodes = 91
     distance = "MAP3D"
     version = f"{number_of_inj}d{total_number_nodes}"
@@ -379,7 +379,7 @@ def NoGodsNoMaster(number_of_iterations, network, t):
     lookup = F
     prob = F
     run = T
-    maxk = 20
+    maxk = 30
     beta = 2
     t1 = 2
     t2 = 1
@@ -521,6 +521,6 @@ if __name__ == "__main__":
   print(DARRAY[network].shape)
   from collections import Counter
   print(Counter(DARRAY[network].worker))
-  # for t in np.arange(1, DARRAY[network].shape[0]):
-  print(DARRAY[network].iloc[t - 1])
-  NoGodsNoMaster(number_of_iterations, network, t)
+  for t in np.arange(1, DARRAY[network].shape[0]):
+    print(DARRAY[network].iloc[t - 1])
+    NoGodsNoMaster(number_of_iterations, network, t)  

@@ -28,6 +28,7 @@ class Plot_N:
     self.R = H.R
     self.index = H.index
     self.H = H.H
+    self.colregion = H.colregion
     # Data transformed ----
     self.aik = H.source_sim_matrix
     self.aki = H.target_sim_matrix
@@ -44,10 +45,11 @@ class Plot_N:
       print("Plot {} vs dist!!!".format(name))
       from various.fit_tools import linear_fit
       # Get data ----
-      dA = adj2df(A.copy())
+      dA = adj2df(A[:, :self.nodes].copy())
       dD = adj2df(
         self.D.copy()[:, :self.nodes]
       )
+
       # Get No connections ---
       zeros = dA.weight == 0
       isnan = np.isnan(dA.weight)
@@ -74,7 +76,6 @@ class Plot_N:
         100
       )
       # Create figure ----
-      # sns.set_context("talk")
       _ , ax = plt.subplots(1, 1)
       sns.scatterplot(
         data=data,
@@ -84,7 +85,6 @@ class Plot_N:
         s=s
       )
       if "reg" in kwargs.keys():
-        # x_st = (x - np.mean(x)) / np.std(x)
         if kwargs["reg"]:
           sns.lineplot(
             x=x,
@@ -119,13 +119,15 @@ class Plot_N:
         ),
         # dpi=300
       )
+      plt.close()
     else:
       print("No {} vs dist".format(name))
 
   def histogram_dist(self, on=True):
     if on:
       print("Plot distance histogram!!!")
-      sns.set_style("whitegrid")
+      sns.set_context("talk")
+      sns.set_style("ticks")
       # Transform FLN to DataFrame ----
       dD = adj2df(
         self.D[:, :self.nodes].copy()
@@ -138,9 +140,10 @@ class Plot_N:
         x="weight",
         stat="density"
       )
-      plt.xlabel("fiber distance [mm]")
+      plt.xlabel("fiber distances [mm]")
       # plt.ylabel(r"$q(d)\,(mm^{-1})$")
-      
+      fig.set_figheight(6)
+      fig.set_figwidth(8)
       fig.tight_layout()
       # self.normal(
       #   dD["weight"].to_numpy().mean(),
@@ -167,78 +170,122 @@ class Plot_N:
       print("No histogram")
 
   def projection_probability(
-    self, C, model ,bins=20, on=True, **kwargs
+    self, C, model ,bins=20, suffix="", on=True, **kwargs
   ):
     if on:
       print("Plot neuron-distance freq!!!")
       # Distance range ----
-      from pandas import DataFrame
       from various.fit_tools import fitters
-      _, x, y = range_and_probs_from_DC(self.D, C, bins)
-      _, _, _, _, est = fitters[model](self.D, C, bins, **kwargs)
-      y_pred = est.predict(
-        x.reshape(-1, 1)
-      )
-      y_pred = np.exp(y_pred)
-      data = DataFrame(
-        {
-          "dist" : np.round(x, 1).astype(str),
-          "prob" : y.ravel(),
-          "pred" : y_pred.ravel()
-        }
-      )
-      data = data.loc[
-        data["prob"] > 0
-      ]
+      pars, subdata, probdist, _, est = fitters[model](self.D, C, bins, **kwargs)
+
+      N = np.sum(C)
+      x = np.zeros(np.ceil(N).astype(int))
+      e = 0
+      for i in np.arange(C.shape[0]):
+        for j in np.arange(C.shape[1]):
+            if i == j : continue
+            x[e:(e+int(C[i,j]))] = self.D[i, j]
+            e += int(C[i,j])
+      x = x[x > 0]
+
       # Create figure ----
-      # sns.set_context("talk")
-      sns.set_style("whitegrid")
+      sns.set_style("ticks")
+      sns.set_context("talk")
       fig, ax = plt.subplots(1, 1)
-      #  Plot data ----
-      cmp = sns.color_palette("deep")
-      sns.barplot(
-        data=data,
-        x="dist",
-        y="prob",
-        color=cmp[0],
-        alpha=0.8,
+      ax.minorticks_on()
+      #  Plot data ----  
+      sns.histplot(
+        x=x,
+        stat="density",
+        bins=bins,
         ax=ax
       )
-      sns.scatterplot(
-        data=data,
-        x="dist",
-        y="prob",
-        color="black",
-        ax=ax
-      )
+
+      # D, X, _ = plt.hist(x, bins=12, density=T)
+      
+      # sns.barplot(
+      #   data=data,
+      #   x="dist",
+      #   y="prob",
+      #   color=cmp[0],
+      #   alpha=0.8,
+      #   ax=ax
+      # )
+      # sns.scatterplot(
+      #   data=data,
+      #   x="dist",
+      #   y="prob",
+      #   color="black",
+      #   ax=ax
+      # )
       # Plot prediction ----
       ## Plot pred ----
-      label="Exponential dist. (MLE)"
+      # label="Exp. distribution (MLE)"
+      
+      # a = np.min(subdata)
+      # b = np.max(subdata)
+      # x1 = np.linspace(a, b, 100)
+      x2 = np.linspace(pars[1], pars[0], 100)
+
+      cmap = sns.color_palette("deep")
+
       sns.lineplot(
-        data=data,
-        linewidth=2,
-        x="dist",
-        y='pred',
-        color="r",
-        label=label,
+        x=x2,
+        y=probdist.pdf(x2, pars[0], loc=pars[1], scale=pars[2]),
+        linewidth=2.5,
+        color=cmap[1],
+        alpha=0.5,
         ax=ax
       )
-      # ax.text(
-      #     0.5, 1.05,
-      #     s="linear coeff: {:.5f}".format(
-      #       model.coef_[0]
-      #     ),
-      #     ha='center', va='center',
-      #     transform=ax.transAxes
+
+      # xmin = np.min(self.D[:, :self.nodes][self.D[:, :self.nodes] > 0])
+      xmin = 0
+      xmax = np.max(self.D[:, :self.nodes])
+      x3 = np.linspace(xmin, xmax, 100)
+
+      # from scipy.stats import expon
+
+      sns.lineplot(
+        x=x3,
+        y=probdist.pdf(x3, xmax, loc=xmin, scale=pars[2]),
+        # y=expon.pdf(x3, loc=xmin, scale=pars[2]),
+        linewidth=2.5,
+        color=cmap[2],
+        alpha=0.5,
+        ax=ax
+      )
+
+      # print(probdist.pdf(x, pars[0], loc=pars[1], scale=pars[2]))
+
+      # ax.lines[0].set_linestyle("--")
+
+      # label="Least-squares"
+      # sns.lineplot(
+      #   data=data,
+      #   linewidth=2,
+      #   x="dist",
+      #   y='LS',
+      #   color="blue",
+      #   label=label,
+      #   ax=ax
       # )
+
+      ax.text(
+          0.7, 0.9, s=r"$\lambda$"+"={:.3f} [1/mm]".format(est.coef_[0]),
+          ha='center', va='center',
+          transform=ax.transAxes
+      )
       ax.set_yscale('log')
-      ax.legend()
+      # ax.legend()
       # Aesthetics ----
-      ax.set_xlabel("interareal tractography distance [mm]")
+      # ax.tick_params(axis='x', which='minor', bottom=True)
+      sns.despine(right=True, top=True)
+      ax.set_xlabel("Interareal distance [mm]")
       ax.set_ylabel("p(d) [1/mm]")
       ## Fig size ----
       fig.set_figheight(6)
-      fig.set_figwidth(8)
+      fig.set_figwidth(7)
+      fig.tight_layout()
       # Arrange path ----
       plot_path = os.path.join(
         self.path, "Features", "projection_p"
@@ -248,42 +295,17 @@ class Plot_N:
         plot_path
       ).mkdir(exist_ok=True, parents=True)
       # Save plot ----
-      if "reg" in kwargs.keys():
-        if kwargs["reg"] == "poly":
-          plt.savefig(
-            os.path.join(
-              plot_path, "poly_bin_{}_deg_{}.png".format(
-                bins, kwargs["deg"]
-              )
-            ),
-            dpi=200
-          )
-        elif kwargs["reg"] == "piece_poly":
-          plt.savefig(
-            os.path.join(
-              plot_path, "piece_poly_bin_{}.png".format(bins)
-            ),
-            dpi=200
-          )
-        elif kwargs["reg"] == "gp":
-          plt.savefig(
-            os.path.join(
-              plot_path, "gp_bin_{}.png".format(bins)
-            ),
-            dpi=200
-          )
-      else:
-        plt.savefig(
-          os.path.join(
-            plot_path, "bin_{}_{}.png".format(bins, model)
-          ),
-          dpi=200
-        )
+      plt.savefig(
+        os.path.join(
+          plot_path, "bin_{}_{}{}5.png".format(bins, model, suffix)
+        ),
+        dpi=300
+      )
       plt.close()
     else:
       print("No histogram")
 
-  def histogram_weight(self, A, label="", on=True):
+  def histogram_weight(self, A, label="", suffix="", on=True):
     if on:
       print("Plot weight histogram!!!")
       # Transform FLN to DataFrame ----
@@ -294,17 +316,19 @@ class Plot_N:
       dA.connection.loc[dA.weight == 0] = "~exist"
       # Transform FLN to weights ----
 
-      # sns.set_style("whitegrid")
+      sns.set_style("ticks")
       # plt.style.use("dark_background")
-      # sns.set_context("talk")
+      sns.set_context("talk")
 
       fig, ax = plt.subplots(1, 1)
+      ax.minorticks_on()
       sns.histplot(
         data=dA.loc[dA.connection == "exist"],
         x="weight",
         stat="density",
         ax=ax
       )
+      sns.despine(right=True, top=True)
       plt.xlabel(label)
       # plt.ylabel(r"density $([\log(FLN)]^{-1})$")
       fig.tight_layout()
@@ -323,9 +347,16 @@ class Plot_N:
       # Save plot ----
       plt.savefig(
         os.path.join(
-          plot_path, f"weight_histo{label}.svg", 
+          plot_path, f"weight_hist_{suffix}.svg", 
         ),
         # dpi=300,
+        # transparent=True
+      )
+      plt.savefig(
+        os.path.join(
+          plot_path, f"weight_hist_{suffix}.png", 
+        ),
+        dpi=300,
         # transparent=True
       )
       plt.close()
@@ -343,7 +374,7 @@ class Plot_N:
       colors[ids[i]] = cmap[i]
     return colors
   
-  def plot_akis(self, D, s=1, on=True):
+  def plot_akis(self, D, s=1, suffix="", on=True):
     if on:
       print("Plot similarity plots and distance!!!")
       # Transform data to dataframe ----
@@ -397,8 +428,17 @@ class Plot_N:
         (np.abs(data[wlabel_tgt]) < np.inf)
       ]
 
+      # plt.scatter(
+      #   np.power(data[wlabel_src].to_numpy().ravel(), 1),
+      #   np.power(data[wlabel_tgt].to_numpy().ravel(), 1),
+      #   s=5
+      # )
+      # plt.show()
+
 
       # Create figures ----
+      sns.set_context("talk")
+      sns.set_style("ticks")
       fig, ax = plt.subplots(1, 3)
       sns.scatterplot(
         data=data, x="dist", y=wlabel_tgt,
@@ -447,7 +487,18 @@ class Plot_N:
         x=wlabel_src, y=wlabel_tgt,
         s=s, ax=ax[2]
       )
-      
+
+        # from various.stat_tools import test_polynomial_model
+
+        # test_polynomial_model(
+        #   data[wlabel_src].to_numpy().ravel(), data[wlabel_tgt].to_numpy().ravel()
+        # )
+        
+        # test_polynomial_model(
+        #   np.power(data[wlabel_src].to_numpy().ravel(), 2.), data[wlabel_tgt].to_numpy().ravel(),
+        #   degree=1
+        # )
+
       ## Compute stats ----
       # data_cor = pearsonr(
       #   data[wlabel_src],
@@ -464,9 +515,11 @@ class Plot_N:
       #   ha='center', va='center',
       #   transform=ax[2].transAxes
       # )
+      
       ax[2].set_ylabel(wlabel_tgt)
       ax[2].set_xlabel(wlabel_src)
-      fig.set_figwidth(15)
+      fig.set_figwidth(17)
+      sns.despine(trim=True, offset=10)
       fig.tight_layout()
 
       # Arrange path ----
@@ -482,7 +535,13 @@ class Plot_N:
       # Save plot ----
       plt.savefig(
         os.path.join(
-          plot_path, "similarity_plots_{}.svg".format(self.linkage)
+          plot_path, "similarity_plots_{}{}.svg".format(self.linkage, suffix)
+        ),
+        # dpi=300
+      )
+      plt.savefig(
+        os.path.join(
+          plot_path, "similarity_plots_{}{}.png".format(self.linkage, suffix)
         ),
         # dpi=300
       )
@@ -689,10 +748,22 @@ class Plot_N:
       plt.close()
   
   def plot_network_covers(
-      self, k, R : npt.NDArray, partition, nocs : dict, sizes : dict, labels,
+      self, k, r, R : npt.NDArray, partition, partition_original, nocs : dict, sizes : dict, labels,
       ang=0, score="", direction="", cmap_name="hls", figsize=(12,12), scale=1.5,
-      color_order=None, spring=False , undirected=False, font_size=12, on=True, **kwargs
+      color_order=None, spring=False , undirected=False, font_size=12, not_labels=False, suffix="", on=True, **kwargs
     ):
+
+    cmap_deep = sns.color_palette("deep")
+
+    aux_cmap = [
+      [1., 1., 1.],
+      cmap_deep[4],
+      cmap_deep[3],
+      cmap_deep[2],
+      cmap_deep[1],
+      cmap_deep[0]
+    ]
+
     if on:
       print("Printing network space")
       from scipy.cluster import hierarchy
@@ -705,16 +776,22 @@ class Plot_N:
       if -1 in unique_clusters_id:
         save_colors = sns.color_palette(cmap_name, keff - 1)
         cmap_heatmap = [[]] * keff
-        cmap_heatmap[0] = [199 / 255.0, 0, 57 / 255.0]
+        # cmap_heatmap[0] = [199 / 255.0, 0, 57 / 255.0]
+        cmap_heatmap[0] = [1., 1., 1.]
         cmap_heatmap[1:] = save_colors
       else:
         save_colors = sns.color_palette(cmap_name, keff)
         cmap_heatmap = [[]] * (keff+1)
-        cmap_heatmap[0] = [199 / 255.0, 0, 57 / 255.0]
+        # cmap_heatmap[0] = [199 / 255.0, 0, 57 / 255.0]
+        cmap_heatmap[0] = [1., 1., 1.]
         cmap_heatmap[1:] = save_colors
       cmap_heatmap = np.array(cmap_heatmap)
       if isinstance(color_order, np.ndarray):
         cmap_heatmap[1:] = cmap_heatmap[1:][color_order]
+
+      # cmap_heatmap = aux_cmap
+
+
       # Assign memberships to nodes ----
       if -1 in unique_clusters_id:
         nodes_memberships = {
@@ -752,6 +829,7 @@ class Plot_N:
       aesthetic_ids(dA)
       dA = df2adj(dA, var="id")
       # Generate graph ----
+      R /= np.max(R)
       G = nx.from_numpy_array(R, create_using=nx.DiGraph)
       edge_color = [""] * len(G.edges())
       for i, dat in enumerate(G.edges(data=True)):
@@ -759,11 +837,11 @@ class Plot_N:
         if dA[u, v] == -1: edge_color[i] = cmap_heatmap[0]
         else: edge_color[i] = "#666666"
       if "coords" not in kwargs.keys():
-        # Rsym = (R + R.T) / 2
-        # Gpos = nx.from_numpy_array(Rsym, create_using=nx.Graph)
         pos = nx.kamada_kawai_layout(G, weight="weight")
         if spring:
-          Ginv = nx.DiGraph(1/R)
+          Rinv = R.copy()
+          Rinv[Rinv != 0] = 1e-2
+          Ginv = nx.DiGraph(Rinv)
           pos = nx.spring_layout(Ginv, weight="weight", pos=pos, iterations=5, seed=212)
       else:
         pos = kwargs["coords"]
@@ -779,63 +857,92 @@ class Plot_N:
       pos = {k : pos[k] - mu_pos for k in pos.keys()}
       pos = {k : pos[k] * scale for k in pos.keys()}
 
-      # plt.style.use("dark_background")
+      # pos[np.where(labels == "9/46d")[0][0]][0] -= 0.03
+      # pos[np.where(labels == "9/46d")[0][0]][1] -= 0.03
+
+      # pos[np.where(labels == "v1")[0][0]][0] += 0.03
+      # pos[np.where(labels == "v1")[0][0]][1] -= 0.03
+
       plt.figure(figsize=figsize)
       if "not_edges" not in kwargs.keys():
         nx.draw_networkx_edges(
-          G, pos=pos, edge_color=edge_color, alpha=0.5, width=2, arrowsize=10, connectionstyle="arc3,rad=-0.1",
-          node_size=1800
+          G, pos=pos,
+          # edge_color=edge_color,
+          edge_color="#666666",
+          alpha=0.3, width=2, arrowsize=60, connectionstyle="arc3,rad=-0.1",
+          node_size=1800, arrowstyle="<-"
         )
-      if "modified_labels" not in kwargs.keys():
-        t = nx.draw_networkx_labels(G, pos=pos, labels=labs, font_color="white")
-        for key in t.keys():
-          t[key].set_path_effects(
-          [
-            path_effects.Stroke(linewidth=1, foreground='black'),
-            path_effects.Normal()
-          ]
-        )
-      else:
-        t = nx.draw_networkx_labels(G, pos=pos, labels=kwargs["modified_labels"], font_color="white", font_size=font_size)
-        for key in t.keys():
-          t[key].set_path_effects(
-          [
-            path_effects.Stroke(linewidth=1, foreground='black'),
-            path_effects.Normal()
-          ]
-        )
-
+      if ~not_labels:
+        print(">>> Drawing labels")
+        if "modified_labels" not in kwargs.keys():
+          # "#E8CFA7"
+          t = nx.draw_networkx_labels(G, pos=pos, labels=labs, font_color="white", font_size=font_size, font_weight="bold")
+          for key in t.keys():
+            t[key].set_path_effects(
+            [
+              path_effects.Stroke(linewidth=2, foreground='gray'),
+              path_effects.Normal()
+            ]
+          )
+        else:
+          t = nx.draw_networkx_labels(G, pos=pos, labels=kwargs["modified_labels"], font_color="yellow", font_size=font_size)
+          for key in t.keys():
+            t[key].set_path_effects(
+            [
+              path_effects.Stroke(linewidth=2, foreground='black'),
+              path_effects.Normal()
+            ]
+          ) 
       for node in G.nodes:
+        if partition_original[node] == -1:
+          wedgecolor = "black"
+          wedgewidth = 4
+        else:
+          wedgecolor = "gray"
+          wedgewidth = 2
         a = plt.pie(
           [s for s in nodes_memberships[node]["size"] if s != 0], # s.t. all wedges have equal size
-          center=pos[node],  
+          center=pos[node],
+          # colors = [self.colregion.regions["COLOR"].loc[self.colregion.regions["AREA"]==labels[node]].to_numpy()[0]],
+          # colors = ["#000000" for i, id in enumerate(nodes_memberships[node]["id"]) if id != 0],
           colors = [cmap_heatmap[i] for i, id in enumerate(nodes_memberships[node]["id"]) if id != 0],
-          radius=0.08
+          radius=0.03,
+          wedgeprops={
+            "linewidth" : wedgewidth,
+            "edgecolor": wedgecolor
+          }
         )
         for i in range(len(a[0])):
-          a[0][i].set_alpha(0.8)
+          a[0][i].set_alpha(0.95)
       array_pos = np.array([list(pos[v]) for v in pos.keys()])
-      plt.xlim(-0.05 + np.min(array_pos, axis=0)[0], np.max(array_pos, axis=0)[0] + 0.05)
+      
+      plt.xlim(-0.02 + np.min(array_pos, axis=0)[0], np.max(array_pos, axis=0)[0] + 0.02)
       plt.ylim(-0.05 + np.min(array_pos, axis=0)[1], np.max(array_pos, axis=0)[1] + 0.05)
-      # plt.show()
+      plt.gcf().tight_layout()
       # Arrange path ----
       plot_path = os.path.join(
         self.path, "Network"
       )
+      # plt.show()
       # Crate path ----
       Path(
-        plot_path
+        plot_path + "/svg/"
       ).mkdir(exist_ok=True, parents=True)
       # Save plot ----
-
-      #### Careful: manual modification #### -----
       plt.savefig(
         os.path.join(
-          plot_path, f"net_cover_{score}_{direction}.svg"
+          plot_path + "/svg/", f"net_cover_{score}_{direction}_{r}{suffix}.svg"
+        ), transparent=True
+      )
+      Path(
+        plot_path + "/png/"
+      ).mkdir(exist_ok=True, parents=True)
+      plt.savefig(
+        os.path.join(
+          plot_path + "/png/", f"net_cover_{score}_{direction}_{r}{suffix}.png"
         ),
         dpi=300, transparent=True
       )
-      #### End modification ####
       plt.close()
 
   def distance_cover_swarm(self, partition, covers : dict, direction="source", index="Hellinger2", on=True):
@@ -1034,6 +1141,8 @@ class Plot_N:
       elif index == "cos":
         wlabel = "1 - cosine similarity"
 
+      covs_keys2 = [f"C{c}" for c in covs_keys]
+
       for i in np.arange(len(covs_keys)):
         areas =  match(covers[covs_keys[i]], self.labels)
 
@@ -1046,7 +1155,7 @@ class Plot_N:
             data,
             pd.DataFrame(
               {
-                "cover" : [str(covs_keys[i])] * d.shape[0],
+                "cover" : [str(covs_keys2[i])] * d.shape[0],
                 "set" : ["within"] * d.shape[0],
                 wlabel : d
               }
@@ -1070,13 +1179,12 @@ class Plot_N:
 
             else:
               d = dist[list(areas3), :][:, list(areas2)].ravel()
-
           data = pd.concat(
             [
               data,
               pd.DataFrame(
                 {
-                  "cover" : [str(covs_keys[i])] * d.shape[0],
+                  "cover" : [f"{covs_keys2[i]}"] * d.shape[0],
                   "set" : ["between"] * d.shape[0],
                   wlabel : d
                 }
@@ -1085,17 +1193,18 @@ class Plot_N:
           )
       
       data = data.loc[~np.isnan(data[wlabel])]
-      plt.style.use("dark_background")
+      # plt.style.use("dark_background")
+      sns.set_style("white")
       sns.set_context("talk")
+
+      fig, ax = plt.subplots(1,1)
       sns.boxplot(
         data=data,
         x="cover",
         y= wlabel,
-        hue="set"
+        hue="set",
+        ax=ax
       )
-
-      ax = plt.gca()
-      fig = plt.gcf()
 
       fig.set_figwidth(12)
       fig.set_figheight(9)
@@ -1109,8 +1218,8 @@ class Plot_N:
       xtext = np.sort(xtext)
 
       for i, c in enumerate(np.unique(data.cover)):
-        do = data[wlabel].loc[(data.cover == c) & (data.set == "within")].to_numpy()
-        da = data[wlabel].loc[(data.cover == c) & (data.set == "between")].to_numpy()
+        do = data[wlabel].loc[(data.cover == f"C{i}") & (data.set == "within")].to_numpy()
+        da = data[wlabel].loc[(data.cover == f"C{i}") & (data.set == "between")].to_numpy()
 
         test = ttest_ind(do, da, alternative="less", equal_var=False)
 
@@ -1125,11 +1234,17 @@ class Plot_N:
             a = "***"
         else:
           a = "nan"
-        ax.text(xtext[i] - 0.015, 1.01, a, transform=ax.transAxes)
+        ax.text(xtext[i], 1.01, a, transform=ax.transAxes, ha="center", va="center")
 
-      ax.set_xticklabels(ax.get_xticklabels(), weight="bold", fontsize=30)
+      # ax.set_xticklabels(ax.get_xticklabels(), weight="bold", fontsize=30)
+      # print(ax.get_xticklabels())
       for i in np.arange(unique_clusters_id.shape[0]):
-        ax.get_xticklabels()[i].set_color(cmap_[i]) 
+        ax.get_xticklabels()[i].set_color(cmap_[i])
+      
+      ax.tick_params("x", labelsize=20)
+
+      ax.set_xlabel("Cover membership")
+      fig.tight_layout()
 
       # Arrange path ----
       plot_path = os.path.join(
@@ -1151,86 +1266,87 @@ class Plot_N:
       print("No distance_cover box")
 
   
-  def plot_cover_items(self, cover : dict):
+  def plot_cover_items(self, cover : dict, on=True):
+    if on:
 
-    node_cover = cover_node_2_node_cover(cover, self.labels[:self.nodes])
-    nocs = np.array([n for n, val in node_cover.items() if len(val) > 1])
-    # Create a directed graph
-    G = nx.Graph()
+      node_cover = cover_node_2_node_cover(cover, self.labels[:self.nodes])
+      nocs = np.array([n for n, val in node_cover.items() if len(val) > 1])
+      # Create a directed graph
+      G = nx.Graph()
 
-    # Add nodes and edges to the graph based on the dictionary
-    for key, values in cover.items():
-        G.add_node(f"C{key}")
-        G.add_node(values[0])
-        G.add_edge(f"C{key}", values[0])
-        last_node = values[0]
-        for i in np.arange(1, len(values)):
-            if values[i] not in G.nodes:
-              if np.isin(values[i], nocs):
-                val = values[i] + f"-{key}"
-                G.add_node(val)
-                G.add_edge(last_node, val)
-                last_node = val
-              else:
-                G.add_node(values[i])
-                G.add_edge(last_node, values[i])
-                last_node = values[i]
+      # Add nodes and edges to the graph based on the dictionary
+      for key, values in cover.items():
+          G.add_node(f"C{key+1}")
+          G.add_node(values[0])
+          G.add_edge(f"C{key+1}", values[0])
+          last_node = values[0]
+          for i in np.arange(1, len(values)):
+              if values[i] not in G.nodes:
+                if np.isin(values[i], nocs):
+                  val = values[i] + f"-{key+1}"
+                  G.add_node(val)
+                  G.add_edge(last_node, val)
+                  last_node = val
+                else:
+                  G.add_node(values[i])
+                  G.add_edge(last_node, values[i])
+                  last_node = values[i]
 
-    subset_dict = {}
-    for key, val in cover.items():
-      subset_dict[f"C{key}"] = key
-      for v in val:
-        if np.isin(v, nocs):
-          subset_dict[v+f"-{key}"] = key
-        else:
-          subset_dict[v] = key
+      subset_dict = {}
+      for key, val in cover.items():
+        subset_dict[f"C{key+1}"] = key+1
+        for v in val:
+          if np.isin(v, nocs):
+            subset_dict[v+f"-{key+1}"] = key+1
+          else:
+            subset_dict[v] = key+1
 
-    nx.set_node_attributes(G, subset_dict, 'subset')
-    # Create a layout for the nodes
-    pos = nx.multipartite_layout(G, align='horizontal')
-    G_nodes = np.array(G.nodes)
-    node_colors = np.array(["lightblue"] * len(G_nodes), dtype="<U21")
+      nx.set_node_attributes(G, subset_dict, 'subset')
+      # Create a layout for the nodes
+      pos = nx.multipartite_layout(G, align='horizontal')
+      G_nodes = np.array(G.nodes)
+      node_colors = np.array(["lightblue"] * len(G_nodes), dtype="<U21")
 
-    array_op = lambda x, sx: np.array([x[0]*sx, x[1]])
+      array_op = lambda x, sx: np.array([x[0]*sx, x[1]])
 
-    pos = {p:array_op(pos[p], -1) for p in pos}
+      pos = {p:array_op(pos[p], -1) for p in pos}
 
-    for i, n in enumerate(G_nodes):
-      if "C" in n:
-        node_colors[i] = "salmon"
+      for i, n in enumerate(G_nodes):
+        if "C" in n:
+          node_colors[i] = "salmon"
 
-    # k = 0
-    # for i, n in enumerate(G_nodes):
-    #   if "C" in n:
-    #     k = 0
-    #   pos[n][1] -= k
-    #   k += 1
+      # k = 0
+      # for i, n in enumerate(G_nodes):
+      #   if "C" in n:
+      #     k = 0
+      #   pos[n][1] -= k
+      #   k += 1
 
-    # Draw the network plot
-    nx.draw(
-      G, pos, with_labels=True, node_size=700,
-      node_color=node_colors, font_size=7, font_weight='bold'
-    )
+      # Draw the network plot
+      nx.draw(
+        G, pos, with_labels=True, node_size=700,
+        node_color=node_colors, font_size=7, font_weight='bold'
+      )
 
-    # plt.title('Cover memberships')
+      # plt.title('Cover memberships')
 
-    # Arrange path ---- 
-    plot_path = os.path.join(
-      self.path, "sln"
-    )
-    # Crate path ----
-    Path(
-      plot_path
-    ).mkdir(exist_ok=True, parents=True)
-    # Save plot ----
-    plt.savefig(
-      os.path.join(
-        plot_path, f"cover_memberships_net.svg"
-      ),
-      transparent=True,
-      # dpi=300
-    )
-    plt.close()
+      # Arrange path ---- 
+      plot_path = os.path.join(
+        self.path, "sln"
+      )
+      # Crate path ----
+      Path(
+        plot_path
+      ).mkdir(exist_ok=True, parents=True)
+      # Save plot ----
+      plt.savefig(
+        os.path.join(
+          plot_path, f"cover_memberships_net.svg"
+        ),
+        transparent=True,
+        # dpi=300
+      )
+      plt.close()
 
 
 

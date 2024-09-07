@@ -8,11 +8,13 @@ T = True
 F = False
 # Personal libs ---- 
 from modules.hierarmerge import Hierarchy
+# from modules.sign.hierarmerge import Hierarchy
 from plotting_modules.plotting_H import Plot_H
 from plotting_modules.plotting_N import Plot_N
 from modules.colregion import colregion
 from modules.hierarentropy import Hierarchical_Entropy
 from modules.discovery import discovery_channel
+from various.data_transformations import *
 from various.data_transformations import maps
 from networks.structure import STR
 from various.network_tools import *
@@ -31,16 +33,16 @@ mapping = "trivial"
 index  = "Hellinger2"
 bias = 0.
 alpha = 0.
+bins = 12
 discovery = "discovery_7"
 opt_score = ["_S"]
-sln = T
+sln = F
 
-__nodes__ = 29
-__inj__ = f"{__nodes__}"
-version = f"{__nodes__}"+"d"+"91"
+__nodes__ = 40
+__inj__ = "40"
+version = f"40"+"d"+"91"
 distance = "MAP3D"
 save_data = T
-
 
 # Start main ----
 if __name__ == "__main__":
@@ -62,10 +64,13 @@ if __name__ == "__main__":
     alpha = alpha,
     discovery = discovery
   )
+  # print(NET.D)
   NET.create_pickle_directory()
   NET.create_plot_directory()
-
+  # NET.get_infranetwork()
+  
   # Transform data for analysis ----
+  # R, lookup, _ = multiplexed_colnormalized_mapping(0, NET.SN, NET.IN)
   R, lookup, _ = maps[mapping](
     NET.A, nlog10, lookup, prob, b=bias
   )
@@ -76,7 +81,9 @@ if __name__ == "__main__":
     ## Hierarchy object!! ----
     H = Hierarchy(
       NET, NET.A, R, NET.D,
-      __nodes__, linkage, mode, lookup=lookup, index=index
+      __nodes__, linkage, mode, lookup=lookup,
+      index=index,
+      #  architecture="all"
     )
     ## Compute features ----
     H.BH_features_cpp_no_mu()
@@ -85,6 +92,7 @@ if __name__ == "__main__":
     ## Compute lq arbre de merde ----
     H.la_abre_a_merde_cpp(H.BH[0])
     H.get_h21merge()
+    # H.set_hp()
     ## Compute node entropy ----
     H.node_entropy_cpp("short", cut=cut)
     ## Update entropy ----
@@ -102,10 +110,11 @@ if __name__ == "__main__":
       NET.pickle_path,
       "hanalysis"
     )
+
   # # Picasso ----
   plot_h = Plot_H(NET, H)
   plot_n = Plot_N(NET, H)
-  HS = Hierarchical_Entropy(H.Z, H.nodes, NET.struct_labels[:NET.nodes])
+  HS = Hierarchical_Entropy(H.Z, H.nodes, labels=NET.struct_labels[:NET.nodes])
   HS.Z2dict("short")
   # HS.zdict2newick(HS.tree, weighted=F, on=T)
   # plot_h.plot_newick_R(
@@ -113,15 +122,14 @@ if __name__ == "__main__":
   #   threshold=H.node_entropy[0].shape[0] - np.argmax(H.node_entropy[0]) - 1,
   #   weighted=F, on=T
   # )
-  # HS.zdict2newick(HS.tree, weighted=T, on=T)
-  # plot_h.plot_newick_R(HS.newick, HS.total_nodes, root_position=1-H.Z[:, 2][-1], weighted=T, on=T)
-  
-  
+  HS.zdict2newick(HS.tree, weighted=T, on=T)
+  plot_h.plot_newick_R(HS.newick, HS.total_nodes, root_position=1- H.Z[:, 2][-1], weighted=T, on=F)
+
   # plot_h.plot_measurements_Entropy(on=T)
-  # plot_h.plot_measurements_D(on=T)
-  # plot_h.plot_measurements_S(on=T)
+  # plot_h.plot_measurements_D(on=F)
+  # plot_h.plot_measurements_S(on=F)
   # plot_h.plot_measurements_SD(on=T)
-  # plot_h.plot_measurements_X(on=T)
+  # plot_h.plot_measurements_CC(on=T)
 
   RN = NET.A[:__nodes__, :].copy()
   RN[RN > 0] = -np.log(RN[RN > 0])
@@ -131,38 +139,52 @@ if __name__ == "__main__":
   RW[RW > 0] = -np.log(RW[RW > 0])
   np.fill_diagonal(RW, 0.)
 
-  # plot_n.A_vs_dis(-RW, s=10, on=T, reg=T)
-  # plot_n.projection_probability(NET.C, "EXPMLE" , bins=12, on=T)
-  # plot_n.histogram_dist(on=True)
-  # plot_n.histogram_weight(np.log(NET.A), label=r"$\log(FLNe)$", on=T)
-  # plot_n.plot_akis(NET.D, s=5, on=T)
+  RW10 = NET.A.copy()
+  RW10[RW10 > 0] = -np.log10(RW10[RW10 > 0])
+  np.fill_diagonal(RW10, 0.)
 
-  # raise 
+  plot_n.A_vs_dis(-RW, s=10, on=F, reg=T)
+  plot_n.projection_probability(NET.CC, "EXPTRUNC" , bins=bins, on=T)
+  # plot_n.histogram_dist(on=True)
+  plot_n.histogram_weight(-RW10, label=r"$\log10(p(i,j))$", suffix="log10_p", on=F)
+  plot_n.plot_akis(NET.D, s=5, on=F)
 
   for SCORE in opt_score:
     # Get best K and R ----
     K, R, TH = get_best_kr_equivalence(SCORE, H)
+    # k = get_k_from_equivalence(24, H)
+    # K = [k]
+    # R = [24]
+    # TH = [_]
     for k, r, th in zip(K, R, TH):
       print(f"Find node partition using {SCORE}")
-      print("Best K: {}\nBest R: {}\t Score: {}".format(k, r, SCORE))
+      print("Best K: {}\ R: {}: and TH : {}\t Score: {}".format(k, r, th, SCORE))
       H.set_kr(k, r, score=SCORE)
       rlabels = get_labels_from_Z(H.Z, r)
       rlabels = skim_partition(rlabels)
-       # Plot H ----
-      # plot_h.core_dendrogram([r], leaf_font_size=8, on=T) #
-      # raise
-      # plot_h.heatmap_dendro(r, -RN, on=T, score="FLNe", font_size = 12)
-      # plot_h.lcmap_dendro(k, r, on=T, font_size = 12) #
-      # plot_h.threshold_color_map(r, th, index=index, score=SCORE, font_size = 12, on=T)
+
+      print(">>> Single community nodes:")
+      SCN = NET.struct_labels[:NET.nodes][np.where(rlabels == -1)[0]]
+      print(SCN, "\n")
+
+      # Plot H ----
+      plot_h.core_dendrogram([r], leaf_font_size=12, on=F) #
+      plot_h.heatmap_dendro(r, -RW10, on=F, linewidth=3, score="FLNe", cbar_label=r"$\log_{10}$FLN", fontsize = 25, suffix="2")
+      plot_h.lcmap_dendro(k, r, on=F, font_size = 12) #
+      plot_h.threshold_color_map(r, th, index=index, score=SCORE, font_size = 12, on=F)
       
       # Overlap ----
-      for direction in ["source", "target", "both"]: # , 
+      for direction in [ "source",  "target", "both"]: # ,  "source", "target",
         print("***", direction)
         NET.overlap, NET.data_nocs, noc_sizes, rlabels2  = discovery_channel[discovery](H, k, rlabels, direction=direction, index=index)
-        print("\n\tAreas with predicted overlapping communities:\n",  NET.data_nocs, "\n")
+        print(">>> Areas with predicted overlapping communities:\n",  NET.data_nocs, "\n")
+        print(">>> Single areas assigned to one cover:\n", {k : rlabels2[np.where(NET.struct_labels[:NET.nodes] == k)][0] for k in SCN if rlabels2[np.where(NET.struct_labels[:NET.nodes] == k)][0] != -1})
         cover = omega_index_format(rlabels2,  NET.data_nocs, NET.struct_labels[:NET.nodes])
-
+        print(cover)
         if direction == "both" and sln:
+
+          plot_h.heatmap_sln_dendro(r, -RN[:NET.nodes, :NET.nodes], NET.SLN[:NET.nodes, :NET.nodes], on=F, score="SLN", cbar_label="SLN", center=0.5, font_size = 12, suffix="")
+          
           data_sln = H.get_data_firstmerge(NET.SLN, cover, NET.struct_labels)
           SLN_cover_matrix = H.get_sln_matrix(data_sln, cover)
 
@@ -171,30 +193,52 @@ if __name__ == "__main__":
 
           print(cover)
 
-          data_sln = H.get_data_firstmerge(NET.SLN, cover, NET.struct_labels)
+          data_sln = H.get_data_firstmerge(NET.SLN, cover, NET.struct_labels, betas=NET.beta)
           SLN_cover_matrix = H.get_sln_matrix(data_sln, cover)
           
-          plot_n.plot_cover_items(cover)
-          H.set_data_sln(SLN_cover_matrix)
-          plot_h.sln_trace(data_sln, cover, ylabel="SLN")
-          # plot_h.sln_trace_hist(data_sln, cover)
-          # plot_h.sln_offdiagonal(data_sln, cover)
-          plot_h.sln_matrix(data_sln, cover, cbarlabel="SLN")
-        else:
-          H.set_data_sln(0)
+          plot_n.plot_cover_items(cover, on=F)
+          H.set_data_sln_matrix(SLN_cover_matrix)
+          H.set_data_sln(data_sln)
+          plot_h.hitsplot_sln_corr_covers(data_sln, cover, on=False)
+          plot_h.heatmap_sln_corr_covers(data_sln, cover, on=False)
+          plot_h.sln_trace(data_sln, cover, xlabel="SLN_BB", ylabel="SLN", suffix="BB", on=False)
+          plot_h.sln_offdiagonal(data_sln, cover, on=False)
+          plot_h.sln_matrix(data_sln, cover, cbarlabel="Empirical SLN", on=False)
+        # else:
+          # H.set_data_sln(0)
+          # H.set_data_sln_matrix(0)
+ 
+        # rlabels2[rlabels2 != -2] = 0
+        # cover_art = {}
 
-        # plot_n.plot_network_covers(
-        #   k, RN, rlabels2,
-        #   NET.data_nocs, noc_sizes, H.colregion.labels[:H.nodes], ang=0,
-        #   # color_order=color_order,
-        #   score=SCORE, direction=direction, cmap_name="deep", on=T#, figsize=(8,8)
+        plot_n.plot_network_covers(
+          k, r, RN, rlabels2, rlabels,
+          NET.data_nocs,
+          # cover_art,
+          noc_sizes, H.colregion.labels[:H.nodes], ang=45,
+          # color_order=color_order,
+          score=SCORE, direction=direction, spring=F, font_size=20,
+          scale=0.45,
+          suffix="small", cmap_name="deep", not_labels=F, on=F#, figsize=(8,8)
+        )
+
+      # cover_art = {}
+      # # rlabels = [0 for i in np.arange(len(rlabels))]
+      # plot_n.plot_network_covers(
+      #     k, RN, rlabels,
+      #     # NET.data_nocs,
+      #     cover_art,
+      #     noc_sizes, H.colregion.labels[:H.nodes], ang=0,
+      #     # color_order=color_order,
+      #     score=SCORE, direction=direction,
+      #     suffix="raw", cmap_name="hls", on=F#, figsize=(8,8)
+      #   )
+
+        # plot_n.distance_cover_boxplot(rlabels2, cover, direction=direction, index=index, on=F)
+        # # Flat map ---
+        # plot_h.flatmap_dendro(
+        #   NET, k, r, rlabels2, direction=direction, on=T, EC=T, cmap_name="hls" #
         # )
-
-        # plot_n.distance_cover_boxplot(rlabels2, cover, direction=direction, index=index, on=T)
-  #       # # Flat map ---
-  #       # plot_h.flatmap_dendro(
-  #       #   NET, k, r, rlabels2, direction=direction, on=T, EC=T, cmap_name="hls" #
-  #       # )
 
         H.set_rlabels(rlabels2, SCORE, direction)
         H.set_overlap_labels(NET.overlap, SCORE, direction)
@@ -207,9 +251,9 @@ if __name__ == "__main__":
   #   # for i, area in enumerate(NET.struct_labels[:NET.nodes]):
   #   #   values = index_distance[i, :]
   #   #   plot_h.flatmap_index(NET, area, values, max_value=max_index_distance, index_name=index, on=T)
-  # # plot_h.flatmap_regions(
-  # #     NET, k, r, rlabels2, direction=direction, on=T, EC=F, cmap_name="hls" #
-  # #   ) 
+  plot_h.flatmap_regions(
+      NET, k, r, rlabels2, direction=direction, on=F, EC=T, cmap_name="deep" #
+    ) 
   save_class(
     H, NET.pickle_path,
     "hanalysis", on=T

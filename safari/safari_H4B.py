@@ -141,6 +141,32 @@ if __name__ == "__main__":
         break
     h2_1merge[i] = h2i
 
+
+
+
+  sns.scatterplot(
+    x=h2_1merge,
+    y=-beta
+  )
+
+  ax = plt.gca()
+
+  from scipy.stats import pearsonr
+
+  hax = h2_1merge
+  bax = -beta
+  r, pval = pearsonr(hax, bax)
+  pval = pvalue2asterisks(pval)
+  ax.set_title(ax.get_title() + "\n" + fr"$\rho = {r:.2f}$   ({pval})")
+  
+  ax.set_xlabel(r"$H^{2}_i$")
+  ax.set_ylabel(r"$\beta_{i}$")
+  
+  plt.show()
+
+
+
+
   cover_indices = {c: match(l, NET.struct_labels) for c, l in cover.items()}
 
   for c1, li1 in cover_indices.items():

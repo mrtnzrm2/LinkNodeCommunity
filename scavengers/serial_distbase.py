@@ -124,15 +124,17 @@ if __name__ == "__main__":
     # plot_s.plot_measurements_S(on=T)
     # plot_s.plot_measurements_SD(on=T)
     plot_s.histogram_clustering_similarity(
-      on=T, c=T, hue_norm=[s.replace("_", "") for s in opt_score]
+      on=F, c=T, hue_norm=[s.replace("_", "") for s in opt_score]
     )
     plot_o = PLOT_OS(data)
     for score in opt_score:
-      plot_s.histogram_krs(score=score, on=T)
+      plot_s.histogram_krs(score=score, on=F)
       for direction in ["source", "target", "both"]:
-        plot_o.association_heatmap(score, direction, on=T)
-        plot_o.association_heatmap_zero(score, direction, on=T)
+        plot_o.association_heatmap(score, direction, on=F)
+        plot_o.association_heatmap_zero(score, direction, on=F)
         plot_o.cover_flatmap_association(
-          __nodes__, __version__, L.regions, score, direction, on=T, EC=T, cmap="hls"
+          __nodes__, __version__, L.regions, score, direction, on=F, EC=T, cmap="hls"
         )
-        plot_o.histogram_overlap(score, direction, on=T)
+        plot_o.histogram_overlap(score, direction, on=F)
+        if direction == "both":
+          plot_o.histogram_EHMI(data.hp, score, direction, on=T)

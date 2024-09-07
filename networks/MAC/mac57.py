@@ -57,7 +57,7 @@ class base:
 class MAC57(base):
   def __init__(
     self, linkage : str, mode : str, nlog10=True, lookup=False, 
-    cut = False, topology="MIX", mapping="R1", index="jacp", discovery="discovery_3", **kwargs
+    cut = False, topology="MIX", mapping="R1", index="jacp", discovery="discovery_7", **kwargs
   ) -> None:
     super().__init__(linkage, **kwargs)
     self.nlog10 = nlog10

@@ -5,8 +5,8 @@ from various.network_tools import *
 
 class DISTBASE(EDR):
   def __init__(
-    self, nodes, total_nodes, linkage,
-    bin, mode, iter, nlog10=False, lookup=False, cut=False,
+    self, nodes, total_nodes, linkage, bin, mode, iter,
+    nlog10=False, lookup=False, cut=False,
     topology="MIX", mapping="trivial", index="Hellinger2", discovery="discovery_7",
     lb=0.19, rho=0.59, **kwargs
   ) -> None:
@@ -50,7 +50,7 @@ class DISTBASE(EDR):
       "../CSV", self.folder, self.random,
       self.subject, self.version,
       self.structure, self.distance,
-      self.model, "BIN_{}".format(bin),
+      self.model, self.fitter, "BIN_{}".format(bin),
       self.iter
     )
     self.dist_path = os.path.join(
@@ -83,6 +83,7 @@ class DISTBASE(EDR):
       "LINEARTRUNC" : self.random_exp_trunc,
       "CONSTDEN" : self.random_const_net,
       "M" : self.random_net_M,
+      "MTRUNC" : self.random_net_MTRUNC,
       "CONSTM": self.random_net_const_M,
       "CONSTPARETO" : self.random_const_pareto
     }
@@ -270,7 +271,7 @@ class DISTBASE(EDR):
         # Prepare data ----
         dD = adj2df(D.copy())
         dD = dD.loc[
-          dD["source"] < dD["target"]
+          dD["source"] > dD["target"]
         ]
         # Get bin ranges ----
         bin_ranges = self.binnarize(D)
@@ -280,7 +281,7 @@ class DISTBASE(EDR):
         NET = sample_distbase(
           dD, bin_ranges, self.bin,
           D.shape[0], args[0].shape[1], dD.shape[0],  self.rho,
-          self.lb
+          self.lb, np.min(dD[dD>0])
         )
         NET = np.array(NET)
         print("NET density: {:.5f}".format(self.den(NET)))
@@ -418,7 +419,7 @@ class DISTBASE(EDR):
       print("NET density: {:.5f}".format(self.den(NET)))
     return NET
 
-  def random_net_M(self, D, *args, run=True, **kwargs):
+  def random_net_M(self, D, *args, loc=None, run=True, **kwargs):
     path = os.path.join(
       self.csv_path, "Count.csv"
     )
@@ -432,6 +433,9 @@ class DISTBASE(EDR):
         # Get bin ranges ----
         bin_ranges = self.binnarize(dD)
         dD = dD.to_numpy()
+        if loc is None:
+          # loc = np.min(dD[dD > 0])
+          loc = 0
         # Leaves!!!
         if np.sum(np.isnan(args[0])) > 0:
           counting_edges = np.sum((not np.isnan(args[0]) ) & ( args[0] > 0)).astype(int)
@@ -442,7 +446,53 @@ class DISTBASE(EDR):
         NET = sample_distbase_M(
           dD, bin_ranges, self.bin,
           args[0].shape[0], args[0].shape[1], dD.shape[0], counting_edges,
-          self.lb
+          self.lb, loc
+        )
+        NET = np.array(NET)
+        print("NET EC density: {:.5f}".format(self.den(NET)))
+        print("NET M: {}".format(self.links_M(NET)))
+        if "on_save_csv" in kwargs.keys():
+          if kwargs["on_save_csv"]:
+            np.savetxt(path, NET, delimiter=",")
+      else:
+        NET = np.genfromtxt(path, delimiter=",")
+        print("NET density: {:.5f}".format(self.den(NET)))
+        print("NET M: {}".format(self.links_M(NET)))
+    else:
+      NET = np.genfromtxt(path, delimiter=",")
+      print("NET density: {:.5f}".format(self.den(NET)))
+      print("NET M: {}".format(self.links_M(NET)))
+    return NET
+  
+  def random_net_MTRUNC(self, D, *args, loc=None, b=None, run=True, **kwargs):
+    path = os.path.join(
+      self.csv_path, "Count.csv"
+    )
+    if run:
+      if not os.path.exists(path):
+        # Prepare data ----
+        dD = adj2df(D.copy())
+        dD = dD.loc[
+          dD["source"] < dD["target"]
+        ]
+        # Get bin ranges ----
+        bin_ranges = self.binnarize(dD)
+        dD = dD.to_numpy()
+        if loc is None:
+          loc = np.min(dD[dD > 0])
+        if b is None:
+          b = np.max(dD)
+        # Leaves!!!
+        if np.sum(np.isnan(args[0])) > 0:
+          counting_edges = np.sum((not np.isnan(args[0]) ) & ( args[0] > 0)).astype(int)
+        else:
+          counting_edges = np.sum(args[0] != 0).astype(int)
+        # Initiate samplenet ----
+        from rand_network import sample_distbase_trunc_M
+        NET = sample_distbase_trunc_M(
+          dD, bin_ranges, self.bin,
+          args[0].shape[0], args[0].shape[1], dD.shape[0], counting_edges,
+          self.lb, loc, b
         )
         NET = np.array(NET)
         print("NET EC density: {:.5f}".format(self.den(NET)))

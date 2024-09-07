@@ -537,7 +537,7 @@ std::vector<std::vector<int> > sample_distbase(
   std::vector<std::vector<double> > &net,
   std::vector<double> &bins, int &nbins,
   int &nodes, int &ncols, int &leaves,
-  double &rho, double &lb
+  double &rho, double &lb, double& loc
 ) {
   // Change random seed ----
   srand(time(0));
@@ -558,7 +558,7 @@ std::vector<std::vector<int> > sample_distbase(
     display_progress(Rho, rho, t, sp);
     // Generate random distance
     d =  (rand() % 1000) / 1000.;
-    d = - log(1 - d) / lb ;
+    d = - log(1 - d) / lb + loc;
     if (d > bins[nbins - 1]) continue;
     c = find_bin(d, bins, nbins);
     if (c == -1) continue;
@@ -732,7 +732,7 @@ std::vector<std::vector<int> > sample_distbase_trunc(
   while (Rho < rho) {
     display_progress(Rho, rho, t, sp);
     // Generate random distance
-    d =  (rand() % 1000) / 1000.;
+    d =  (rand() % 100000) / 100000.;
     d = xmin - log(1. - d * (1. - exp(-lb * (xmax - xmin)))) / lb ;
     if (d > xmax) continue;
     c = find_bin(d, bins, nbins);
@@ -755,7 +755,7 @@ std::vector<std::vector<int> > sample_distbase_M(
   std::vector<std::vector<double> > &net,
   std::vector<double> &bins, int &nbins,
   int &nrows, int &ncols, int &Drows,
-  int &M, double &lb
+  int &M, double &lb, double &loc
 ) {
   // Change random seed ----
   srand(time(0));
@@ -776,8 +776,49 @@ std::vector<std::vector<int> > sample_distbase_M(
     display_progress(m, M, t, sp);
     // Generate random distance
     d = (rand() % 1000000) / 1000000.;
-    d = - log(1 - d) / lb ;
+    d = - log(1 - d) / lb + loc;
     if (d > bins[nbins - 1]) continue;
+    c = find_bin(d, bins, nbins);
+    if (c == -1) continue;
+    if (subnet[c].size() == 0) continue;
+    r = rand() % subnet[c].size();
+    A = rand() % 2;
+    if (A == 0) B = 1;
+    else B = 0;
+    NET[subnet[c][r][A]][subnet[c][r][B]]++;
+    network_M(NET, nrows, ncols, m);
+  }
+  std::cout << "\nDone!\n";
+  return NET;
+}
+
+std::vector<std::vector<int> > sample_distbase_trunc_M(
+  std::vector<std::vector<double> > &net,
+  std::vector<double> &bins, int &nbins,
+  int &nrows, int &ncols, int &Drows,
+  int &M, double &lb, double &loc, double &b
+) {
+  // Change random seed ----
+  srand(time(0));
+  // Declare variables ----
+  int c, r, A, B, m = 0, t = 0, sp = 5;
+  double d;
+  // Declare network ----
+  std::vector<std::vector<int> > NET(
+    nrows, std::vector<int>(nrows, 0)
+  );
+  // Categorize distances ----
+  std::vector<std::vector<std::vector<double> > > subnet;
+  get_subnets(
+    net, bins, Drows, nbins, subnet
+  );
+  std::cout << "Matching network density:\n";
+  while (m <= M) {
+    display_progress(m, M, t, sp);
+    // Generate random distance
+    d = (rand() % 1000000) / 1000000.;
+    d = - log(1 - d * (1 - exp(-lb * (b - loc)))) / lb + loc;
+    if (d > b) continue;
     c = find_bin(d, bins, nbins);
     if (c == -1) continue;
     if (subnet[c].size() == 0) continue;
@@ -1119,61 +1160,42 @@ std::vector<std::vector<double> > swap_one_k_dense(
     if (A == B || C == D) continue;
     if (A == D || B == C) continue;
     if (A == C || B == D) continue;
-    if (GG[A][C] == 0 || GG[B][D] == 0) continue;
-    // Create luck ----
-    luck = rand() % 2;
-    switch (luck) {
-    // Horizontal cases ----
-    case 0:
-      if (GG[A][D] > 0) {
-        tmp = GG[A][D];
-        GG[A][D] = GG[A][C];
-        GG[A][C] = tmp;
-      }
-      else {
-        GG[A][D] = GG[A][C];
-        GG[A][C] *= 0.0;
-      }
-      if (GG[B][C] > 0) {
-        tmp = GG[B][C];
-        GG[B][C] = GG[B][D];
-        GG[B][D] = tmp;
-      }
-      else {
-        GG[B][C] = GG[B][D];
-        GG[B][D] *= 0.0;
-      }
-      
-      break;
-    // Vertical case ----
-    case 1:
-      if (GG[B][C] > 0){
-        tmp = GG[B][C];
-        GG[B][C] = GG[A][C];
-        GG[A][C] = tmp;
-      }
-      else {
-        GG[B][C] = GG[A][C];
-        GG[A][C] *= 0.0;
-      }
-      if (GG[A][D] > 0) {
+    // if (t % 1000 == 0) std::cout << A << " " << B << " " << C << " " << D << std::endl;
+    if (GG[A][C] > 0 && GG[B][D] > 0 && GG[A][D] > 0 && GG[B][C]> 0) {
+      luck = rand() % 2;
+      if (luck == 0) {
+        tmp = GG[A][C];
+        GG[A][C] = GG[A][D];
+        GG[A][D] = tmp;
+
         tmp = GG[B][D];
-        GG[A][D] = GG[B][D];
-        GG[B][D] = tmp;
+        GG[B][D] = GG[B][C];
+        GG[B][C] = tmp;
+        t++;
       }
-      else {
-        GG[A][D] = GG[B][D];
-        GG[B][D] *= 0.0;
+      else{
+        tmp = GG[A][C];
+        GG[A][C] = GG[B][C];
+        GG[B][C] = tmp;
+
+        tmp = GG[B][D];
+        GG[B][D] = GG[A][D];
+        GG[A][D] = tmp;
+        t++;
       }
-      
-      break;
-    default:
-      break;
     }
-    t++;
+    else if (GG[A][C] > 0 && GG[B][D] > 0 && GG[A][D] == 0 && GG[B][C]== 0) {
+      GG[A][D] = GG[A][C];
+      GG[A][C] = 0;
+
+      GG[B][C] = GG[B][D];
+      GG[B][D] = 0;
+      t++;
+    }
   }
   std::cout << "\nDone!\n";
   return GG;
+
 }
 
 PYBIND11_MODULE(rand_network, m) {
@@ -1237,6 +1259,12 @@ PYBIND11_MODULE(rand_network, m) {
   m.def(
     "sample_distbase_M",
     &sample_distbase_M,
+    py::return_value_policy::reference_internal
+  );
+
+  m.def(
+    "sample_distbase_trunc_M",
+    &sample_distbase_trunc_M,
     py::return_value_policy::reference_internal
   );
 

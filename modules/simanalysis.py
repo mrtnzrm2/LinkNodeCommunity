@@ -38,7 +38,7 @@ class Sim:
       "simple" : 5, "simple2" : 6, "from_reg": 7, "from_clf" : 8, "simple3": 9, "simple4" : 10, "logcos" : 11,
       "simple5": 12, "simple6": 13, "D1" : 14, "D1_2" : 15, "D2" : 16, "Dinf" : 17, "simple7" : 18,
       "Dalpha" : 19, "simple2_2" : 20, "D1_2_2" : 21, "D1b" : 22, "dist_sim" : 23,  "D1_2_3" : 24,
-      "bsim_2" : 25, "jacp_2" : 26, "D1_2_4" : 27, "Hellinger" : 28, "TV" : 29, "Hellinger2": 30
+      "bsim_2" : 25, "jacp_2" : 26, "D1_2_4" : 27, "Hellinger" : 28, "TV" : 29, "Hellinger2": 30, "Shortest_Path" : 31
     }
     self.topology = topology
     self.index = index
@@ -264,13 +264,37 @@ class Sim:
       raise RuntimeError("Not compatible direction.")
   
   def similarity_by_feature_cpp(self):
-    Quest = squest.simquest(
-      self.nonzero, self.D,
-      self.get_aki(), self.get_aik(),
-      self.get_aki_bin(), self.get_aik_bin(),
-      self.nodes, self.leaves, self.topologies[self.topology],
-      self.indices[self.index], self.al
-    )
+    if self.indices[self.index] != 31:
+      Quest = squest.simquest(
+        self.nonzero, self.D,
+        self.get_aki(), self.get_aik(),
+        self.get_aki_bin(), self.get_aik_bin(),
+        self.nodes, self.leaves, self.topologies[self.topology],
+        self.indices[self.index], self.al
+      )
+    else:
+      
+      EC = self.A[:self.nodes, :self.nodes]
+      EC = -np.log(EC)
+
+      import networkx as nx
+
+      GEC = nx.DiGraph(EC)
+      SW  = np.zeros(EC.shape)
+
+      for i in np.arange(self.nodes):
+        for j in np.arange(self.nodes):
+          if i == j: continue
+          SW[i, j] = nx.shortest_path_length(GEC, source=i, target=j, weight="weight")
+
+      Quest = squest.simquest(
+        self.nonzero, self.D,
+        SW, SW, 
+        self.get_aki_bin(), self.get_aik_bin(),
+        self.nodes, self.leaves, self.topologies[self.topology],
+        self.indices[self.index], self.al
+      )
+
     self.linksim_matrix = np.array(Quest.get_linksim_matrix())
     self.source_sim_matrix = np.array(Quest.get_source_matrix())
     self.target_sim_matrix = np.array(Quest.get_target_matrix())

@@ -3,16 +3,17 @@ import pandas as pd
 from various.network_tools import *
 
 class wrap_fit_exp:
-  def __init__(self, lb) -> None:
+  def __init__(self, lb, loc=0) -> None:
     self.coef_ = np.zeros(1)
     self.coef_[0] = lb
+    self.loc=loc
   
   def predict(self, x):
-    y = -self.coef_[0] * x + np.log(self.coef_[0])
+    y = -self.coef_[0] * (x-self.loc) + np.log(self.coef_[0])
     return y
   
   def log_likelihood(self, x, n):
-    return np.sum(n) * np.log(self.coef_[0]) - self.coef_[0] * np.sum( x * n)
+    return np.sum(n) * np.log(self.coef_[0]) - self.coef_[0] * np.sum( (x-self.loc) * n)
   
 class wrap_fit_pareto:
   def __init__(self, a, xm) -> None:
@@ -62,8 +63,8 @@ def linear_fit(x, y):
   line_poly = LinearRegression(fit_intercept=True).fit(
     x.reshape(-1, 1), y
   )
-  print("> Linear coefficients' means:")
-  print(line_poly.coef_)
+  print(f"> Linear slope:\t{line_poly.coef_[0]:.3f}")
+  print(f"> Linear interception:\t{line_poly.intercept_:.3f}")
   return line_poly
 
 def fit_pareto_STAN(D, C, nodes, *args):
@@ -269,87 +270,125 @@ def fit_pareto_trunc_MLE(D, C, nodes, *args):
 def fit_exp_MLE(D, C, *args, npoints=100, **kwargs):
   import matplotlib.pyplot as plt
   import seaborn as sns
-  # import stan
-  CC = C.copy()
-  nodes = CC.shape[1]
-  CC[:nodes, :nodes] = CC[:nodes, :nodes] + CC[:nodes, :nodes].T
-  # CC = CC[:nodes, :nodes]
-  CC = adj2df(CC)
-  CC = CC.loc[CC.source > CC.target]
-  zeros = CC.weight == 0
-  # DD = D[:nodes, :nodes]
-  DD = D[:, :nodes]
-  DD = adj2df(DD)
-  DD = DD.loc[DD.source > DD.target]
-  DD = DD.weight.loc[~zeros].to_numpy().ravel()
-  CC = CC.weight.loc[~zeros].to_numpy().ravel()
-  order = np.argsort(DD)
-  DD = DD[order]
-  CC = CC[order]
+
+  nodes = C.shape[1]
+  CC = C.copy().ravel()
+
+  zeros = CC == 0
+  DD = D[:, :nodes].ravel()
+
+  DD = DD[~zeros]
+  CC = CC[~zeros]
+
   ## Statistical inference ----
-  lb_mle = (np.sum(CC) - 2)/ np.sum(CC * DD)
-  print("\nlambda:\t",lb_mle)
+  from scipy.stats import expon
+  N = np.sum(CC)
+  N = np.ceil(N).astype(int)
+  data = np.zeros(N) 
+
+  e = 0
+  for i, c in enumerate(CC):
+    data[e:(e+int(c))] = DD[i]
+    e += int(c)
+  data = data[data > 0]
+
+  Y, X, _ = plt.hist(data, bins=args[0], density=True)
+
+  # print(X)
+  # g = data[(data >= X[1]) & (data <= X[-2])]
+  # print(np.min(g), np.max(g))
+  # print(np.min(data[data>0]))
+
+  lb = expon.fit(data[(data >= X[1]) & (data <= X[-1])])
+  # lb = expon.fit(data)
+
+  # import statsmodels.api as sm
+  # Y = np.log(Y)
+  # X = (X[1:] + X[:-1]) / 2
+  # X = sm.add_constant(X)
+  # r = sm.OLS(Y, X).fit()
+  # print(r.params)
+  # print(X)
+
+  print(f"\nloc:\t", lb[0])
+  print("lambda:\t", 1/lb[1])
+
   x = DD.copy().reshape(-1, 1)
-  pred = wrap_fit_exp(lb_mle)
+  pred = wrap_fit_exp(1/lb[1], loc=0)
   print("llhood", pred.log_likelihood(DD, CC))
   log_prob = pred.predict(x)
+
   ## Error ----
   emp_log_prob = np.log(CC / np.sum(CC))
   print("error", np.std(emp_log_prob - log_prob))
-  ##
-  # CC = np.array([CC[0]]+[CC[i] + np.sum(CC[:i]) for i in np.arange(1, CC.shape[0])])
-  # CC = CC / np.sum(C)
-  # cum_exp = lambda lb, x: 1 - np.exp(-lb * x)
-  # fig, ax = plt.subplots(1, 1)
-  # data = pd.DataFrame(
-  #   {
-  #     "x" : np.hstack([DD, x.ravel()]),
-  #     "CCDF" : np.hstack([1 - CC, 1 - cum_exp(lb_mle, x.ravel())]),
-  #     "model" : ["data"] * CC.shape[0] + ["EXP_MLE"] * x.shape[0] 
-  #   }
-  # )
-  # sns.lineplot(
-  #   data=data,
-  #   x="x",
-  #   y="CCDF",
-  #   hue="model",
-  #   ax=ax
-  # )
-  # ax.set_title(r"$\lambda$:" + f" {lb_mle:.4f}")
-  # ax.set_yscale("log")
-  # fig.tight_layout()
-  # plt.show()
-  ##
+
   return [], x.reshape(-1), log_prob, np.zeros(log_prob.shape), pred
 
-def fit_exp_trunc_MLE(D, C, nodes, *args, npoints=100, **kwargs):
+def fit_exp_trunc_MLE(D, C, *args, npoints=100, **kwargs):
   import matplotlib.pyplot as plt
   import seaborn as sns
   from scipy.optimize import fsolve
-  def func(x, *args):
-    return (1/x) + (args[0] * np.exp(-x * args[0])- args[1] * np.exp(-x * args[1])) / (np.exp(-x * args[0]) - np.exp(-x * args[1])) - args[2]
-  CC = C.copy()
-  CC[:nodes, :nodes] = CC[:nodes, :nodes] + CC[:nodes, :nodes].T
-  # CC = CC[:nodes, :nodes]
-  CC = adj2df(CC)
-  CC = CC.loc[CC.source > CC.target]
-  zeros = CC.weight == 0
+  # def func(x, *args):
+  #   return (1/x) + (args[0] * np.exp(-x * args[0])- args[1] * np.exp(-x * args[1])) / (np.exp(-x * args[0]) - np.exp(-x * args[1])) - args[2]
+  
+  nodes = C.shape[1]
+  CC = C.copy().ravel()
+  # CC[:nodes, :nodes] = CC[:nodes, :nodes] + CC[:nodes, :nodes].T
+  # # CC = CC[:nodes, :nodes]
+  # CC = adj2df(CC)
+  # CC = CC.loc[CC.source > CC.target]
+  zeros = CC == 0
   # DD = D[:nodes, :nodes]
-  DD = D[:, :nodes]
-  DD = adj2df(DD)
-  DD = DD.loc[DD.source > DD.target]
-  DD = DD.weight.loc[~zeros].to_numpy().ravel()
-  CC = CC.weight.loc[~zeros].to_numpy().ravel()
-  order = np.argsort(DD)
-  DD = DD[order]
-  CC = CC[order]
+  DD = D[:, :nodes].ravel()
+  # DD = adj2df(DD)
+  # DD = DD.loc[DD.source > DD.target]
+  # DD = DD.weight.loc[~zeros].to_numpy().ravel()
+  # CC = CC.weight.loc[~zeros].to_numpy().ravel()
+  # order = np.argsort(DD)
+  # DD = DD[order]
+  # CC = CC[order]
+
+  DD = DD[~zeros]
+  CC = CC[~zeros]
+
   ## Statistical inference ----
   xmin = np.min(D[D>0])
   xmax = np.max(D)
-  lb_mle = fsolve(func, x0=0.05, args=(xmin, xmax, np.sum(CC * DD) / np.sum(CC)))[0]
-  print("\nlambda:\t",lb_mle)
+
+
+  from scipy.stats import truncexpon
+
+  N = np.sum(CC)
+  N = np.ceil(N).astype(int)
+  data = np.zeros(N) 
+
+  e = 0
+  for i, c in enumerate(CC):
+    data[e:(e+int(c))] = DD[i]
+    e += int(c)
+  data = data[data > 0]
+
+  _, X, _ = plt.hist(data, bins=args[0], density=True)
+
+  if args[0] == 12:
+    subdata = data[(data >= X[1]) & (data <= X[-1])]
+  elif args[0] == 20:
+    subdata = data[(data >= X[2]) & (data <= X[-3])]
+  # subdata2 = subdata - np.min(subdata)
+
+  loc = np.min(subdata)
+  scale = np.std(subdata)
+  b = np.max(subdata)
+
+  lb = truncexpon.fit(subdata, b, loc=loc, scale=scale)
+
+  
+  print(lb)
+  print("lambda:", 1/(lb[2]), "\n")
+  # raise ValueError("")
+ 
   x = DD.copy().reshape(-1, 1)
-  pred = wrap_fit_exp_trunc(lb_mle, xmin, xmax)
+  pred = wrap_fit_exp_trunc(1/lb[2], xmin, xmax)
   print("llhood", pred.log_likelihood(DD, CC))
   log_prob = pred.predict(x)
    ## Error ---
@@ -379,7 +418,7 @@ def fit_exp_trunc_MLE(D, C, nodes, *args, npoints=100, **kwargs):
   # fig.tight_layout()
   # plt.show()
   ##
-  return [], x.reshape(-1), log_prob, np.zeros(log_prob.shape), pred
+  return lb, subdata, truncexpon, np.zeros(log_prob.shape), pred
 
 def fit_exp_STAN(D, C, nodes, bins, npoints=100, **kwargs):
   import matplotlib.pyplot as plt
@@ -498,15 +537,34 @@ def fit_linear(D, C, nodes, *args, npoints=100, **kwargs):
   import matplotlib.pyplot as plt
   import seaborn as sns
   import statsmodels.api as sm
-  _, x, y = range_and_probs_from_DC(D, C, nodes, args[0])
+  # _, x, y = range_and_probs_from_DC(D, C, nodes, args[0])
+  nodes = C.shape[1]
+  N = np.sum(C)
+  x = np.zeros(np.ceil(N).astype(int))
+  e = 0
+  for i in np.arange(C.shape[0]):
+     for j in np.arange(C.shape[1]):
+        if i == j or C[i,j] == 0: continue
+        x[e:(e+int(C[i,j]))] = D[i, j]
+        e += int(C[i,j])
+  x = x[x > 0]
+  x = np.array(x)
+
+  Y, X, _ = plt.hist(x, bins=args[0], density=True)
+  Y = np.log(Y)
+  X = (X[1:] + X[:-1]) / 2
+  Y = Y[3:-3]
+  X = X[3:-3]
+
   ## Statistical inference ----
   X = x.reshape(-1, 1)
   X = sm.add_constant(X)  
-  lb = sm.OLS(y, X).fit()
+  lb = sm.OLS(Y, X).fit()
   c = lb.params[0]
   lb = -lb.params[1]
   print("\nlambda:\t", lb, "\tb:\t", c)
   pred = wrap_fit_exp(lb)
+
   CC = C.copy()
   CC[:nodes, :nodes] = CC[:nodes, :nodes] + CC[:nodes, :nodes].T
   # CC = CC[:nodes, :nodes]

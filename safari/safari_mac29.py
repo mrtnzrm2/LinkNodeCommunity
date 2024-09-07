@@ -110,7 +110,7 @@ if __name__ == "__main__":
     NET.A, nlog10, lookup, prob, b=bias
   )
 
-  ## Hierarchy object!! ----
+## Hierarchy object!! ----
 #   H = Hierarchy(
 #     NET, NET.A, R, NET.D,
 #     __nodes__, linkage, mode, lookup=lookup, index=index

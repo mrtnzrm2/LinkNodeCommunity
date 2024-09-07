@@ -3,12 +3,14 @@
 #include <stdlib.h>
 #include <math.h>
 #include<ctime> // time
+
 #include <pybind11/stl.h>
 #include <pybind11/pybind11.h>
+namespace py = pybind11;
 
 const int INF = std::numeric_limits<int>::max();
 
-namespace py = pybind11;
+
 
 // #define lmbda 0.07921125
 
@@ -51,14 +53,18 @@ class simquest {
     );
     ~simquest(){};
     std::vector<double> calculate_linksim_matrix(
-      std::vector<std::vector<bool> >& bmatrix, const int& N, const int& leaves
+      std::vector<std::vector<bool> >& bmatrix, const int& N, const int& leaves, const int& index
     );
+
     double similarity_index(
       std::vector<double> &u, std::vector<double> &v, std::vector<bool> &bu, std::vector<bool> &bv, double &D, int &ii, int &jj, const int &index
     );
+
+
     std::vector<std::vector<double> > calculate_nodesim_matrix(
       std::vector<std::vector<double> >& matrix, std::vector<std::vector<bool> >& bmatrix, std::vector<std::vector<double> > D, const int& N, const int& index
     );
+		
 		std::vector<double> get_linksim_matrix();
 		std::vector<std::vector<double> > get_source_matrix();
 		std::vector<std::vector<double> > get_target_matrix();
@@ -83,7 +89,10 @@ class simquest {
 		double D1_2_3(std::vector<double> &u, std::vector<double> &v, int &ii, int&jj);
 		double D1_2_4(std::vector<double> &u, std::vector<double> &v, int &ii, int&jj);
 		double Hellinger(std::vector<double> &u, std::vector<double> &v, int &ii, int&jj);
+
 		double Hellinger2(std::vector<double> &u, std::vector<double> &v, int &ii, int&jj);
+		double Shortest_Path(std::vector<double> &u, std::vector<double> &v, int &ii, int&jj);
+
 		double TV(std::vector<double> &u, std::vector<double> &v, int &ii, int&jj);
 		double D2(std::vector<double> &u, std::vector<double> &v);
 		double Dinf(std::vector<double> &u, std::vector<double> &v);
@@ -124,13 +133,14 @@ simquest::simquest(
 		source_matrix = calculate_nodesim_matrix(AKI, BAKI, D, N, index);
 		target_matrix = source_matrix;
 	}
-	linksim_matrix = calculate_linksim_matrix(BA, N, leaves);
+	linksim_matrix = calculate_linksim_matrix(BA, N, leaves, index);
 }
 
 std::vector<std::vector<double> > simquest::calculate_nodesim_matrix(
 	 std::vector<std::vector<double> >& matrix, std::vector<std::vector<bool> >& bmatrix, std::vector<std::vector<double> > D, const int& N, const int& index
 ) {
 	std::vector<std::vector<double> > node_sim_matrix(N, std::vector<double>(N, 0.));
+
 	for (int i=0; i < N; i++) {
 		for (int j=i; j < N; j++) {
 			if (i == j) continue;
@@ -142,7 +152,7 @@ std::vector<std::vector<double> > simquest::calculate_nodesim_matrix(
 }
 
 std::vector<double> simquest::calculate_linksim_matrix(
-	std::vector<std::vector<bool> >& matrix, const int& N, const int& leaves
+	std::vector<std::vector<bool> >& matrix, const int& N, const int& leaves, const int& index
 ) {
 	int t;
 	std::vector<std::vector<int> > id_matrix = create_id_matrix(matrix, N, N);
@@ -159,14 +169,18 @@ std::vector<double> simquest::calculate_linksim_matrix(
 				if (k == j || col_id == 0) continue;
 				t = leaves * (row_id - 1) + col_id - 1 - 2 * (row_id -1) - 1;
 				t -= (int) ((row_id - 1.) * (row_id - 2.) / 2);
-				link_similarity_matrix[t] = target_matrix[j][k];
+				if (index != 31)
+					link_similarity_matrix[t] = target_matrix[j][k];
+				else link_similarity_matrix[t] = 1 / (0.25 * (1/target_matrix[i][j] + 1/target_matrix[i][k] + 1/target_matrix[k][j] + 1/target_matrix[j][k]));
 			}
 			for (int k=i; k < N; k++) {
 				col_id = id_matrix[k][j];
 				if (k == i || col_id == 0) continue;
 				t = leaves * (row_id - 1) + col_id - 1 - 2 * (row_id -1) - 1;
 				t -= (int) ((row_id - 1.) * (row_id - 2.) / 2);
-				link_similarity_matrix[t] = source_matrix[i][k];
+				if (index != 31)
+					link_similarity_matrix[t] = source_matrix[i][k];
+				else link_similarity_matrix[t] = 1 / (0.25 * (1/source_matrix[i][j] + 1/source_matrix[k][j] + 1/source_matrix[i][k] + 1/source_matrix[k][i]));
 			}
 		}
 	}
@@ -797,6 +811,10 @@ double simquest::from_clf(std::vector<double> &u, std::vector<double> &v, std::v
 	return 1 / (1 + exp(0.02036713 * D - 8.61685212 * simr - 0.02094556 * (simr * D) + 2.27301252));
 }
 
+double simquest::Shortest_Path(std::vector<double> &u, std::vector<double> &v, int &ii, int&jj) {
+	return 1 / u[jj];
+}
+
 double simquest::similarity_index(std::vector<double> &u, std::vector<double> &v, std::vector<bool> &bu, std::vector<bool> &bv, double &D, int &ii, int &jj, const int &index) {
 	// Jaccard probability index
   if (index == 0) {
@@ -898,6 +916,10 @@ double simquest::similarity_index(std::vector<double> &u, std::vector<double> &v
 	else if (index == 30) {
 		return Hellinger2(u, v, ii, jj);
 	}
+	else if (index == 31) {
+		return Shortest_Path(u, v, ii, jj);
+	}
+
   else {
     std::range_error("Similarity index must be a integer from 0 to 5\n");
   }

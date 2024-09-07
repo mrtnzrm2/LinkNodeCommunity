@@ -20,7 +20,7 @@ from various.network_tools import *
 __iter__ = 0
 __nodes__ = 150
 linkage = "single"
-nlog10 = T
+nlog10 = F
 lookup = F
 prob = F
 cut = F
@@ -36,14 +36,14 @@ save_data = T
 par = {
   "-N" : "{}".format(str(__nodes__)),
   "-k" : "7",
-  "-maxk" : "15",
-  "-mut" : "0.1",
+  "-maxk" : "50",
+  "-mut" : "0.5",
   "-muw" : "0.01",
   "-beta" : "3",
   "-t1" : "2",
   "-t2" : "1",
   "-nmin" : "5",
-  "-nmax" : "20"
+  "-nmax" : "2"
 }
 if __name__ == "__main__":
   # Create EDR network ----
@@ -67,103 +67,133 @@ if __name__ == "__main__":
   NET.random_WDN_cpp(run=run, on_save_pickle=T)
   NET.col_normalized_adj(on=F)
   number_of_communities = len(np.unique(NET.labels))
-  # Compute Hierarchy ----
-  print("Compute Hierarchy")
-  # Save ----
-  if save_data:
-    ## Hierarchy object!! ----
-    H = Hierarchy(
-      NET, NET.A, NET.A, zeros(NET.A.shape),
-      __nodes__, linkage, __mode__, alpha=alpha
-    )
-    ## Compute features ----
-    H.BH_features_cpp_no_mu()
-    ## Compute link entropy ----
-    H.link_entropy_cpp("short", cut=cut)
-    ## Compute lq arbre de merde ----
-    H.la_abre_a_merde_cpp(H.BH[0])
-    ## Compute node entropy ----
-    H.node_entropy_cpp("short", cut=cut)
-    ## Update entropy ----
-    H.entropy = [
-      H.node_entropy, H.node_entropy_H,
-      H.link_entropy, H.link_entropy_H
-    ]
-    # Set labels to network ----
-    L = colregion(NET, labels=NET.labels)
-    H.set_colregion(L)
-    H.delete_dist_matrix()
-    save_class(
-      H, NET.pickle_path,
-      "hanalysis_{}".format(H.subfolder),
-      on=F
-    )
-  else:
-    H = read_class(
-      NET.pickle_path,
-      "hanalysis_{}".format(NET.subfolder),
-    )
-  # Plot H ----
-  plot_h = Plot_H(NET, H)
-  plot_n = Plot_N(NET, H)
-  HS = Hierarchical_Entropy(H.Z, H.nodes, H.colregion.labels[:H.nodes])
-  HS.Z2dict("short")
-  # HS.zdict2newick(HS.tree, weighted=F, on=T)
-  # plot_h.plot_newick_R(
-  #   HS.newick, HS.total_nodes,
-  #   threshold=H.node_entropy[0].shape[0] - np.argmax(H.node_entropy[0]) - 1,
-  #   weighted=F, on=T
+
+  import matplotlib.pyplot as plt
+  import networkx as nx
+
+  models = nx.DiGraph(NET.A)
+
+  # models.append(
+  #   nx.directed_configuration_model(degree_in_sequence, degree_out_sequence, create_using=nx.DiGraph)
   # )
-  # HS.zdict2newick(HS.tree, weighted=T, on=T)
-  # plot_h.plot_newick_R(HS.newick, HS.total_nodes, weighted=T, on=T)
-  # plot_h.plot_measurements_D(on=T)
-  # plot_h.plot_measurements_S(on=T)
-  # plot_h.plot_measurements_mu(on=T)
-  # plot_h.plot_measurements_X(on=T)
-  # plot_h.heatmap_pure(
-  #   0, np.log(1 + NET.A), score = "_GT_{}".format(number_of_communities),
-  #   labels = NET.labels, on=T
-  # )
-  # Find best k partition ----
-  for score in opt_score:
-    K, R, HT = get_best_kr_equivalence(score, H)
-    for ii, kr in enumerate(zip(K, R)):
-      k, r = kr
-      rlabels = get_labels_from_Z(H.Z, r)
-      rlabels = skim_partition(rlabels)
-      # Check labels safety ----
-      if np.nan in rlabels:
-          print("Warning: Impossible node dendrogram")
-          break
-      ## Prints ----
-      nmi = AD_NMI_label(NET.labels, rlabels, on=T)
-      overlap, data_nocs, sizes, rlabels2 = discovery_channel["discovery_7"](H, k, rlabels, index=index, direction="both",  undirected=F)
-      cover = omega_index_format(rlabels2, data_nocs, NET.struct_labels[:NET.nodes])
-      gt_cover = reverse_partition(NET.labels, NET.struct_labels[:NET.nodes])
-      omega = omega_index(gt_cover, cover)
-      # Plots ----
-      # plot_h.core_dendrogram([r], on=F)
-      # plot_h.heatmap_pure(
-      #   r, np.log(1+NET.A), on=T, labels = rlabels, name=f"{r}_{nmi:.4f}"
-      # )
-      # plot_h.heatmap_dendro(r, np.log(1+NET.A), on=F)
-      # plot_h.lcmap_dendro(
-      #   k, np.log(1+NET.A), score="_"+score, on=T
-      # )
-      # plot_h.lcmap_pure(
-      #   [r],
-      #   labels=rlabels,
-      #   on = F
-      # )
-      # plot_n.plot_network_kk(
-      #   H, rlabels2, data_nocs, sizes, H.colregion.labels,
-      #   ang=0, score=score, undirected=F, cmap_name="hls", figsize=(15,15),
-      #   on=T
-      # )
-      plot_n.plot_network_covers(
-          k, np.log(NET.A+1), rlabels2,
-          data_nocs, sizes, H.colregion.labels[:H.nodes],
-          score=score, direction="both", cmap_name="hls", on=T, figsize=(10,10)
-        )
-  print("End!")
+
+
+  fig, axes = plt.subplots(1, 1)
+
+  
+  edge_widths = 0.1
+  alphas = 0.4
+
+
+  pos = nx.spring_layout(models)
+  nx.draw_networkx_nodes(models, pos=pos, node_size=20, node_color="black", ax=axes)
+  nx.draw_networkx_edges(models, pos=pos, width=edge_widths, ax=axes, alpha=alphas)
+
+  axes.axis('off')
+
+  plt.show()
+
+  # plt.savefig("../plots/RAN/Thesis/conf2.svg", trasparent=True)
+  # plt.savefig("../plots/RAN/Thesis/conf2.png", dpi=300)
+
+
+  # # Compute Hierarchy ----
+  # print("Compute Hierarchy")
+  # # Save ----
+  # if save_data:
+  #   ## Hierarchy object!! ----
+  #   H = Hierarchy(
+  #     NET, NET.A, NET.A, zeros(NET.A.shape),
+  #     __nodes__, linkage, __mode__, alpha=alpha
+  #   )
+  #   ## Compute features ----
+  #   H.BH_features_cpp_no_mu()
+  #   ## Compute link entropy ----
+  #   H.link_entropy_cpp("short", cut=cut)
+  #   ## Compute lq arbre de merde ----
+  #   H.la_abre_a_merde_cpp(H.BH[0])
+  #   ## Compute node entropy ----
+  #   H.node_entropy_cpp("short", cut=cut)
+  #   ## Update entropy ----
+  #   H.entropy = [
+  #     H.node_entropy, H.node_entropy_H,
+  #     H.link_entropy, H.link_entropy_H
+  #   ]
+  #   # Set labels to network ----
+  #   L = colregion(NET, labels=NET.labels)
+  #   H.set_colregion(L)
+  #   H.delete_dist_matrix()
+  #   save_class(
+  #     H, NET.pickle_path,
+  #     "hanalysis_{}".format(H.subfolder),
+  #     on=F
+  #   )
+  # else:
+  #   H = read_class(
+  #     NET.pickle_path,
+  #     "hanalysis_{}".format(NET.subfolder),
+  #   )
+  # # Plot H ----
+  # plot_h = Plot_H(NET, H)
+  # plot_n = Plot_N(NET, H)
+  # HS = Hierarchical_Entropy(H.Z, H.nodes, H.colregion.labels[:H.nodes])
+  # HS.Z2dict("short")
+  # # HS.zdict2newick(HS.tree, weighted=F, on=T)
+  # # plot_h.plot_newick_R(
+  # #   HS.newick, HS.total_nodes,
+  # #   threshold=H.node_entropy[0].shape[0] - np.argmax(H.node_entropy[0]) - 1,
+  # #   weighted=F, on=T
+  # # )
+  # # HS.zdict2newick(HS.tree, weighted=T, on=T)
+  # # plot_h.plot_newick_R(HS.newick, HS.total_nodes, weighted=T, on=T)
+  # # plot_h.plot_measurements_D(on=T)
+  # # plot_h.plot_measurements_S(on=T)
+  # # plot_h.plot_measurements_mu(on=T)
+  # # plot_h.plot_measurements_X(on=T)
+  # # plot_h.heatmap_pure(
+  # #   0, np.log(1 + NET.A), score = "_GT_{}".format(number_of_communities),
+  # #   labels = NET.labels, on=T
+  # # )
+  # # Find best k partition ----
+  # for score in opt_score:
+  #   K, R, HT = get_best_kr_equivalence(score, H)
+  #   for ii, kr in enumerate(zip(K, R)):
+  #     k, r = kr
+  #     rlabels = get_labels_from_Z(H.Z, r)
+  #     rlabels = skim_partition(rlabels)
+  #     # Check labels safety ----
+  #     if np.nan in rlabels:
+  #         print("Warning: Impossible node dendrogram")
+  #         break
+  #     ## Prints ----
+  #     nmi = AD_NMI_label(NET.labels, rlabels, on=T)
+  #     overlap, data_nocs, sizes, rlabels2 = discovery_channel["discovery_7"](H, k, rlabels, index=index, direction="both",  undirected=F)
+  #     cover = omega_index_format(rlabels2, data_nocs, NET.struct_labels[:NET.nodes])
+  #     gt_cover = reverse_partition(NET.labels, NET.struct_labels[:NET.nodes])
+  #     omega = omega_index(gt_cover, cover)
+  #     # Plots ----
+  #     # plot_h.core_dendrogram([r], on=F)
+  #     # plot_h.heatmap_pure(
+  #     #   r, np.log(1+NET.A), on=T, labels = rlabels, name=f"{r}_{nmi:.4f}"
+  #     # )
+  #     # plot_h.heatmap_dendro(r, np.log(1+NET.A), on=F)
+  #     # plot_h.lcmap_dendro(
+  #     #   k, np.log(1+NET.A), score="_"+score, on=T
+  #     # )
+  #     # plot_h.lcmap_pure(
+  #     #   [r],
+  #     #   labels=rlabels,
+  #     #   on = F
+  #     # )
+  #     # plot_n.plot_network_kk(
+  #     #   H, rlabels2, data_nocs, sizes, H.colregion.labels,
+  #     #   ang=0, score=score, undirected=F, cmap_name="hls", figsize=(15,15),
+  #     #   on=T
+  #     # )
+  #     plot_n.plot_network_covers(
+  #         k, np.log(NET.A+1), rlabels2,
+  #         data_nocs, sizes, H.colregion.labels[:H.nodes],
+  #         score=score, direction="both", cmap_name="hls", on=T, figsize=(10,10)
+  #       )
+  # print("End!")
   # #@@ Todo:

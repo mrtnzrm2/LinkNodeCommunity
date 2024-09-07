@@ -12,7 +12,7 @@ from h_entropy import h_entropy as HE
 
 class Hierarchy(Sim):
   def __init__(
-    self, G, A, R, D, nodes, linkage, mode, lookup=0, alpha=0, undirected=False, index="Hellinger2"
+    self, G, A, R, D, nodes, linkage, mode, lookup=0, alpha=0, undirected=False, index="Hellinger2", chardist=True
   ):
     # Initialize Sim ---
     super().__init__(
@@ -35,11 +35,21 @@ class Hierarchy(Sim):
       np.seterr(divide='ignore', invalid='ignore')
       self.dist_mat = (1 / self.linksim_matrix) - 1
       self.dist_mat[self.dist_mat == np.Inf] = np.max(self.dist_mat[self.dist_mat < np.Inf]) * 1.001
+    elif index == "Shortest_Path":
+      self.dist_mat = 1 / self.linksim_matrix
+      self.dist_mat[self.dist_mat == np.Inf] = np.max(self.dist_mat[self.dist_mat < np.Inf]) + 1e-4
+      self.dist_mat = self.dist_mat / np.max(self.dist_mat)
+
+      self.source_sim_matrix = 1 / self.source_sim_matrix
+      self.source_sim_matrix [self.source_sim_matrix  == np.Inf] = np.max(self.source_sim_matrix [self.source_sim_matrix  < np.Inf]) + 1e-4
+
+      self.target_sim_matrix = self.source_sim_matrix
     else:
       self.dist_mat = 1 - self.linksim_matrix
-
-    # print()
-    # print(np.sum(self.dist_mat == -np.Inf))
+  
+    
+    # print(">>", np.sum(self.dist_mat == -np.Inf))
+    # print(">>>", np.sum((self.dist_mat < 0) & (self.dist_mat > -np.Inf)))
     # Compute hierarchy ----
     self.H = self.get_hierarchy()
     self.delete_linksim_matrix()
@@ -63,7 +73,8 @@ class Hierarchy(Sim):
       )
       
     ## Stats ----
-    self.stat_cor()
+    if chardist:
+      self.stat_charlength(12)
     # Overlaps ----
     self.overlap = pd.DataFrame()
     # Rlabels ----
@@ -74,12 +85,23 @@ class Hierarchy(Sim):
     self.kr = pd.DataFrame()
     # Entropy ----
     self.entropy = []
+    # Set HP
+    self.hp = None
 
   def delete_linksim_matrix(self):
     self.linksim_matrix = 0
     
   def delete_dist_matrix(self):
     self.dist_mat = 0
+
+  def set_hp(self):
+    from various.hit import EHMI, check
+    self.hp = formating_Z2HMI(self.Z, self.nodes)
+    # print(self.hp)
+    # print(check(self.hp))
+    if not check(self.hp):
+      raise RuntimeError("Formating to HMI failed.")
+    self.ehmi = EHMI(self.hp, self.hp).mean()
 
   def get_h21merge(self):
     from scipy.cluster.hierarchy import cut_tree
@@ -94,12 +116,17 @@ class Hierarchy(Sim):
           break 
       self.h21merge[i] = h2i
 
-  def get_data_firstmerge(self, SLN : npt.NDArray, cover : dict, labels):
+  def get_data_firstmerge(self, SLN : npt.NDArray, cover : dict, labels, betas=None):
+
+    # print(cover)
+    # self.get_h21merge()
+    from scipy.stats import norm
 
     Z = len(cover.keys())
     membership_matrix = np.arange(Z**2).reshape(Z, Z)
     h = []
     b = []
+    bb = []
     source = []
     target = []
     connection_memberships = []
@@ -107,6 +134,8 @@ class Hierarchy(Sim):
     # print(dendrogram)
 
     cover_indices = {c: match(l, labels) for c, l in cover.items()}
+
+    # print(cover_indices)
 
     for c1, li1 in cover_indices.items():
       for c2, li2 in cover_indices.items():
@@ -117,21 +146,30 @@ class Hierarchy(Sim):
               connection_memberships.append(membership_matrix[c1, c2])
               # if labels[i] == "v1" and labels[j] == "rl":
               #   print(h2_1merge[i], h2_1merge[j], SLN[i,j])
+
+              if isinstance(betas, np.ndarray):
+                bb.append(norm.cdf(betas[i]-betas[j]))
+              else:
+                bb.append(np.nan)
               b.append(SLN[i,j])
-              h_diff = self.h21merge[i] - self.h21merge[j]
+              h_diff = self.h21merge[j] - self.h21merge[i]
               h.append(h_diff)
               source.append(labels[i])
               target.append(labels[j])
 
     b = np.array(b)
+    bb = np.array(bb)
     if np.sum(np.isnan(b)) > 0:
       raise RuntimeError("There area nans in the SLN matrix.")
     h = np.array(h)
     connection_memberships = np.array(connection_memberships).astype(int).astype(str)
+    h =  h - np.min(h)
+    h /= np.max(h)
 
     return pd.DataFrame({
-      "SLN" : b,
-      fr"$H^{2}_i-H^{2}_j$ @ first merge" : h,
+      "Empirical SLN" : b,
+      r"$\Delta\hat{S}$" : h,
+      "SLN_BB" : bb,
       "group" : connection_memberships,
       "source" : source,
       "target" : target
@@ -144,7 +182,7 @@ class Hierarchy(Sim):
 
     for zi in np.arange(Z):
       for zj in np.arange(Z):
-        x = data["SLN"].loc[data["group"] == membership_matrix[zi, zj].astype(int).astype(str)]
+        x = data["Empirical SLN"].loc[data["group"] == membership_matrix[zi, zj].astype(int).astype(str)]
         if x.shape[0] > 0:
           average_sln_membership[zi, zj] = np.mean(x)
         else: average_sln_membership[zi, zj] = np.nan
@@ -217,16 +255,27 @@ class Hierarchy(Sim):
       self.undirected
     )
     # features.bene("long")
-    features.vite()
+    features.vite2()
     result = np.array(
       [
-        features.get_K(), features.get_Height(),
+        features.get_K(),
+        features.get_Height(),
+        features.get_D(),
+        features.get_S(),
+        features.get_S2(),
+        # features.get_CC(),
         features.get_NEC(),
-        features.get_D(), features.get_ntrees(),
-        features.get_X(), features.get_OrP(), features.get_XM(),
-        features.get_S()
+        features.get_elinks()
       ]
     )
+
+    #       "K" : results_no_mu[0, :],
+    #       "height" : results_no_mu[1, :],
+    #       "mu" : np.zeros(results_no_mu.shape[1]),
+    #       "D" : results_no_mu[2, :],
+    #       "S" : results_no_mu[3, :],
+    #       "CC" : results_no_mu[4, :],
+    #       "NEC" : results_no_mu[5, :],
     return result
   
   def H_features_cpp_nodewise(self, linkage, alpha, beta, cut=False):
@@ -386,22 +435,25 @@ class Hierarchy(Sim):
     self.BH.append(
       pd.DataFrame(
         {
-          # "alpha" : np.zeros(results_no_mu.shape[1]),
-          # "beta" : np.zeros(results_no_mu.shape[1]),
           "K" : results_no_mu[0, :],
           "height" : results_no_mu[1, :],
-          "NEC" : results_no_mu[2, :],
-          "mu" : np.zeros(results_no_mu.shape[1]),
-          "D" : results_no_mu[3, :],
-          "ntrees": results_no_mu[4, :],
-          "X" : results_no_mu[5, :],
-          "m" : results_no_mu[6, :],
-          "xm" : results_no_mu[7, :],
-          "S" : results_no_mu[8, :],
-          "SD" : (results_no_mu[3, :] / np.nansum(results_no_mu[3, :])) * (results_no_mu[8, :] / np.nansum(results_no_mu[8, :]))
+          "D" : results_no_mu[2, :],
+          "S" : results_no_mu[3, :],
+          "S2" : results_no_mu[4, :],
+          # "CC" : results_no_mu[4, :],
+          "NEC" : results_no_mu[5, :],
+          "ELINKS" : results_no_mu[6, :],
+          "SD" : (results_no_mu[2, :] / np.nansum(results_no_mu[2, :])) * (results_no_mu[3, :] / np.nansum(results_no_mu[3, :]))
         }
       )
     )
+    # features.get_K(),
+    # features.get_Height(),
+    # features.get_D(),
+    # features.get_S(),
+    # # features.get_CC(),
+    # features.get_NEC(),
+    # features.get_elinks()
 
   def BH_features_cpp_nodewise(self):
     print("Mu-free nodewise")
@@ -668,90 +720,125 @@ class Hierarchy(Sim):
     self.equivalence = NH.get_equivalence()
     self.equivalence = np.array(self.equivalence)
   
-  def stat_cor(self):
-    # Copy target and source similarity matrices ----
-    dIN = self.source_sim_matrix
-    dIN[np.isnan(dIN)] = np.nanmin(dIN) - 1
-    dIN = adj2df(dIN)
-    dIN = dIN.loc[
-      dIN["source"] < dIN["target"], "weight"
-    ].to_numpy().ravel()
-    dOUT = self.target_sim_matrix
-    dOUT[np.isnan(dOUT)] = np.nanmin(dOUT) - 1
-    dOUT = adj2df(dOUT)
-    dOUT = dOUT.loc[
-      dOUT["source"] < dOUT["target"], "weight"
-    ].to_numpy().ravel()
-    dD = self.D.copy()[
-      :self.nodes, :self.nodes
-    ]
-    dD = adj2df(dD)
-    dD = dD.loc[
-      dD["source"] < dD["target"], "weight"
-    ].to_numpy().ravel()
-    # Create data ----
-    from sklearn.linear_model import LinearRegression
-    model = LinearRegression()
-    from scipy.stats import pearsonr
-    ## Similarities ----
-    if np.unique(dOUT).shape[0] == 1 or np.unique(dIN).shape[0] == 1:
-      r = [np.nan] *2
-    else:
-      r = pearsonr(dOUT, dIN)
-    model.fit(dOUT.reshape(-1, 1), dIN)
-    r2 = model.score(dOUT.reshape(-1, 1), dIN)
+  def stat_charlength(self, bins=12):
+    import ctools as ct
+    import statsmodels.api as sm
+
+    D = self.D[:self.nodes, :self.nodes]
+
+    src_inset = np.zeros((self.nodes, self.nodes))
+    tgt_inset = np.zeros((self.nodes, self.nodes))
+
+    for i in np.arange(src_inset.shape[0]):
+       for j in np.arange(i + 1, src_inset.shape[1]):
+          src_inset[i, j] = -2 * np.log(ct.Hellinger2(self.A[i, :], self.A[j, :], i, j))
+          src_inset[j, i] = src_inset[i, j]
+
+          tgt_inset[i, j] = -2 * np.log(ct.Hellinger2(self.A[:, i], self.A[:, j], i, j))
+          tgt_inset[j, i] = tgt_inset[i, j]
+
+    src_inset = adj2df(src_inset)
+    tgt_inset = adj2df(tgt_inset)
+    D = adj2df(D)
+
+    src_inset = src_inset["weight"].loc[src_inset.source > src_inset.target].to_numpy()
+    tgt_inset = tgt_inset["weight"].loc[tgt_inset.source > tgt_inset.target].to_numpy()
+    D = D["weight"].loc[D.source > D.target].to_numpy()
+
+    ordD = np.argsort(D)
+    D = D[ordD]
+    src_inset = src_inset[ordD]
+    tgt_inset = tgt_inset[ordD]
+
+    inf = (src_inset == np.inf) | (tgt_inset == np.inf)
+
+    D = D[~inf]
+    src_inset = src_inset[~inf]
+    tgt_inset = tgt_inset[~inf]
+
+    Dmu = D.copy()
+    mu_D = np.mean(D)
+    std_D = np.std(D)
+    Dmu -= mu_D
+    Dmu /= std_D
+
+    # Binarize ----
+    nbin = bins
+
+    D_min, D_max = np.min(D), np.max(D)
+    dD = (D_max - D_min) / nbin
+    boundaries = np.arange(D_min, D_max + 1e-5, dD)
+    centers = boundaries.copy()[:-1]
+    centers += dD / 2
+    boundaries[-1] += 1e-5
+
+    src_inset_bin = [np.nanmean(src_inset[np.where((D >= boundaries[i]) & (D < boundaries[i+1]))[0]]) for i in np.arange(nbin)]
+    src_inset_bin = np.array(src_inset_bin)
+
+    tgt_inset_bin = [np.nanmean(tgt_inset[np.where((D >= boundaries[i]) & (D < boundaries[i+1]))[0]]) for i in np.arange(nbin)]
+    tgt_inset_bin = np.array(tgt_inset_bin)
+
+    var_src_inset_bin = [np.nanvar(src_inset[np.where((D >= boundaries[i]) & (D < boundaries[i+1]))[0]]) for i in np.arange(nbin)]
+    var_src_inset_bin = np.array(var_src_inset_bin)
+
+    var_tgt_inset_bin = [np.nanvar(tgt_inset[np.where((D >= boundaries[i]) & (D < boundaries[i+1]))[0]]) for i in np.arange(nbin)]
+    var_tgt_inset_bin = np.array(var_tgt_inset_bin)
+
+    # print(var_src_inset_bin, "\n", var_tgt_inset_bin)
+
+    boundaries[-1] -= 1e-5
+
+    D_min_mu, D_max_mu = np.min(Dmu), np.max(Dmu)
+    dD = (D_max_mu - D_min_mu) / nbin
+    boundaries_mu = np.arange(D_min_mu, D_max_mu + 1e-5, dD)
+    centers_mu = boundaries_mu.copy()[:-1]
+    centers_mu += dD / 2
+
+
+    Xsrc = centers_mu.copy().reshape(-1, 1)
+    Xsrc = sm.add_constant(Xsrc)
+    Xtgt = centers_mu.copy().reshape(-1, 1)
+    Xtgt = sm.add_constant(Xtgt)
+
+    # print(src_inset_bin, var_src_inset_bin)
+
+    est_src = sm.WLS(src_inset_bin, Xsrc, weights=1/var_src_inset_bin).fit()
+    est_tgt = sm.WLS(tgt_inset_bin, Xtgt, weights=1/var_tgt_inset_bin).fit()
+
+    # est_src = sm.WLS(src_inset_bin, Xsrc, weights=1).fit()
+    # est_tgt = sm.WLS(tgt_inset_bin, Xtgt, weights=1).fit()
+    
+    est_src = est_src.params
+    est_tgt = est_tgt.params
+
+
+    print("source lambda:\n", est_src[1] / std_D)
+    print("target lambda:\n", est_tgt[1] / std_D)
+
+    est_src[1] /= std_D
+    est_src[0] -= est_src[1] * mu_D
+
+    print("source characteristic length:", (2-est_src[0]) / est_src[1])
+    
+    est_tgt[1] /= std_D
+    est_tgt[0] -= est_tgt[1] * mu_D
+
+    print("target characteristic length:", (2-est_tgt[0]) / est_tgt[1])
+
+    dl_tgt = (2-est_tgt[0]) / est_tgt[1]
+    dl_src = (2-est_src[0]) / est_src[1]
+
     self.stats = pd.DataFrame(
       {
-        "X" : ["source"],
-        "Y" : ["target"],
-        "Cor" : [r[0]],
-        "p-value": [r[1]],
-        "R-squared" : [r2]
+        "neighborhood" : ["in (-)", "out (+)"],
+        r"$d_{I}$" : [dl_tgt, dl_src]
       }
     )
-    ## t. similarity - distance ----
-    if np.unique(dD).shape[0] == 1 or np.unique(dIN).shape[0] == 1:
-      r = [np.nan] *2
-    else:
-      r = pearsonr(dD, dIN)
-    model.fit(dD.reshape(-1, 1), dIN)
-    r2 = model.score(dD.reshape(-1, 1), dIN)
-    self.stats = pd.concat(
-      [
-        self.stats,
-        pd.DataFrame(
-          {
-            "X" : ["distance"],
-            "Y" : ["target"],
-            "Cor" : [r[0]],
-            "p-value": [r[1]],
-            "R-squared" : [r2]
-          }
-        )
-      ]
-    )
-    
-    ## s. similarity - distance ----
-    if np.unique(dD).shape[0] == 1 or np.unique(dOUT).shape[0] == 1:
-      r = [np.nan] *2
-    else:
-      r = pearsonr(dD, dOUT)
-    model.fit(dD.reshape(-1, 1), dOUT)
-    r2 = model.score(dD.reshape(-1, 1), dOUT)
-    self.stats = pd.concat(
-      [
-        self.stats,
-        pd.DataFrame(
-          {
-            "X" : ["distance"],
-            "Y" : ["source"],
-            "Cor" : [r[0]],
-            "p-value": [r[1]],
-            "R-squared" : [r2]
-          }
-        )
-      ]
-    )
+
+    # import matplotlib.pyplot as plt
+    # plt.scatter(centers, src_inset_bin, color="red")
+    # plt.scatter(centers, tgt_inset_bin, color="blue")
+    # plt.show()
 
   def get_freedman_diaconis_h(self, A, nlogo10=False):
     dA = adj2df(A.copy())
@@ -826,29 +913,47 @@ class Hierarchy(Sim):
     overlap = skim_partition(args[0])
     return np.array([labels[i] for i, l in enumerate(overlap) if l == -1])
   
+  def set_data_sln_matrix(self, data):
+    self.data_sln_matrix = data
+
   def set_data_sln(self, data):
     self.data_sln = data
 
-  def align_sln_covers_R(self, SLN : npt.NDArray, cover : dict, csv_path : str, output_name="cover_sln_order.csv"):
-    from pathlib import Path
+  def get_beta_bbmodel(self, path : str, labels : list, coef_label="bb_coefs"):
+    beta = pd.read_csv(f"{path}/{coef_label}.csv", index_col=1).reindex(labels)
+    return beta["beta"].to_numpy()
+
+  def run_beta_binomial_model(self, SLN : npt.NDArray, path : str, labels : list, input_file_name="bb_data", output_file_name="bb_coefs"):
     import subprocess
+    from pathlib import Path
+    from os.path import join
+
+    Path(path).mkdir(exist_ok=True, parents=True)
+    pd.DataFrame(SLN, index=labels, columns=labels).to_csv(join(path, input_file_name + ".csv"))
+    subprocess.run(["Rscript", "R/beta_binomial_SLN.R", path, input_file_name + ".csv", output_file_name + ".csv"])
+
+  def align_sln_covers_R(self, SLN : npt.NDArray, cover : dict, csv_path : str, output_name="cover_sln_order.csv"):
     from os.path import join
 
     sln_path = join(csv_path, "sln")
-    cover_sln_matrix_name = "cover_sln_matrix.csv"
+    cover_sln_matrix_name = "cover_sln_matrix"
     cover_sln_order_name = output_name
-    Path(sln_path).mkdir(exist_ok=True, parents=True)
 
     labels = [f"C{i}" for i in np.arange(len(cover))]
-    sln_pd = pd.DataFrame(SLN, index=labels, columns=labels).to_csv(join(sln_path, cover_sln_matrix_name))
-
-
-    subprocess.run(["Rscript", "R/beta_binomial_SLN.R", sln_path, cover_sln_matrix_name, cover_sln_order_name])
+    self.run_beta_binomial_model(SLN, sln_path, labels, input_file_name=cover_sln_matrix_name, output_file_name=cover_sln_order_name)
 
     coefs = pd.read_csv(join(sln_path, cover_sln_order_name), header=0, index_col=0)
     beta = coefs["beta"].values
     ord = np.argsort(-beta)
     pos_ord = np.array([np.where(ord == i)[0][0] for i in np.arange(len(cover))])
+
+    sln_pd = SLN.copy()
+    sln_pd = sln_pd[ord, :][:, ord]
+
+    labels2 = [f"C{i+1}" for i in np.arange(len(labels))]
+    pd.DataFrame(sln_pd, index=labels2, columns=labels2).to_csv(
+      join(sln_path, "cover_sln_matrix_ord.csv")
+    )
 
     cover_aligned = {pos_ord[i]: val for i, (k, val) in enumerate(cover.items())} 
     return cover_aligned, pos_ord

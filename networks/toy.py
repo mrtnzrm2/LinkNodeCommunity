@@ -76,7 +76,7 @@ class TOY(BASE):
     self.discovery = discovery
     self.A = A
     self.subfolder = f"{topology}_{index}_{mapping}"
-    self.nodes, self.rows = A.shape
+    self.rows, self.nodes = A.shape
     # Set ANALYSIS NAME ----
     self.analysis = linkage.upper() + "_{}_{}".format(
       self.rows, self.nodes

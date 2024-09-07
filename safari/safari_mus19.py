@@ -10,6 +10,9 @@ F = False
 import seaborn as sns
 sns.set_style("whitegrid")
 import matplotlib.pyplot as plt
+import numpy.typing as npt
+
+from typing import Union
 # Personal libs ---- 
 from modules.hierarmerge import Hierarchy
 from plotting_modules.plotting_H import Plot_H
@@ -21,7 +24,7 @@ from various.data_transformations import maps
 from networks.structure import STR
 from various.network_tools import *
 
-def get_ODR_structure(csv_path):
+def get_ODR_structure(csv_path) -> Union[pd.DataFrame, npt.ArrayLike]:
   file = pd.read_csv(os.path.join(csv_path, "SourceData_Fig3.csv"))
   pathway_var = file["pathway"]
   pathway_var = [(s.split(" to ")[0], s.split(" to ")[1]) for s in pathway_var]
@@ -30,6 +33,9 @@ def get_ODR_structure(csv_path):
   file["SOURCE_IND"] = np.char.lower([s[1:] for s in file["SOURCE_IND"]])
   file["TARGET_IND"] = np.char.lower([s[:-1] for s in file["TARGET_IND"]])
 
+  # print(np.unique(file["SOURCE_IND"]))
+
+
   labels_order_paper_DSouzza = np.char.lower(
     ["V1", "LM", "RL", "AL", "A", "PM", "P", "LI", "AM", "POR"]
   )
@@ -37,7 +43,7 @@ def get_ODR_structure(csv_path):
   file["SOURCE_IND"] = pd.Categorical(file["SOURCE_IND"], labels_order_paper_DSouzza)
   file["TARGET_IND"] = pd.Categorical(file["TARGET_IND"], labels_order_paper_DSouzza)
 
-  return file.pivot("SOURCE_IND", "TARGET_IND", "mean").to_numpy(), labels_order_paper_DSouzza
+  return file.pivot("SOURCE_IND", "TARGET_IND", "mean"), labels_order_paper_DSouzza
 
 
 # Declare global variables ----
@@ -59,7 +65,7 @@ discovery = "discovery_7"
 opt_score = ["_S"]
 sln = F
 
-__nodes__ = 19
+__nodes__ = 7
 __inj__ = f"{__nodes__}"
 version = f"{__nodes__}"+"d"+"47"
 distance = "MAP3D"
@@ -86,5 +92,50 @@ if __name__ == "__main__":
     alpha = alpha,
     discovery = discovery
   )
+
+  # Transform data for analysis ----
+  R, lookup, _ = maps[mapping](
+    NET.A, nlog10, lookup, prob, b=bias
+  )
+
+  H = Hierarchy(
+    NET, NET.A, R, NET.D,
+     __nodes__, linkage, mode, lookup=lookup, index=index
+  )
   
-  # get_ODR_structure(NET.csv_path, NET.struct_labels)
+  labels = NET.struct_labels[:NET.nodes]
+  
+  SZZ, labels_szz = get_ODR_structure(NET.csv_path)
+  labels_szz = list(labels_szz)
+  TSIM = pd.DataFrame(H.target_sim_matrix, columns=labels, index=labels)
+
+  labels_szz2 = [l for l in labels if l in labels_szz]
+
+  SZZ = SZZ[labels_szz2].reindex(labels_szz2)
+  TSIM = TSIM[labels_szz2].reindex(labels_szz2)
+  # print(TSIM[labels_szz2].reindex(labels_szz2))
+  # print(SZZ[labels_szz2].reindex(labels_szz2))
+  
+  ord = SZZ.to_numpy().ravel()
+  
+  diss = TSIM.to_numpy().ravel()
+  diss = -2*np.log(diss)
+
+  isinf = diss == np.Inf
+
+  ord = ord[~isinf]
+  diss = diss[~isinf]
+
+  print(np.mean(diss[np.isnan(ord)]))
+
+  sns.regplot(
+    x=ord, y=diss,
+    lowess=T
+  )
+
+  ax = plt.gca()
+
+  ax.set_xlabel("ORD")
+  ax.set_ylabel(r"$D^{in}_{1/2}$")
+
+  plt.savefig(f"{NET.plot_path}/sln/information_ord.png", dpi=300)

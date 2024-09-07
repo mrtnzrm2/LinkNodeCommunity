@@ -9,6 +9,8 @@ F = False
 # Standard libs ----
 import itertools
 import numpy as np
+from scipy.spatial.distance import squareform
+from scipy.cluster.hierarchy import linkage
 # Personal libs ----
 from plotting_modules.plotting_serial import PLOT_S
 from plotting_modules.plotting_o_serial import PLOT_OS
@@ -23,7 +25,7 @@ list_of_lists = itertools.product(
 list_of_lists = np.array(list(list_of_lists))
 # Declare global variables NET ----
 MAXI = 1000
-linkage = "single"
+linkage_criterion = "single"
 nlog10 = F
 lookup = F
 prob = T
@@ -36,11 +38,11 @@ index = "Hellinger2"
 imputation_method = ""
 opt_score = ["_S"]
 sln = True
-# Declare global variables DISTBASE ----
-total_nodes = 91
-__inj__ = 40
-__nodes__ = 40
-distance = "MAP3D"
+# Declare global variables ----
+total_nodes = 106
+__inj__ = 49
+__nodes__ = 49
+distance = "tracto16"
 __version__ = f"{__nodes__}d{total_nodes}"
 __model__ = "TWOMX_FULL"
 # T test ----
@@ -49,7 +51,7 @@ alternative = "less"
 print("For NET parameters:")
 print(
   "linkage: {}\nscore: {}\nnlog: {}\n lookup: {}".format(
-    linkage, opt_score, nlog10, lookup
+    linkage_criterion, opt_score, nlog10, lookup
   )
 )
 print("For imputation parameters:")
@@ -81,7 +83,7 @@ if __name__ == "__main__":
         structure,
         distance,
         __model__,
-       f"{linkage.upper()}_{total_nodes}_{__nodes__}{l10}{lup}{_cut}",
+       f"{linkage_criterion.upper()}_{total_nodes}_{__nodes__}{l10}{lup}{_cut}",
         mode,
         f"{topology}_{index}_{mapping}",
         "discovery_7"
@@ -100,17 +102,23 @@ if __name__ == "__main__":
     # plot_s.plot_measurements_S(on=T)
     # plot_s.plot_measurements_SD(on=T)
     plot_s.histogram_clustering_similarity(
-      on=T, c=T, hue_norm=[s.replace("_", "") for s in opt_score]
+      on=F, c=T, hue_norm=[s.replace("_", "") for s in opt_score]
     )
     plot_o = PLOT_OS(data)
     for score in opt_score:
-      plot_s.histogram_krs(score=score, on=T)
+      plot_s.histogram_krs(score=score, on=F)
       for direction in ["source", "target", "both"]:
-        plot_o.association_heatmap(score, direction, on=T)
-        plot_o.histogram_overlap(score, direction, on=T)
+        plot_o.association_heatmap(score, direction, on=F)
+        plot_o.histogram_overlap(score, direction, on=F)
+        if direction == "both":
+          plot_o.histogram_EHMI(data.hp, score, direction, on=F)
         if direction == "both" and sln:
           print(data.cover["both"][score])
-          plot_o.sln_matrix_check(data.sln)
-          plot_o.sln_matrix_KS(data.sln)
+          plot_o.sln_matrix_check(data.sln, on=F)
+          plot_o.sln_matrix_check_BB(data.cover_corr_sln, MAXI, on=F)
+          plot_o.sln_matrix_shuffle_test(data.sln, on=F, talk=F)
+          plot_o.sln_matrix_shuffle_test_BB(data.cover_corr_sln, MAXI, on=T, talk=T)
+          plot_o.histplot_corr_sln(data.corr_sln, on=F)
+
     
   

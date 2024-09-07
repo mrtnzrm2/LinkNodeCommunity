@@ -27,6 +27,9 @@ class EDR:
     if "model" in kwargs.keys():
       self.model = kwargs["model"]
     else: self.model = ""
+    if "fitter" in kwargs.keys():
+      self.fitter = kwargs["fitter"]
+    else: self.fitter = ""
     if "inj" in kwargs.keys():
       self.inj = str(kwargs["inj"])
     else: self.inj = str(49)

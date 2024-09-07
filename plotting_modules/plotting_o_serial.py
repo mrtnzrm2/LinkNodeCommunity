@@ -84,188 +84,527 @@ class PLOT_OS(PLOT_S):
       plt.close()
     else: print(f"No {score} association matrix")
 
-  def sln_matrix_KS(self, data_sln):
-    data_sln_one = data_sln["1"]
-    data_sln_zero = np.array(data_sln["shuffle"])
+  def histplot_corr_sln(self, dataset : dict, on=True, talk=False):
+    if on:
+      data_one = dataset["1"]
+      data_one["key"] = "EXP"
+      data_zero = dataset["0"]
+      data_zero["key"] = np.char.upper(data_zero["key"].to_numpy().astype(str))
 
-    Z = data_sln_one.shape[0]
-    L = data_sln_zero.shape[0]
-
-    sln_zero_mean_noravel = []
-    for i in np.arange(L):
-      sln_zero_mean_noravel.append(np.sort(data_sln_zero[i, :, :].ravel())) 
-    sln_zero_mean_noravel = np.array(sln_zero_mean_noravel)
-
-    sln_zero_mean = np.mean(sln_zero_mean_noravel, axis=0)
-    sln_zero_std = np.std(sln_zero_mean_noravel, axis=0)
-
-
-    data_sln_one = np.sort(data_sln_one.ravel())
-
-    nb_elements = data_sln_one.shape[0]
-    elements = np.arange(nb_elements)
-
-    significance_array = np.array([""] * nb_elements, dtype="<U21")
-
-    from scipy.stats import ttest_1samp
-    for i in np.arange(Z**2):
-        _, pval = ttest_1samp(sln_zero_mean_noravel[:, i], data_sln_one[i])
-        pval = pvalue2asterisks(pval)
-        significance_array[i] = pval
-
-    
-
-    sns.set(style='whitegrid')
-
-    cmp = sns.color_palette("deep")
-
-    asterisk_height = np.maximum(data_sln_one, sln_zero_mean) + 0.01
-
-    scat_one = plt.scatter(elements, data_sln_one, color=cmp[0], label="loop")
-    scat_zero = plt.errorbar(elements, sln_zero_mean, yerr=sln_zero_std, fmt='o', color=cmp[1], ecolor=cmp[1], capsize=5, capthick=2, label="random shuffle")
-
-    plt.gca().legend(handles=[scat_one, scat_zero])
-
-    area_one = np.trapz(elements, data_sln_one)
-    area_zero = np.trapz(elements, sln_zero_mean)
-
-    [plt.text(e, h, s, horizontalalignment="center") for e, h, s in zip(elements, asterisk_height, significance_array)]
-
-    frac_area = (area_zero)/area_one * 100
-    plt.gca().set_title(f"Area percentage = {frac_area:.2f}% [shuffle/loop]")
-    plt.gca().set_ylabel(r"$\left<SLN\right>$")
-
-    fig = plt.gcf()
-    fig.set_figwidth(10)
-    fig.set_figheight(7)
-    
-    # Arrange path ----
-    plot_path = join(self.plot_path, f"Features")
-    # Crate path ----
-    Path(plot_path).mkdir(exist_ok=True, parents=True)
-    # Save plot ----
-    plt.savefig(
-      join(plot_path, "sln_shuffle_test.svg"),
-      transparent=True,
-      # dpi=300
-    )
-    plt.close()
-
-
-
-
-  def sln_matrix_check(self, data_sln):
-    data_sln_one = data_sln["1"]
-    data_sln_zero = np.array(data_sln["conf"])
-
-    Z = data_sln_one.shape[0]
-    L = data_sln_zero.shape[0]
-
-    membership_matrix = np.arange(Z**2).reshape(Z,Z)
-
-    xlabel = r"$<SLN>$"
-    data = pd.DataFrame()
-    for i in np.arange(Z):
-      for j in np.arange(Z):
-        # if i == j:
-          data = pd.concat(
-            [
-              data,
-              pd.DataFrame(
-                {
-                  "group" : [f"{membership_matrix[i,j]}"] * L,
-                  xlabel :  data_sln_zero[:, i, j].ravel()
-                }
-              )
-            ], ignore_index=True
-          )
-
-    g = sns.FacetGrid(
-      data=data,
-      col="group",
-      col_wrap= Z
-    )
-
-
-    g.map_dataframe(
-      sns.histplot,
-      x=xlabel
-    )
-
-    from scipy.stats import ttest_1samp
-    sln_significance = np.array([""]* Z**2, dtype="<U21").reshape(Z,Z)
-
-    for ax in g.axes.flatten():
-      title = ax.get_title().split(" = ")[-1]
-      title = int(title)
-      ix, iy = np.where(membership_matrix == title)
-      ix = int(ix[0])
-      iy = int(iy[0])
-
-      x = data[xlabel].loc[data["group"]  == f"{title}"].to_numpy()
-
-      if np.sum(np.isnan(x)) > 0:
-        x = x[~np.isnan(x)]
-        raise RuntimeError("There are nans in the array.")
+      data = pd.concat([data_one, data_zero], ignore_index=True)
       
-      r, pval = ttest_1samp(x, data_sln_one[ix, iy])
+      def tColumn(a, b):
+        if a==b: return "self"
+        else: return "cross"
 
-      ax.axvline(data_sln_one[ix, iy], linestyle="--", color="red")
+      data["C-C"] = [tColumn(a, b) for a,b in zip(data["source_cover"], data["target_cover"])]
+      data["Model"] = data["key"]
 
-      sln_significance[ix, iy] = pvalue2asterisks(pval)
- 
-      pval = pvalue2asterisks(pval)
-      ax.set_title(f"group = {ix}|{iy}" + "\n" + fr"{pval}")
+      fig = plt.gcf()
 
-    # Arrange path ----
-    plot_path = join(self.plot_path, f"Features")
-    # Crate path ----
-    Path(plot_path).mkdir(exist_ok=True, parents=True)
-    # Save plot ----
-    plt.savefig(
-      join(plot_path, "sln_conf_test.svg"),
-      transparent=True,
-      # dpi=300
-    )
-    plt.close()
+      sns.set_style("ticks")
+      if talk:
+        sns.set_context("talk")
 
-    annotate_sln = np.array([""]*Z**2, dtype="<U21")
-    for i, (av, pval) in enumerate(zip(data_sln_one.ravel(), sln_significance.ravel())):
-      annotate_sln[i] = f"{av:.2f}\n{pval}"
+      g = sns.FacetGrid(
+        data=data,
+        col="C-C",
+        hue="Model"
+      )
 
-    annotate_sln = annotate_sln.reshape(Z, Z)
+      g.map_dataframe(
+        sns.histplot,
+        x="correlation",
+        stat="density",
+        common_norm = False,
+        alpha=0.5
+      )
 
-    import matplotlib
-    cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["#b20000","#cca3ff","#0047AB"])
+      g.add_legend()
 
-    sns.heatmap(
-      data_sln_one,
-      annot=annotate_sln,
-      fmt="", 
-      cmap=cmap,
-      alpha=0.7,
-      center=0.5
-    )
+      from scipy.stats import ttest_ind
+      cmp = sns.color_palette("deep")
 
-    xlabels = plt.gca().get_xticklabels()
-    xlabels = [f"C{i.get_text()}" for i in xlabels]
-    plt.gca().set_xticklabels(xlabels)
+      for i, ax in enumerate(g.axes.flatten()):
+        ax.set_ylim([-0.1, 3.5])
+        title = ax.get_title()
+        title2 = title.split(" = ")[-1]
+        exp = data["correlation"].loc[(data["Model"] == "EXP") & (data["C-C"] == title2)].to_numpy()
+        conf = data["correlation"].loc[(data["Model"] == "CONF") & (data["C-C"] == title2)].to_numpy()
+        shuffle = data["correlation"].loc[(data["Model"] == "SHUFFLE") & (data["C-C"] == title2)].to_numpy()
 
-    ylabels = plt.gca().get_yticklabels()
-    ylabels = [f"C{i.get_text()}" for i in ylabels]
-    plt.gca().set_yticklabels(ylabels)
+        exp = exp[~ np.isnan(exp)]
+        conf = conf[~ np.isnan(conf)]
+        shuffle = shuffle[~ np.isnan(shuffle)]
 
-    plt.gcf().tight_layout()
 
-    plt.savefig(
-      f"{plot_path}/sln_conf_clusters.svg",
-      transparent=True
-    )
+        if title2 == "self":
+          rconf = ttest_ind(exp , conf, alternative="greater")
+          rshuffle = ttest_ind(exp, shuffle)
+        elif title2 == "cross":
+          rconf = ttest_ind(exp , conf, alternative="two-sided")
+          rshuffle = ttest_ind(exp, shuffle)
 
-    plt.close()
+        pvalconf = pvalue2asterisks(rconf.pvalue)
+        pvalshuffle = pvalue2asterisks(rshuffle.pvalue)
 
+        mean_exp = np.nanmean(exp)
+        std_exp = np.nanstd(exp)
+        print(title2 + f":\t {mean_exp:.1f}\t {std_exp:.2f}")
+        mean_conf = np.nanmean(conf)
+        mean_shuffle = np.nanmean(shuffle)
+
+        if title2 == "self":
+          draw_brace(ax, (mean_conf, mean_exp), 2.55, pvalconf, color=cmp[1])
+          draw_brace(ax, (mean_shuffle, mean_exp), 3, pvalshuffle, color=cmp[2])
+        elif title2 == "cross":
+          draw_brace(ax, (mean_conf, mean_exp), 2.4, pvalconf, color=cmp[1])
+          draw_brace(ax, (mean_shuffle, mean_exp), 2.75, pvalshuffle, color=cmp[2])
+
+      sns.despine(offset=10, trim=True)
+      # Configure figure ----
+      fig.set_figwidth(11.5)
+      fig.set_figheight(9.5)
+      fig.tight_layout()
+      # Arrange path ----
+      plot_path = join(self.plot_path, f"Features")
+      # Crate path ----
+      Path(plot_path).mkdir(exist_ok=True, parents=True)
+      # Save plot ----
+      plt.savefig(
+        join(plot_path, f"histplot_corr_sln.svg"),
+        transparent=True,
+        dpi=300
+      )
+      plt.close()
+
+  def sln_matrix_shuffle_test(self, data_sln, on=True, talk=False):
+    if on:
+      data_sln_one = data_sln["1"]
+      data_sln_zero = np.array(data_sln["shuffle"])
+
+      Z = data_sln_one.shape[0]
+      L = data_sln_zero.shape[0]
+
+      sln_zero_mean_noravel = []
+      for i in np.arange(L):
+        sln_zero_mean_noravel.append(np.sort(data_sln_zero[i, :, :].ravel())) 
+      sln_zero_mean_noravel = np.array(sln_zero_mean_noravel)
+
+      sln_zero_mean = np.nanmean(sln_zero_mean_noravel, axis=0)
+      sln_zero_std = np.nanstd(sln_zero_mean_noravel, axis=0)
+
+
+      data_sln_one = np.sort(data_sln_one.ravel())
+
+      nb_elements = data_sln_one.shape[0]
+      elements = np.arange(nb_elements)
+
+      significance_array = np.array([""] * nb_elements, dtype="<U21")
+
+      from scipy.stats import ttest_1samp
+      for i in np.arange(Z**2):
+          sln_values = sln_zero_mean_noravel[:, i]
+          sln_values = sln_values[~ np.isnan(sln_values)]
+          _, pval = ttest_1samp(sln_values, data_sln_one[i])
+          pval = pvalue2asterisks(pval)
+          significance_array[i] = pval
+
+      sns.set(style='ticks')
+      if talk:
+        sns.set_context("talk")
+
+      cmp = sns.color_palette("deep")
+
+      asterisk_height = np.maximum(data_sln_one, sln_zero_mean) + 0.01
+
+      scat_one = plt.scatter(elements, data_sln_one, color=cmp[0], label="data", alpha=0.8)
+      scat_zero = plt.errorbar(elements, sln_zero_mean, yerr=sln_zero_std, fmt='o', color=cmp[1], ecolor=cmp[1], capsize=5, capthick=2, label="random communities", alpha=0.8)
+
+      plt.gca().legend(handles=[scat_one, scat_zero])
+
+      area_one = np.trapz(elements, data_sln_one)
+      area_zero = np.trapz(elements, sln_zero_mean)
+
+      h_extra = np.zeros(elements.shape)
+      for i in np.arange(1, asterisk_height.shape[0]):
+        # m = np.sum(asterisk_height == asterisk_height[i])
+        if asterisk_height[i-1]/asterisk_height[i] > 0.95:
+          if i % 2 == 0:
+            h_extra[i] += 0.01
+          else:
+            h_extra[i] -= 0.01
+
+
+      [plt.text(e, h + r, s, horizontalalignment="center") for e, h, s, r in zip(elements, asterisk_height, significance_array, h_extra)]
+
+      frac_area = (area_zero)/area_one * 100
+      # plt.gca().set_title(f"Area percentage = {frac_area:.2f}% [shuffle/loop]")
+      plt.gca().set_ylabel(r"$\left<SLN\right>$")
+
+      sns.despine(offset=10, trim=True)
+      fig = plt.gcf()
+      fig.set_figwidth(15)
+      fig.set_figheight(7)
+
+      # Arrange path ----
+      plot_path = join(self.plot_path, f"Features")
+      # Crate path ----
+      Path(plot_path).mkdir(exist_ok=True, parents=True)
+      # Save plot ----
+      plt.savefig(
+        join(plot_path, "sln_shuffle_test.svg"),
+        transparent=True,
+        # dpi=300
+      )
+      plt.close()
+
+  def sln_matrix_shuffle_test_BB(self, data_sln : dict, iterations : int, on=True, talk=False):
+    if on:
+      if isinstance(data_sln["1"], pd.DataFrame):
+        data_sln_one = data_sln["1"].pivot(
+          index="source_cover", columns="target_cover", values="correlation"
+        )
+
+      else:
+        raise ValueError("Corr SLN value must be a pandas dataframe")
+
+      if isinstance(data_sln["0"], pd.DataFrame):
+        data_sln_zero = data_sln["0"]
+        data_sln_zero = data_sln_zero.loc[data_sln_zero["key"] == "shuffle"]
+      else:
+        raise ValueError("Corr SLN value must be a pandas dataframe")
+
+      Z = data_sln_one.shape[0]
+      L = iterations
+
+      sln_zero_mean_noravel = []
+      for i in np.arange(L):
+        sln_zero_mean_noravel.append(np.sort(data_sln_zero.loc[data_sln_zero["iter"] == i].pivot(
+          index="source_cover", columns="target_cover", values="correlation"
+        ).to_numpy().ravel()))
+      sln_zero_mean_noravel = np.array(sln_zero_mean_noravel)
+
+      sln_zero_mean = np.nanmean(sln_zero_mean_noravel, axis=0)
+      sln_zero_std = np.nanstd(sln_zero_mean_noravel, axis=0)
+
+
+      data_sln_one = np.sort(data_sln_one.to_numpy().ravel())
+
+      nb_elements = data_sln_one.shape[0]
+      elements = np.arange(nb_elements)
+
+      significance_array = np.array([""] * nb_elements, dtype="<U21")
+
+      from scipy.stats import ttest_1samp
+      for i in np.arange(Z**2):
+          sln_values = sln_zero_mean_noravel[:, i]
+          sln_values = sln_values[~ np.isnan(sln_values)]
+          _, pval = ttest_1samp(sln_values, data_sln_one[i], alternative="less")
+          pval = pvalue2asterisks(pval)
+          significance_array[i] = pval
+
+      sns.set(style='ticks')
+      if talk:
+        sns.set_context("talk")
+
+      cmp = sns.color_palette("deep")
+
+      asterisk_height = np.maximum(data_sln_one, sln_zero_mean) + 0.01
+
+      scat_one = plt.scatter(elements, data_sln_one, color=cmp[0], label="data", alpha=0.8)
+      scat_zero = plt.errorbar(elements, sln_zero_mean, yerr=sln_zero_std, fmt='o', color=cmp[1], ecolor=cmp[1], capsize=5, capthick=2, label="random communities", alpha=0.8)
+
+      plt.gca().legend(handles=[scat_one, scat_zero])
+
+      area_one = np.trapz(elements, data_sln_one)
+      area_zero = np.trapz(elements, sln_zero_mean)
+
+      h_extra = np.zeros(elements.shape)
+      for i in np.arange(1, asterisk_height.shape[0]):
+        # m = np.sum(asterisk_height == asterisk_height[i])
+        if asterisk_height[i-1]/asterisk_height[i] > 0.95:
+          if i % 2 == 0:
+            h_extra[i] += 0.01
+          else:
+            h_extra[i] -= 0.01
+
+
+      [plt.text(e, h + r, s, horizontalalignment="center") for e, h, s, r in zip(elements, asterisk_height, significance_array, h_extra)]
+
+      frac_area = (area_zero)/area_one * 100
+      # plt.gca().set_title(f"Area percentage = {frac_area:.2f}% [shuffle/loop]")
+      plt.gca().set_ylabel("Correlation")
+
+      sns.despine(offset=10, trim=True)
+      fig = plt.gcf()
+      fig.set_figwidth(15)
+      fig.set_figheight(7)
+
+      # Arrange path ----
+      plot_path = join(self.plot_path, f"Features")
+      # Crate path ----
+      Path(plot_path).mkdir(exist_ok=True, parents=True)
+      # Save plot ----
+      plt.savefig(
+        join(plot_path, "sln_corr_shuffle_test.svg"),
+        transparent=True,
+        # dpi=300
+      )
+      plt.close()
+
+  def sln_matrix_check(self, data_sln, on=True):
+    if on:
+      data_sln_one = data_sln["1"]
+      data_sln_zero = np.array(data_sln["conf"])
+
+      Z = data_sln_one.shape[0]
+      L = data_sln_zero.shape[0]
+
+      membership_matrix = np.arange(Z**2).reshape(Z,Z)
+
+      xlabel = r"$<SLN>$"
+      data = pd.DataFrame()
+      for i in np.arange(Z):
+        for j in np.arange(Z):
+          # if i == j:
+            data = pd.concat(
+              [
+                data,
+                pd.DataFrame(
+                  {
+                    "group" : [f"{membership_matrix[i,j]}"] * L,
+                    xlabel :  data_sln_zero[:, i, j].ravel()
+                  }
+                )
+              ], ignore_index=True
+            )
+
+      g = sns.FacetGrid(
+        data=data,
+        col="group",
+        col_wrap= Z
+      )
+
+
+      g.map_dataframe(
+        sns.histplot,
+        x=xlabel
+      )
+
+      from scipy.stats import ttest_1samp
+      sln_significance = np.array([""]* Z**2, dtype="<U21").reshape(Z,Z)
+
+      for ax in g.axes.flatten():
+        title = ax.get_title().split(" = ")[-1]
+        title = int(title)
+        ix, iy = np.where(membership_matrix == title)
+        ix = int(ix[0])
+        iy = int(iy[0])
+
+        x = data[xlabel].loc[data["group"]  == f"{title}"].to_numpy()
+
+        if np.sum(np.isnan(x)) > 0:
+          x = x[~np.isnan(x)]
+          raise RuntimeError("There are nans in the array.")
+        
+        r, pval = ttest_1samp(x, data_sln_one[ix, iy])
+
+        ax.axvline(data_sln_one[ix, iy], linestyle="--", color="red")
+
+        sln_significance[ix, iy] = pvalue2asterisks(pval)
   
+        pval = pvalue2asterisks(pval)
+        ax.set_title(f"group = {ix}|{iy}" + "\n" + fr"{pval}")
 
+      # Arrange path ----
+      plot_path = join(self.plot_path, f"Features")
+      # Crate path ----
+      Path(plot_path).mkdir(exist_ok=True, parents=True)
+      # Save plot ----
+      plt.savefig(
+        join(plot_path, "sln_conf_test.svg"),
+        transparent=True,
+        # dpi=300
+      )
+      plt.close()
+
+      annotate_sln = np.array([""]*Z**2, dtype="<U21")
+      for i, (av, pval) in enumerate(zip(data_sln_one.ravel(), sln_significance.ravel())):
+        annotate_sln[i] = f"{av:.2f}\n{pval}"
+
+      annotate_sln = annotate_sln.reshape(Z, Z)
+
+      import matplotlib
+      cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["#b20000","#cca3ff","#0047AB"])
+
+      sns.set_style("ticks")
+
+      sns.heatmap(
+        data_sln_one,
+        annot=annotate_sln,
+        fmt="", 
+        cmap=cmap,
+        alpha=0.7,
+        center=0.5,
+        cbar_kws={"label" : r"$<SLN>$"}
+      )
+
+      xlabels = plt.gca().get_xticklabels()
+      xlabels = [f"C{int(i.get_text())+1}" for i in xlabels]
+      plt.gca().set_xticklabels(xlabels)
+
+      ylabels = plt.gca().get_yticklabels()
+      ylabels = [f"C{int(i.get_text())+1}" for i in ylabels]
+      plt.gca().set_yticklabels(ylabels)
+
+      sns.despine(offset=10, trim=True)
+
+      plt.gcf().tight_layout()
+
+      plt.savefig(
+        f"{plot_path}/sln_corr_conf_clusters.svg",
+        transparent=True
+      )
+
+      plt.close()
+
+  def sln_matrix_check_BB(self, data_sln : dict, iterations : int, on=True):
+    if on:
+      
+      if isinstance(data_sln["1"], pd.DataFrame):
+        data_sln_one = data_sln["1"]
+      else:
+        raise ValueError("Corr SLN value must be a pandas dataframe")
+            
+      data_sln_one = data_sln_one.pivot(
+        index="source_cover", columns="target_cover", values="correlation"
+      )
+
+      data_sln_one = data_sln_one.to_numpy()
+
+      if isinstance(data_sln["0"], pd.DataFrame):
+        data_sln_zero = data_sln["0"]
+        data_sln_zero = data_sln_zero.loc[data_sln_zero["key"] == "conf"]
+      else:
+        raise ValueError("Corr SLN value must be a pandas dataframe")
+
+
+      Z = data_sln_one.shape[0]
+      L = iterations
+
+      membership_matrix = np.arange(Z**2).reshape(Z,Z)
+
+      xlabel = "Correlation"
+
+      data = pd.DataFrame()
+      for i in np.arange(Z):
+        for j in np.arange(Z):
+            data = pd.concat(
+              [
+                data,
+                pd.DataFrame(
+                  {
+                    "group" : [f"{membership_matrix[i,j]}"] * L,
+                    xlabel :  data_sln_zero["correlation"].loc[
+                      (data_sln_zero["source_cover"] == i+1) &
+                      (data_sln_zero["target_cover"] == j+1)
+                    ]
+                  }
+                )
+              ], ignore_index=True
+            )
+
+      g = sns.FacetGrid(
+        data=data,
+        col="group",
+        col_wrap= Z
+      )
+
+
+      g.map_dataframe(
+        sns.histplot,
+        x=xlabel
+      )
+
+      from scipy.stats import ttest_1samp
+      sln_significance = np.array([""]* Z**2, dtype="<U21").reshape(Z,Z)
+
+      for ax in g.axes.flatten():
+        title = ax.get_title().split(" = ")[-1]
+        title = int(title)
+        ix, iy = np.where(membership_matrix == title)
+        ix = int(ix[0])
+        iy = int(iy[0])
+
+        x = data[xlabel].loc[data["group"]  == f"{title}"].to_numpy()
+
+        if np.sum(np.isnan(x)) > 0:
+          x = x[~np.isnan(x)]
+          raise RuntimeError("There are nans in the array.")
+        
+        r, pval = ttest_1samp(x, data_sln_one[ix, iy], alternative="less")
+
+        ax.axvline(data_sln_one[ix, iy], linestyle="--", color="red")
+
+        sln_significance[ix, iy] = pvalue2asterisks(pval)
+  
+        pval = pvalue2asterisks(pval)
+        ax.set_title(f"group = {ix}|{iy}" + "\n" + fr"{pval}")
+
+      # Arrange path ----
+      plot_path = join(self.plot_path, f"Features")
+      # Crate path ----
+      Path(plot_path).mkdir(exist_ok=True, parents=True)
+      # Save plot ----
+      plt.savefig(
+        join(plot_path, "sln_corr_conf_test.svg"),
+        transparent=True,
+        # dpi=300
+      )
+      plt.close()
+
+      annotate_sln = np.array([""]*Z**2, dtype="<U21")
+      for i, (av, pval) in enumerate(zip(data_sln_one.ravel(), sln_significance.ravel())):
+        annotate_sln[i] = f"{av:.2f}\n{pval}"
+
+      annotate_sln = annotate_sln.reshape(Z, Z)
+
+      import matplotlib
+      cmp = sns.color_palette("deep")
+      cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", [cmp[0], "#ffffff", cmp[1]])
+
+      sns.set_style("ticks")
+
+      sns.heatmap(
+        data_sln_one,
+        annot=annotate_sln,
+        fmt="", 
+        cmap=cmap,
+        alpha=0.7,
+        # center=0.5,
+        cbar_kws={"label" : "Correlation"}
+      )
+
+      xlabels = plt.gca().get_xticklabels()
+      xlabels = [f"C{int(i.get_text())+1}" for i in xlabels]
+      plt.gca().set_xticklabels(xlabels)
+
+      ylabels = plt.gca().get_yticklabels()
+      ylabels = [f"C{int(i.get_text())+1}" for i in ylabels]
+      plt.gca().set_yticklabels(ylabels)
+
+      sns.despine(offset=10, trim=True)
+
+      plt.gcf().tight_layout()
+
+      plt.savefig(
+        f"{plot_path}/sln_conf_clusters.svg",
+        transparent=True
+      )
+
+      plt.close()
+  
   def association_heatmap_zero(self, score, direction, on=True, **kwargs):
     if on:
       print(f"Plot association {score} matrix")
@@ -503,6 +842,29 @@ class PLOT_OS(PLOT_S):
         join(
           plot_path, "overlap_freq_{}_{}_{}.png".format(
             self.linkage, score, direction
+          )
+        ),
+        dpi=300
+      )
+      plt.close()
+
+  def histogram_EHMI(self, ehmi, score, direction, on=True, **kwargs):
+    if on:
+      print("Histogram EHMI")
+      sns.histplot(x=ehmi, stat="density")
+      # Arrange path ----
+      plot_path = join(
+        self.plot_path, "Features"
+      )
+      # Crate path ----
+      Path(
+        plot_path
+      ).mkdir(exist_ok=True, parents=True)
+      # Save plot ----
+      plt.savefig(
+        join(
+          plot_path, "EHMI_{}_{}.png".format(
+            score, direction
           )
         ),
         dpi=300

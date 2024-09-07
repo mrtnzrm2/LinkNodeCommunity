@@ -80,6 +80,11 @@ class MAC49(base):
     self.get_infraneurons()
     self.SLN = np.zeros(self.SN.shape)
     self.SLN[self.SN > 0] = self.SN[self.SN > 0] / (self.SN[self.SN>0] + self.IN[self.SN>0])
+    self.get_beta_bbmodel()
+
+    # tmp = pd.DataFrame(self.SLN, index=self.struct_labels, columns=self.struct_labels[:self.nodes])
+    # tmp.to_csv(f"{self.csv_path}/sln_matrix_49.csv")
+
     # Get network's spatial distances ----
     self.D = self.get_distance()
     # Set ANALYSIS NAME ----
@@ -132,6 +137,14 @@ class MAC49(base):
     Path(
       self.pickle_path
     ).mkdir(exist_ok=True, parents=True)
+
+  def get_supranetwork(self):
+      self.C = self.C * (self.SLN > 0.5)
+      self.A = column_normalize(self.C)
+
+  def get_infranetwork(self):
+      self.C = self.C * (self.SLN <= 0.5)
+      self.A = column_normalize(self.C)
 
   def get_structure(self):
     # Get structure ----
@@ -192,3 +205,7 @@ class MAC49(base):
     infra = infra.to_numpy()
     ##
     self.IN = infra
+
+  def get_beta_bbmodel(self):
+    beta = pd.read_csv(f"{self.csv_path}/sln_beta_coefficients_49.csv", index_col=1).reindex(self.struct_labels[:self.nodes])
+    self.beta = beta["beta"].to_numpy()

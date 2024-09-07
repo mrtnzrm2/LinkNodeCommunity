@@ -76,7 +76,7 @@ imputation_method = ""
 topology = "MIX"
 mapping = "trivial"
 index  = "Hellinger2"
-bias = 0
+bias = 0.0
 opt_score = ["_S"]
 save_data = T
 version = "40d91"
@@ -102,5 +102,76 @@ if __name__ == "__main__":
     b = bias
   )
 
-  A = get_structure_new(NET.csv_path, NET.struct_labels).to_numpy()
+  bins = 20
+
+  N = np.sum(NET.CC)
+  x = np.zeros(np.ceil(N).astype(int))
+  e = 0
+  for i in np.arange(91):
+     for j in np.arange(40):
+        if i == j : continue
+        x[e:(e+int(NET.CC[i,j]))] += NET.D[i, j]
+        e += int(NET.CC[i,j])
+  x = x[x > 0]
+
+  x = np.array(x)
+
+
+  # sns.histplot(
+  #   x=x,
+  #   stat="density",
+  #   bins=bins
+  # )
+
+  # D, X, _ = plt.hist(x, bins=bins, density=T)
+
+  # D = np.log(D)
+  # X = (X[1:] + X[:-1]) / 2
+
+  # # D = D[2:-2]
+  # # X = X[2:-2]
+
+  # import statsmodels.api as sm
+
+  # X = sm.add_constant(X)
+  # ml = sm.OLS(D, X).fit()
+
+  # print(ml.summary())
+
+  # from scipy.stats import expon
+
+  # r = expon.fit(x)
+  # print(1/r[1])
+
+  # plt.yscale("log")
+  # plt.show()
+
+  # print(np.sum(NET.A[:40, :][:, :40] > 0))
+
+  # A = get_structure_new(NET.csv_path, NET.struct_labels).to_numpy()
+  # H = read_class(
+  #   NET.pickle_path,
+  #   "hanalysis"
+  # )
+  
+  # nodeName = pd.read_table("../MAC3D/nodes.txt", header=None).to_numpy().ravel()
+  # labels = NET.struct_labels
+
+  # # print(labels[match(nodeName, labels)])
+  # pos = match(nodeName, labels)
+  # A = NET.A
+  # A[A!=0] = -1/np.log10(A[A!=0])
+  # print(A[:, 0])
+  # B =A[pos, :][:, pos[:40]]
+  # print(B[:, 0])
+
+  # # print(H.hp)
+
+  # from various.hit import EHMI, replicate_hierarchical_partition, flattenator
+
+  # NULL = [[i] for i in range(NET.nodes)]
+
+  # d = sorted(flattenator(H.hp))
+  # np.random.shuffle(d)
+  # print(replicate_hierarchical_partition(H.hp, d))
   

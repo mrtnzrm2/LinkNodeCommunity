@@ -8,6 +8,7 @@
 #include "hclust-cpp/fastcluster.h"
 #include "entropy_tools.cpp"
 #include "bene_tools.cpp"
+#include "vite2.cpp"
 
 #include <pybind11/stl.h>
 #include <pybind11/pybind11.h>
@@ -202,6 +203,28 @@ double Sc(int &m, int &n, int &M, int& N) {
   else return 0;
 }
 
+double Sc2(std::vector<double> &v) {
+  double norm = sum(v), s2=0.;
+  if (norm == 0) return 0.;
+  else if (norm < 0) return -1.;
+  else {
+    for (int i=0; i < v.size(); i++)
+      v[i] /= norm;
+    for (int i=0; i < v.size(); i++) {
+      if (v[i] > 0)
+        s2 += -v[i] * log(v[i]);
+    }
+  }
+  return s2;
+}
+
+double Pexc(int &m, int &n, int &M, int& N) {
+  double pc;
+  pc = (m - n + 1.) / (M - N + 1.);
+  if (pc > 0) return pc;
+  else return 0;
+}
+
 double Xsus(std::map<int, lcprops> &v, int &N, int &order) {
   double  x = 0; // percolation suceptability
   for (std::map<int, lcprops >::iterator it = v.begin(); it != v.end(); ++it) {
@@ -246,6 +269,9 @@ class ph {
     std::vector<double> OrP;
     std::vector<double> XM;
     std::vector<double> S;
+    std::vector<double> S2;
+    std::vector<double> CC;
+    std::vector<double> elinks;
 
     std::vector<double> Sh;
     std::vector<double> Sv;
@@ -280,6 +306,7 @@ class ph {
     ~ph(){};
 
     void vite();
+    void vite2();
     void vite_mu();
     void vite_nodewise(std::vector<int> &equivalence, std::vector<double> &h, int &array_size);
     // std::vector<std::vector<int> > &link_communities, std::vector<double> & H, 
@@ -299,6 +326,9 @@ class ph {
     std::vector<double> get_OrP();
     std::vector<double> get_XM();
     std::vector<double> get_S();
+    std::vector<double> get_S2();
+    std::vector<double> get_CC();
+    std::vector<double> get_elinks();
     std::vector<double> get_entropy_h();
     std::vector<double> get_entropy_v();
     std::vector<double> get_entropy_h_H();
@@ -374,6 +404,19 @@ std::vector<double> ph::get_XM() {
 std::vector<double> ph::get_S() {
   return S;
 }
+
+std::vector<double> ph::get_S2() {
+  return S2;
+}
+
+std::vector<double> ph::get_CC() {
+  return CC;
+}
+
+std::vector<double> ph::get_elinks() {
+  return elinks;
+}
+
 
 std::vector<double> ph::get_entropy_h(){
   return Sh;
@@ -616,10 +659,6 @@ void ph::vite() {
   expand_vector(Height, length);
   expand_vector(D, length);
   expand_vector(NEC, length);
-  expand_vector(ntrees, length);
-  expand_vector(X, length);
-  expand_vector(XM, length);
-  expand_vector(OrP, length);
   expand_vector(S, length);
   // THE GAME STARTS
   for (int i=0; i < length; i++) {
@@ -636,41 +675,133 @@ void ph::vite() {
     unique(unique_labels);
     lcsizes = std::vector<int>(unique_labels.size(), 0);
     // Get number of links and number of nodes in link communities in order
-    get_sizes(sizes, labels, lcsizes, unique_labels, source_vertices, target_vertices, number_of_elements);
-    // for (std::map<int, lcprops>::iterator it = sizes.begin(); it != sizes.end(); ++it) {
-    //   if (it->second.m - it->second.n + 1 < 0)
-    //     std::cout << it->second.m << "\t" << it->second.n << "\n";
-    // }
+    get_sizes(
+      sizes, labels, lcsizes, unique_labels,
+      source_vertices, target_vertices, number_of_elements
+    );
+    
     mtree = 0.;
     nec = 0;
-    nt = 0; 
     dcv = std::vector<double>(sizes.size(), 0.);
     scv = std::vector<double>(sizes.size(), 0.);
+
     for (std::map<int, lcprops >::iterator it=sizes.begin(); it != sizes.end(); ++it) {
       if (it->second.m > 1 && it->second.n > 2) {
         dcv[nec] = Dc(it->second.m, it->second.n , undirected) * it->second.m / number_of_elements;
-        if (dcv[nec] <= 0) {
-          nt++;
-        }
+ 
         scv[nec] = Sc(it->second.m, it->second.n, number_of_elements, total_nodes);
         mtree += it->second.m - it->second.n + 1;
         nec++;
       }
     }
+
     S[i] = sum(scv);
-    // if (mtree < 0 )std::cout << mtree << "\n";
+
     mtree = (number_of_elements - total_nodes + 1.) - mtree;
     mtree = mtree / (number_of_elements  - total_nodes + 1.);
     if (mtree > 0) S[i] += -mtree * log(mtree);
-    D[i] = sum(dcv);
-    ntrees[i] = nt;
-    // NEC: number of edge compact LCs
     NEC[i] = nec;
-    OrP[i] = order_parameter(lcsizes, number_of_elements);
-    XM[i] = Xm(sizes);
-    X[i] = Xsus(sizes, number_of_elements, lcsizes[0]);
+    D[i] = sum(dcv);
     sizes.clear();
   }
+  // Delete pointers
+  delete[] labels;
+  delete[] merge;
+  delete[] height;
+  delete[] tri_distmat;
+}
+
+void ph::vite2() {
+  // Various variables ----
+  int nt, nec, length = 0, m, n, el;
+  double dc, mtree, s2;
+  std::vector<double> sim_k, sim_height, dcv, scv, scv2;
+  std::vector<int> lcsizes;
+  std::map<int, link_groups> groups;
+  // Condense distance matrix ----
+  double* tri_distmat = new double[(number_of_elements * (number_of_elements - 1)) / 2];
+  // hclust arrays ----
+  int* merge = new int[2 * (number_of_elements - 1)];
+  double* height = new double[number_of_elements-1];
+  int* labels = new int[number_of_elements];
+  // Get condense matrix ----
+  for (int i = 0; i < distane_matrix.size(); i++) {
+    tri_distmat[i] = distane_matrix[i];
+  }
+  // Get hierarchy!! ----
+  hclust_fast(
+    number_of_elements,
+    tri_distmat,
+    Linkage, // linkage method
+    merge,
+    height
+  );
+  if (CUT) {
+    // Delete duplicated heights preserving the first K and height ----
+    sim_k = simplify_height_to_k_start(number_of_elements, height, sim_height, length);
+  } else {
+    // Keep the all the steps ----
+    sim_k = complete_height_to_k(number_of_elements, height, sim_height, length);
+  }
+  expand_vector(K, length);
+  expand_vector(Height, length);
+  expand_vector(NEC, length);
+  expand_vector(D, length);
+  expand_vector(S, length);
+  expand_vector(S2, length);
+  // expand_vector(CC, length);
+  expand_vector(elinks, length);
+  // THE GAME STARTS
+  for (int i=0; i < length; i++) {
+    K[i] = sim_k[i];
+    Height[i] = sim_height[i];
+    // Cut tree at given sim_k and get memberships ----
+    cutree_k(
+      number_of_elements,
+      merge,
+      K[i],
+      labels
+    );
+    // Get number of links and number of nodes in link communities in order
+    groups = group_linkcommunities(labels, source_vertices, target_vertices, number_of_elements);
+    
+    mtree = 0.;
+    nec = 0;
+    dcv = std::vector<double>(groups.size(), 0.);
+    scv = std::vector<double>(groups.size(), 0.);
+    scv2 = std::vector<double>(groups.size(), 0.);
+
+    el = 0;
+
+    for (std::map<int, link_groups>::iterator it=groups.begin(); it != groups.end(); ++it) {
+      m = it->second.edgelist.size();
+      n = it->second.link_nodes.size();
+      if (m > 1 && n > 2) {
+        dcv[nec] = Dc(m, n, undirected) * m / number_of_elements;
+        scv[nec] = Sc(m, n, number_of_elements, total_nodes);
+        scv2[nec] = Pexc(m, n, number_of_elements, total_nodes);
+        // CC[i] += global_clustering_coefficient(it->second.link_nodes, it->second.edgelist);
+        mtree += m - n + 1;
+        nec++;
+        el += m;
+      }
+    }
+
+    S[i] = sum(scv);
+    S2[i] = Sc2(scv2);
+    // CC[i]/= nec;
+    elinks[i] = el;
+
+    mtree = (number_of_elements - total_nodes + 1.) - mtree;
+    mtree = mtree / (number_of_elements  - total_nodes + 1.);
+    if (mtree > 0) S[i] += -mtree * log(mtree);
+    NEC[i] = nec;
+    D[i] = sum(dcv);
+    // CC[i] = lc_mean_cc(groups);
+    // std::cout << CC[i] << " ";
+    groups.clear();
+  }
+  // std::cout<<"\n";
   // Delete pointers
   delete[] labels;
   delete[] merge;
@@ -834,6 +965,7 @@ PYBIND11_MODULE(process_hclust, m) {
           >()
         )
         .def("vite", &ph::vite)
+        .def("vite2", &ph::vite2)
         .def("vite_mu", &ph::vite_mu)
         .def("vite_nodewise", &ph::vite_nodewise)
         .def("arbre", &ph::arbre)
@@ -848,6 +980,9 @@ PYBIND11_MODULE(process_hclust, m) {
         .def("get_OrP", &ph::get_OrP)
 			  .def("get_XM", &ph::get_XM)
         .def("get_S", &ph::get_S)
+        .def("get_S2", &ph::get_S2)
+        .def("get_CC", &ph::get_CC)
+        .def("get_elinks", &ph::get_elinks)
         .def("get_entropy_h", &ph::get_entropy_h)
         .def("get_entropy_v", &ph::get_entropy_v)
         .def("get_entropy_h_H", &ph::get_entropy_h_H)

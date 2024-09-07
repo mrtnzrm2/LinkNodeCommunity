@@ -49,7 +49,7 @@ class Plot_H:
 
       for zi in np.arange(Z):
         for zj in np.arange(Z):
-          x = data["SLN"].loc[data["group"] == membership_matrix[zi, zj].astype(int).astype(str)]
+          x = data["Empirical SLN"].loc[data["group"] == membership_matrix[zi, zj].astype(int).astype(str)]
           average_sln_membership[zi, zj] = np.mean(x)
 
       import matplotlib
@@ -124,9 +124,11 @@ class Plot_H:
     else:
       print(">>> No SLN versus H2 @ first merge")
 
-  def sln_trace(self, data, cover : dict, ylabel="ODR", on=True):
+  def sln_trace(self, data, cover : dict, xlabel=r"$\Delta\hat{S}$", ylabel="Empirical SLN", suffix="", on=True):
+    
+
     if on:
-      print(">>> Plot SLN-H2 @ first merge")
+      print(">>> Plot SLN-Delta Hat S")
       Z = len(cover)
       membership_matrix = np.arange(Z**2).reshape(Z, Z)
 
@@ -136,8 +138,14 @@ class Plot_H:
       for new, old in enumerate(trace_data_numeric):
         trace_data["group"].loc[trace_data["group"] == old] = str(new)
     
-      trace_data[ylabel] = trace_data["SLN"]
-      trace_data["group"] = pd.Categorical(trace_data["group"], np.arange(Z).astype(str))
+      trace_data[ylabel] = trace_data["Empirical SLN"]
+
+
+      trace_data["group"] = [f"C{i}" for i in trace_data["group"].to_numpy()]
+
+
+      catZ = [f"C{i}" for i in np.arange(Z)]
+      trace_data["group"] = pd.Categorical(trace_data["group"], catZ)
 
       if Z > 1:
         g=sns.FacetGrid(
@@ -148,15 +156,14 @@ class Plot_H:
 
         g.map_dataframe(
           sns.scatterplot,
-          x=fr"$H^{2}_i-H^{2}_j$ @ first merge" ,
+          x=xlabel,
           y=ylabel
         )
 
         from scipy.stats import pearsonr
-
         for ax in g.axes.flatten():
           title = ax.get_title().split(" = ")[-1]
-          hax = trace_data[fr"$H^{2}_i-H^{2}_j$ @ first merge" ].loc[trace_data["group"] == title]
+          hax = trace_data[xlabel].loc[trace_data["group"] == title]
           bax = trace_data[ylabel].loc[trace_data["group"] == title]
           r, pval = pearsonr(hax, bax)
           pval = pvalue2asterisks(pval)
@@ -165,17 +172,17 @@ class Plot_H:
         g.add_legend()
       elif Z == 1:
         from scipy.stats import pearsonr
-
         sns.scatterplot(
           data=trace_data,
-          x=fr"$H^{2}_i-H^{2}_j$ @ first merge",
+          x=xlabel,
           y=ylabel,
           s=30
         )
         ax= plt.gca()
-        hax = trace_data[fr"$H^{2}_i-H^{2}_j$ @ first merge" ]
+        hax = trace_data[xlabel]
         bax = trace_data[ylabel]
         r, pval = pearsonr(hax, bax)
+
         p_val_trans = -np.floor(-np.log10(pval)).astype(int)
         if p_val_trans == 0:
           ax.set_title(ax.get_title() + "\n" + fr"$\rho = {r:.2f}$ with $p=n.s.$")
@@ -186,22 +193,165 @@ class Plot_H:
 
       # from pathlib import Path
       Path(f"{self.path}/sln").mkdir(parents=True, exist_ok=True)
-
       plt.savefig(
-        f"{self.path}/sln/{ylabel}_h2@fistmerge.svg",
+        f"{self.path}/sln/{ylabel}_hatS{suffix}.svg",
         transparent=True
       )
       plt.close()
     else:
-      print(">>> No SLN versus H2 @ first merge")
+      print(">>> No SLN versus Delta Hat S first merge")
+  
+  def hitsplot_sln_corr_covers(self, data, cover : dict, on=True):
+    if on:
+      print(">>> Plot correlation SLN")
+      Z = len(cover.keys())
+      membership_matrix = np.arange(Z**2).reshape(Z, Z)
+
+      xlabel = r"$\Delta\hat{S}$"
+
+      corr_array_in = []
+      corr_array_off = []
+      from scipy.stats import pearsonr
+
+
+
+      for i in np.arange(Z):
+        for j in np.arange(Z):
+          sub = data.loc[data["group"] == membership_matrix[i, j].astype(int).astype(str)]
+          hax = sub[xlabel].to_numpy()
+          bax = sub["Empirical SLN"].to_numpy()
+          r, _ = pearsonr(hax, bax)
+          if i == j :
+            corr_array_in.append(r)
+          else:
+            corr_array_off.append(r)
+
+      data = pd.DataFrame(
+        {
+          "correlation" : corr_array_in + corr_array_off,
+          "cover-cover" : ["self"] * len(corr_array_in) + ["between"] * len(corr_array_off)  
+        }
+      )
+
+      sns.set_style("ticks")
+      sns.set_context("talk")
+      # plt.gca().spines[['right', 'top']].set_visible(False)
+
+      sns.histplot(
+        data=data,
+        x="correlation",
+        hue="cover-cover",
+        stat="density",
+        common_norm=False
+      )
+
+      sns.despine(offset=10, trim=True)
+      plt.gcf().tight_layout()
+
+      # from pathlib import Path
+      Path(f"{self.path}/sln").mkdir(parents=True, exist_ok=True)
+
+      plt.savefig(
+        f"{self.path}/sln/sln_corr_hist.svg",
+        transparent=True
+      )
+      plt.close()
+    else:
+      print(">>> No correlation SLN")
+
+
+  def heatmap_sln_corr_covers(self, data, cover : dict, on=True, talk=False):
+    if on:
+
+      Z = len(cover.keys())
+      membership_matrix = np.arange(Z**2).reshape(Z, Z)
+
+      xlabel = r"$\Delta\hat{S}$"
+
+      from scipy.stats import pearsonr
+
+      membership_matrix = np.arange(Z**2).reshape(Z,Z)
+      data_one = pd.DataFrame()
+      for i in np.arange(Z):
+        for j in np.arange(Z):
+            
+            sub = data.loc[data["group"] == membership_matrix[i, j].astype(int).astype(str)]
+            hax = sub[xlabel].to_numpy()
+            bax = sub["Empirical SLN"].to_numpy()
+            r, pval = pearsonr(hax, bax)
+
+            data_one = pd.concat(
+              [
+                data_one,
+                pd.DataFrame(
+                  {
+                    "Source" : [f"{i+1}"],
+                    "Target" :  [f"{j+1}"],
+                    "Correlation" : [r],
+                    "P-value" : [pvalue2asterisks(pval)]
+                  }
+                )
+              ], ignore_index=True
+            )
+
+      annotate_sln = np.array([""]*Z**2, dtype="<U21")
+      for i, (av, pval) in enumerate(zip(data_one["Correlation"], data_one["P-value"])):
+        if pval != "n.s.":
+          annotate_sln[i] = f"{av:.2f}\n{pval}"
+        else:
+           annotate_sln[i] = f"{av:.2f}"
+
+      annotate_sln = annotate_sln.reshape(Z, Z)
+
+      import matplotlib
+      cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["#b20000","#cca3ff","#0047AB"])
+
+      sns.set_style("ticks")
+      if talk:
+        sns.set_context("talk")
+
+      sns.heatmap(
+        data_one.pivot("Source", "Target", "Correlation"),
+        annot=annotate_sln,
+        fmt="", 
+        cmap=cmap,
+        alpha=0.7,
+        center=0,
+        cbar_kws={"label" : "Correlations"}
+      )
+
+      xlabels = plt.gca().get_xticklabels()
+      xlabels = [f"C{i.get_text()}" for i in xlabels]
+      plt.gca().set_xticklabels(xlabels)
+
+      ylabels = plt.gca().get_yticklabels()
+      ylabels = [f"C{i.get_text()}" for i in ylabels]
+      plt.gca().set_yticklabels(ylabels)
+
+      fig = plt.gcf()
+      fig.set_figheight(5)
+      fig.set_figwidth(6)
+      fig.tight_layout()
+
+
+      # from pathlib import Path
+      Path(f"{self.path}/sln").mkdir(parents=True, exist_ok=True)
+
+      plt.savefig(
+        f"{self.path}/sln/sln_corr_matrix.svg",
+        transparent=True
+      )
+      plt.close()
+
 
 
   def sln_offdiagonal(self, data, cover : dict, on=True):
     if on:
-      print(">>> Plot SLN-H2 @ first merge | no trace")
+      print(">>> Plot SLN-Delta Hat S | no trace")
       Z = len(cover.keys())
       membership_matrix = np.arange(Z**2).reshape(Z, Z)
 
+      xlabel = r"$\Delta\hat{S}$"
       # _, ax = plt.subplots(1,1)
       # ax.axvline()
 
@@ -224,16 +374,16 @@ class Plot_H:
 
       g.map_dataframe(
         sns.scatterplot,
-        x=fr"$H^{2}_i-H^{2}_j$ @ first merge" ,
-        y="SLN"
+        x=xlabel ,
+        y="Empirical SLN"
       )
 
       from scipy.stats import pearsonr
 
       for ax in g.axes.flatten():
         title = ax.get_title().split(" = ")[-1]
-        hax = trace_data[fr"$H^{2}_i-H^{2}_j$ @ first merge" ].loc[trace_data["group"] == title]
-        bax = trace_data["SLN"].loc[trace_data["group"] == title]
+        hax = trace_data[xlabel].loc[trace_data["group"] == title]
+        bax = trace_data["Empirical SLN"].loc[trace_data["group"] == title]
         r, pval = pearsonr(hax, bax)
         p_val_trans = -np.floor(-np.log10(pval)).astype(int)
         if p_val_trans == 0:
@@ -249,12 +399,12 @@ class Plot_H:
       Path(f"{self.path}/sln").mkdir(parents=True, exist_ok=True)
 
       plt.savefig(
-        f"{self.path}/sln/sln_h2@fistmerge_off.svg",
+        f"{self.path}/sln/sln_HatS_off.svg",
         transparent=True
       )
       plt.close()
     else:
-      print(">>> No SLN versus H2 @ first merge")
+      print(">>> No SLN versus Delta Hat S")
 
   def Mu_plotly(self, on=True, **kwargs):
     if on:
@@ -561,6 +711,8 @@ class Plot_H:
     if on:
       print("Plot D iterations")
       # Create figure ----
+      sns.set_context("talk")
+      sns.set_style("white")
       fig, ax = plt.subplots(1, 1)
       sns.lineplot(
         data=self.BH[0],
@@ -571,9 +723,8 @@ class Plot_H:
       )
       plt.legend([],[], frameon=False)
       plt.ylabel(r"$\bar{\delta'}$")
-      # plt.ylabel("D")
-      plt.xlabel(r"$H^{2}$")
-      # plt.xlabel(r"$\mathcal{D}_{JAC}$")
+      plt.ylabel("D")
+      # plt.xlabel(r"$H^{2}$")
       # print(self.BH[0].loc[self.BH[0]["D"] == np.nanmax(self.BH[0]["D"])])
       # print(self.BH[0].loc[self.BH[0]["D"] > 0.6])
       h = self.BH[0]["height"].loc[self.BH[0]["D"] == np.nanmax(self.BH[0]["D"])].to_numpy()
@@ -601,7 +752,8 @@ class Plot_H:
   def plot_measurements_S(self, on=False, **kwargs):
     if on:
       print("Plot S iterations")
-      sns.set_style("whitegrid")
+      sns.set_style("white")
+      sns.set_context("talk")
       # Create figure ----
       fig, ax = plt.subplots(1, 1)
       sns.lineplot(
@@ -614,8 +766,10 @@ class Plot_H:
       ax.text(0.1, 0.7, f"best: {hmax:.2f}", transform=ax.transAxes, size=15)
       ax.set_ylabel(r"$S_{L}$")
       ax.set_xlabel("height " + r"($H^{2}$)")
+      plt.axvline(x=hmax, linestyle="--", color="gray")
       plt.legend([],[], frameon=False)
       # plt.xscale("log")
+      fig.tight_layout()
 
       # Arrange path ----
       plot_path = join(self.path, "Features")
@@ -632,6 +786,46 @@ class Plot_H:
       )
       plt.close()
     else: print("No S iterations")
+
+  def plot_measurements_CC(self, on=False, **kwargs):
+    if on:
+      print("Plot CC iterations")
+      
+      sns.set_style("white")
+      sns.set_context("talk")
+      # Create figure ----
+      fig, ax = plt.subplots(1, 1)
+      sns.lineplot(
+        data=self.BH[0],
+        x="height",
+        y="CC",
+        ax=ax
+      )
+
+      
+      hmax = self.BH[0]["height"].loc[self.BH[0]["CC"] == np.max(self.BH[0]["CC"])].to_numpy()[0]
+      ax.text(0.1, 0.7, f"best: {hmax:.2f}", transform=ax.transAxes, size=15)
+      ax.set_ylabel("CC")
+      ax.set_xlabel("height " + r"($H^{2}$)")
+      plt.axvline(x=hmax, linestyle="--", color="gray")
+      plt.legend([],[], frameon=False)
+      fig.tight_layout()
+
+      # Arrange path ----
+      plot_path = join(self.path, "Features")
+      # Crate path ----
+      Path(
+        plot_path
+      ).mkdir(exist_ok=True, parents=True)
+      # Save plot ----
+      plt.savefig(
+        join(
+          plot_path, "CC_h.png"
+        ),
+        dpi=300
+      )
+      plt.close()
+    else: print("No CC iterations")
 
   def plot_measurements_SD(self, on=False, **kwargs):
     if on:
@@ -953,28 +1147,30 @@ class Plot_H:
         # plt.style.use("dark_background")
         # sns.set_context("talk")
         fig, ax = plt.subplots(1, 1)
-        ax.grid(False)
+        sns.set_style("ticks")
+        sns.set_context("talk")
+        sns.despine(trim=True, offset=10)
         if not remove_labels:
           hierarchy.dendrogram(
             self.Z,
             labels=self.colregion.labels[:self.nodes],
             color_threshold=self.Z[self.nodes - r, 2],
             link_color_func = lambda k: link_cols[k],
-            leaf_rotation=90, leaf_font_size=leaf_font_size, **kwargs
+            leaf_rotation=90, leaf_font_size=leaf_font_size, ax=ax, **kwargs
           )
         else:
           hierarchy.dendrogram(
             self.Z,
             no_labels=True,
             color_threshold=self.Z[self.nodes - r, 2],
-            link_color_func = lambda k: link_cols[k]
+            link_color_func = lambda k: link_cols[k], leaf_rotation=90, ax=ax
           )
         fig.set_figwidth(10)
         fig.set_figheight(7)
         plt.ylabel("Height " + r"$(H^{2})$")
-        sns.despine()
+        plt.xticks(rotation=90)
         # plt.show()
-        # Save plot ----
+        # # Save plot ----
         plt.savefig(
           os.path.join(
             plot_path, "core_dendrogram_{}_{}{}{}.svg".format(self.linkage, r, score, sname)
@@ -983,7 +1179,6 @@ class Plot_H:
           # transparent=True
         )
         plt.close()
-        sns.set_theme()
     else:
       print("No node-community dendrogram")
 
@@ -992,7 +1187,9 @@ class Plot_H:
       print("Visualize pure logFLN heatmap!!!")
       if "labels" in kwargs.keys():
         ids = kwargs["labels"]
+        print(ids)
         I, fq = sort_by_size(ids, self.nodes)
+        print(fq)
       else:
         I = np.arange(self.nodes, dtype=int)
         fq = {}
@@ -1064,6 +1261,8 @@ class Plot_H:
               linewidth=linewidth,
               colors=["#C70039"]
             )
+      
+      plt.xticks(rotation=90)
      # Arrange path ----
       plot_path = os.path.join(self.path, "Heatmap_pure")
       # Crate path ----
@@ -1081,10 +1280,10 @@ class Plot_H:
     else:
       print("No pure logFLN heat map")
 
-  def heatmap_dendro(self, r, R, score="", cmap="viridis", font_color = None, center=None, linewidth=1.5, on=True, **kwargs):
+  def heatmap_dendro(self, r, R, score="", cmap="viridis", cbar_label="", suffix="", font_color = None, center=None, linewidth=1.5, on=True, **kwargs):
     if on:
       print("Plot heatmap structure!!!")
-      plt.box()
+      # plt.box()
       # Transform FLNs ----
       W = R.copy()
       W[W == 0] = np.nan
@@ -1111,17 +1310,183 @@ class Plot_H:
         ),
         "COLOR"
       ].to_numpy()
+
+      #permutation
+      # perm = np.random.permutation(W.shape[0])
+      # W = W[perm, :][:, perm]
+      # labels = labels[perm]
+      # colors = colors[perm]
+
+      sns.set_style("ticks")
+      sns.set_context("talk")
       # Create figure ----
       fig, ax = plt.subplots(1, 1)
       fig.set_figwidth(18)
       fig.set_figheight(15)
-      sns.heatmap(
+
+      import matplotlib
+      cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["#8E1B16","#FDF399"])
+
+      g=sns.heatmap(
         W,
+        cmap=cmap,
+        center=center,
+        # linewidth=0.5,
+        ax = ax,
+        cbar_kws={"label" : cbar_label}
+      )
+      
+      g.set_facecolor("#030103")
+      
+      for c in C:
+        ax.vlines(
+          c, ymin=0, ymax=self.nodes,
+          linewidth=linewidth,
+          colors=["#f4ff22"]
+        )
+        ax.hlines(
+          c, xmin=0, xmax=self.nodes,
+          linewidth=linewidth,
+          colors=["#f4ff22"]
+        )
+      
+      import matplotlib.ticker as ticker
+
+      ax.xaxis.set_ticklabels([])
+
+      ax.xaxis.set_major_locator(ticker.FixedLocator(np.linspace(0.5, 38.5, 20)))
+      ax.xaxis.set_ticklabels([l for i, l in enumerate(labels) if i % 2 == 0])
+      colors1 = [c for i, c in enumerate(colors) if i % 2 == 0]
+      [t.set_color(c) for c, t in zip(colors1, ax.xaxis.get_ticklabels())]
+
+      ax2 = ax.twiny()
+      ax2.xaxis.set_major_locator(ticker.FixedLocator(np.linspace(1.5, 39.5, 20)/40))
+      ax2.xaxis.set_ticklabels([l for i, l in enumerate(labels) if i % 2 == 1])
+      colors2 = [c for i, c in enumerate(colors) if i % 2 == 1]
+      [t.set_color(c) for c, t in zip(colors2, ax2.xaxis.get_ticklabels())]
+
+      ax.yaxis.set_major_locator(ticker.FixedLocator(np.linspace(0.5, 38.5, 20)))
+      ax.yaxis.set_ticklabels([l for i, l in enumerate(labels) if i % 2 == 0])
+      [t.set_color(c) for c, t in zip(colors1, ax.yaxis.get_ticklabels())]
+
+      ax3 = ax.twinx()
+      ax3.yaxis.set_inverted(True)
+      ax3.yaxis.set_major_locator(ticker.FixedLocator(np.linspace(1.5, 39.5, 20)/40))
+      ax3.yaxis.set_ticklabels([l for i, l in enumerate(labels) if i % 2 == 1])
+      [t.set_color(c) for c, t in zip(colors2, ax3.yaxis.get_ticklabels())]
+      
+      # Setting labels colors ----
+      # [t.set_color(i) for i,t in zip(colors, ax.xaxis.get_ticklabels())]
+      # [t.set_color(i) for i,t in zip(colors, ax.yaxis.get_ticklabels())]
+
+      # if font_color:
+      #   [t.set_color(font_color) for t in ax.xaxis.get_ticklabels()]
+      #   [t.set_color(font_color) for t in ax.yaxis.get_ticklabels()]
+
+      if "fontsize" in kwargs.keys():
+        if kwargs["fontsize"] > 0:
+          ax.set_xticklabels(
+            ax.get_xmajorticklabels(), fontsize = kwargs["fontsize"], rotation=90
+          )
+          ax.set_yticklabels(
+            ax.get_ymajorticklabels(), fontsize = kwargs["fontsize"], rotation=0
+          )
+          ax2.set_xticklabels(
+            ax2.get_xmajorticklabels(), fontsize = kwargs["fontsize"], rotation=90
+          )
+          ax3.set_yticklabels(
+            ax3.get_ymajorticklabels(), fontsize = kwargs["fontsize"], rotation=0
+          )
+
+      ax.set_ylabel("Source", fontdict={"fontsize" : 30})
+      ax.set_xlabel("Target", fontdict={"fontsize" : 30})
+      # Arrange path ----
+      plot_path = os.path.join(
+        self.path, "Heatmap_single"
+      )
+      # Crate path ----
+      Path(
+          plot_path + "/svg/"
+      ).mkdir(exist_ok=True, parents=True)
+      # Save plot ----
+      plt.savefig(
+        os.path.join(
+          plot_path + "/svg/", f"dendrogram_order_{r}{score}{suffix}.svg"
+        )
+      )
+      # Crate path ----
+      Path(
+          plot_path + "/png/"
+      ).mkdir(exist_ok=True, parents=True)
+      # Save plot ----
+      plt.savefig(
+        os.path.join(
+          plot_path + "/png/", f"dendrogram_order_{r}{score}{suffix}.png"
+        ),
+        dpi = 300
+      )
+      plt.close()
+    else:
+      print("No heatmap structure")
+
+  def heatmap_sln_dendro(
+      self, r, R, SLN=None, score="", cbar_label="", suffix="",
+      font_color = None, center=None, linewidth=1.5, on=True, **kwargs
+  ):
+    if on:
+      print("Plot heatmap structure!!!")
+      plt.box()
+
+      Ws = SLN.copy()
+      Ws[R == 0] = np.nan
+      # Get nodes ordering ----
+      from scipy.cluster import hierarchy
+      den_order = np.array(
+        hierarchy.dendrogram(self.Z, no_plot=True)["ivl"]
+      ).astype(int)
+      memberships = hierarchy.cut_tree(self.Z, r).ravel()
+      memberships = skim_partition(memberships)[den_order]
+      C = [i+1 for i in np.arange(len(memberships)-1) if memberships[i] != memberships[i+1]]
+      D = np.where(memberships == -1)[0] + 1
+      C = list(set(C).union(set(list(D))))
+
+      Ws = Ws[den_order, :][:, den_order]
+      # Configure labels ----
+      labels = self.colregion.labels
+      labels =  np.char.lower(labels[den_order].astype(str))
+      rlabels = [str(re) for re in self.colregion.regions["AREA"]]
+      colors = self.colregion.regions.loc[
+        match(
+          labels,
+          rlabels
+        ),
+        "COLOR"
+      ].to_numpy()
+
+      # #permutation
+      # perm = np.random.permutation(W.shape[0])
+      # W = W[perm, :][:, perm]
+      # labels = labels[perm]
+      # colors = colors[perm]
+
+      sns.set_style("ticks")
+      sns.set_context("talk")
+      # Create figure ----
+      fig, ax = plt.subplots(1, 1)
+      fig.set_figwidth(18)
+      fig.set_figheight(15)
+
+      import matplotlib
+      cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["#b20000","#cca3ff","#0047AB"])
+
+      sns.heatmap(
+        Ws,
         cmap=cmap,
         xticklabels=labels,
         yticklabels=labels,
         center=center,
-        ax = ax
+        ax = ax,
+        cbar_kws={'label': cbar_label}
       )
       if "font_size" in kwargs.keys():
         if kwargs["font_size"] > 0:
@@ -1135,12 +1500,12 @@ class Plot_H:
         ax.vlines(
           c, ymin=0, ymax=self.nodes,
           linewidth=linewidth,
-          colors=["#C70039"]
+          colors=["black"]
         )
         ax.hlines(
           c, xmin=0, xmax=self.nodes,
           linewidth=linewidth,
-          colors=["#C70039"]
+          colors=["black"]
         )
       # Setting labels colors ----
       [t.set_color(i) for i,t in zip(colors, ax.xaxis.get_ticklabels())]
@@ -1150,24 +1515,35 @@ class Plot_H:
         [t.set_color(font_color) for t in ax.xaxis.get_ticklabels()]
         [t.set_color(font_color) for t in ax.yaxis.get_ticklabels()]
 
-      plt.xticks(rotation=90)
       plt.yticks(rotation=0)
       plt.ylabel("Source")
       plt.xlabel("Target")
+      sns.despine(trim=True, offset=10)
+      plt.xticks(rotation=90)
       # Arrange path ----
       plot_path = os.path.join(
         self.path, "Heatmap_single"
       )
       # Crate path ----
       Path(
-        plot_path
-    ).mkdir(exist_ok=True, parents=True)
+          plot_path + "/svg/"
+      ).mkdir(exist_ok=True, parents=True)
       # Save plot ----
       plt.savefig(
         os.path.join(
-          plot_path, f"dendrogram_order_{r}{score}.svg"
+          plot_path + "/svg/", f"dendrogram_order_{r}{score}{suffix}.svg"
+        )
+      )
+      # Crate path ----
+      Path(
+          plot_path + "/png/"
+      ).mkdir(exist_ok=True, parents=True)
+      # Save plot ----
+      plt.savefig(
+        os.path.join(
+          plot_path + "/png/", f"dendrogram_order_{r}{score}{suffix}.png"
         ),
-        # dpi = 300
+        dpi = 300
       )
       plt.close()
     else:
@@ -1418,20 +1794,21 @@ class Plot_H:
     else: print("No histoscatter linkcomm")
 
   def lcmap_dendro(
-    self, K, R, score="", cmap_name="hls",
-    link_com_list=False, remove_labels=False, linewidth=1.5, font_color=None, undirected=False, on=False, **kwargs
+    self, K, R, score="", cmap_name="hls", remove_labels=False, linewidth=1.5, font_color=None, undirected=False, on=False, **kwargs
   ):
     if on:
       print("Visualize k LCs!!!")
-      plt.box()
+      sns.set_context("talk")
+      sns.set_style("ticks")
       # K loop ----
       # Arrange path ----
-      plot_path = os.path.join(
-        self.path, "Matrix_single"
-      )
+      plot_path = os.path.join(self.path, "Matrix_single")
       # Crate path ----
       Path(
-        plot_path
+        plot_path + "/svg/"
+      ).mkdir(exist_ok=True, parents=True)
+      Path(
+        plot_path + "/png/"
       ).mkdir(exist_ok=True, parents=True)
       # Get labels ----
       labels = self.colregion.labels
@@ -1451,15 +1828,9 @@ class Plot_H:
           self.H,
           n_clusters = K
         ).ravel(), 2)
-      ##
+
       dFLN["source_label"] = labels[dFLN.source]
       dFLN["target_label"] = labels[dFLN.target]
-      # Print link community list ----
-      if link_com_list:
-        dFLN.sort_values(by="id").to_csv(
-          f"{plot_path}/link_community_list_{K}.csv"
-        )
-      ##
       minus_one_Dc(dFLN, undirected)
       aesthetic_ids(dFLN)
 
@@ -1489,11 +1860,13 @@ class Plot_H:
       if -1 in dFLN:
         save_colors = sns.color_palette(cmap_name, keff - 1)
         cmap_heatmap = [[]] * keff
-        cmap_heatmap[0] = [199/ 255.0, 0, 57/ 255.0]
+        # cmap_heatmap[0] = [199/ 255.0, 0, 57/ 255.0]
+        cmap_heatmap[0] = [0.5, 0.5, 0.5]
         cmap_heatmap[1:] = save_colors
       else:
         cmap_heatmap = sns.color_palette(cmap_name, keff)
       if not remove_labels:
+        print(np.nansum(dFLN > 0))
         plot = sns.heatmap(
           dFLN,
           cmap=cmap_heatmap,
@@ -1540,11 +1913,8 @@ class Plot_H:
       plt.ylabel("Source")
       plt.xlabel("Target")
       # Save plot ----
-      plt.savefig(
-        os.path.join(
-          plot_path, "{}{}.svg".format(K, score)
-        )
-      )
+      plt.savefig(plot_path + "/svg/{}{}.svg".format(K, score))
+      plt.savefig(plot_path + "/png/{}{}.png".format(K, score))
       plt.close()
     else:
       print("No k LCs")
@@ -1821,6 +2191,19 @@ class Plot_H:
       F.plot_flatmap(direction=direction, cmap_name=cmap_name)
     else:
       print("No flatmap")
+
+
+  def flatmap_dendro_91(self, NET, H, on=True, direction="source", cmap_name="deep", **kwargs):
+    if on:
+      print("Plot flatmap 91!!!")
+
+      F = FLATMAP(
+        NET.nodes, NET.version, NET.struct_labels, self.colregion.regions, NET.plot_path, **kwargs
+      )
+      F.plot_flatmap_91(NET, H, plt.gca())
+
+    else:
+      print("No flatmap 91")
 
   def flatmap_index(self, NET, pivot : str, values : npt.DTypeLike, max_value=None, index_name="Hellinger2", on=True, cmap_name="flare", **kwargs):
     if on:

@@ -13,13 +13,14 @@ import matplotlib.pyplot as plt
 plt.rcParams["font.family"] = "Times New Roman"
 import seaborn as sns
 # Personal libs ---- 
-from modules.sign.hierarmerge import Hierarchy
+# from modules.sign.hierarmerge import Hierarchy
+from modules.hierarmerge import Hierarchy
 from plotting_modules.plotting_H import Plot_H
 from plotting_modules.plotting_N import Plot_N
 from modules.colregion import colregion
 from modules.hierarentropy import Hierarchical_Entropy
 from modules.discovery import discovery_channel
-from various.data_transformations import maps, multiplexed_colnormalized_mapping
+from various.data_transformations import maps, multiplexed_colnormalized_mapping, trivial_mapping
 from networks.structure import MAC49
 from various.network_tools import *
 # Declare global variables ----
@@ -29,7 +30,7 @@ lookup = F
 prob = F
 cut = F
 subject = "MAC"
-structure = "MULTIPLEX_SI"
+structure = "FLNe"
 mode = "ZERO"
 distance = "tracto16"
 nature = "original"
@@ -65,17 +66,10 @@ if __name__ == "__main__":
     alpha = alpha,
     discovery = discovery
   )
-  
-  NET.get_supraneurons()
-  NET.get_infraneurons()
-  SN = NET.SupraC
-  IN = NET.InfraC
-  TOTN = SN + IN
-  SLN = np.zeros((NET.rows, NET.nodes))
-  SLN[TOTN > 0] = SN[TOTN > 0] / TOTN[TOTN > 0]
 
   # Transform data for analysis ----
-  R, lookup, _ = multiplexed_colnormalized_mapping(0, SN.copy(), IN.copy())
+  # R, lookup, _ = multiplexed_colnormalized_mapping(0, NET.SN, NET.IN)
+  R, lookup, _ = trivial_mapping(NET.A, nlog10, lookup, prob, b=bias)
   # Compute Hierarchy ----
   print("Compute Hierarchy")
   # Save ----
@@ -84,7 +78,7 @@ if __name__ == "__main__":
     H = Hierarchy(
       NET, NET.A, R, NET.D,
       __nodes__, linkage, mode, lookup=lookup,
-      architecture="all"
+      # architecture="all"
     )
     ## Compute features ----
     H.BH_features_cpp_no_mu()
@@ -94,15 +88,17 @@ if __name__ == "__main__":
     L = colregion(NET, labels_name=f"labels{__nodes__}")
     H.set_colregion(L)
 
-  N = __nodes__
+  N = NET.nodes
+  SLN = NET.SLN
 
   source = []
   target = []
   h = []
-  b = []
+  esln = []
+  sln = []
   connection_memberships = []
 
-  K, R, TH = get_best_kr_equivalence("_S", H)
+  K, R, _ = get_best_kr_equivalence("_S", H)
   rlabels = get_labels_from_Z(H.Z, R[0])
   rlabels = skim_partition(rlabels)
 
@@ -127,178 +123,216 @@ if __name__ == "__main__":
     
     return node_cover
   
+  beta = pd.read_csv(f"{NET.csv_path}/sln_beta_coefficients_49.csv", index_col=1).reindex(NET.struct_labels[:NET.nodes])
+  beta = beta["beta"].to_numpy()
 
   print(cover)
-  # print(SLN)
-  # cover[1] += ["v1fpuf"]
+  
+  labels = NET.struct_labels
+
+  h2_1merge = np.zeros(N)
+  for i in np.arange(N):
+    for k in np.arange(N-1, 0, -1):
+      partition = cut_tree(H.Z, n_clusters=k).ravel()
+      if np.sum(partition == partition[i]) > 1:
+        h2i = H.Z[N - k - 1, 2]
+        break
+    h2_1merge[i] = h2i
+
+  print(cover)
 
   node_cover = cover_node_2_node_cover(cover, NET.struct_labels[:NET.nodes])
   labels = NET.struct_labels
 
-  h2_1merge = np.zeros(NET.nodes)
-  for i in np.arange(NET.nodes):
-    for k in np.arange(N-1, 0, -1):
-      partition = cut_tree(H.Z, n_clusters=k).ravel()
-      if np.sum(partition == partition[i]) > 1:
-        h2i = H.Z[N - 1 - k, 2]
-        break
-    h2_1merge[i] = h2i
+  for i in np.arange(N):
+    for j in np.arange(N):
+      if i == j : continue
+      if NET.A[i, j] != 0:
+        esln.append(norm.cdf(beta[i] - beta[j]))
+        sln.append(SLN[i, j])
+        h_diff = h2_1merge[j] - h2_1merge[i]
+        h.append(h_diff)
+        source.append(i)
+        target.append(j)
 
-  cover_indices = {c: match(l, NET.struct_labels) for c, l in cover.items()}
-
-  for c1, li1 in cover_indices.items():
-    for c2, li2 in cover_indices.items():
-      for i in li1:
-        for j in li2:
-          if i == j: continue
-          if NET.A[i, j] != 0:
-            connection_memberships.append(membership_matrix[c1, c2])
-            b.append(SLN[i,j])
-            h_diff = h2_1merge[i] - h2_1merge[j]
-            h.append(h_diff)
-            source.append(i)
-            target.append(j)
-
-
-  b = np.array(b)
+  esln = np.array(esln)
+  sln = np.array(sln)
   h = np.array(h)
+
+  h = h - np.min(h)
+  h /= np.max(h)
+
   source = np.array(source)
   target = np.array(target)
-  connection_memberships = np.array(connection_memberships).astype(int).astype(str)
+
   from pathlib import Path
   Path(f"{NET.plot_path}/sln").mkdir(parents=True, exist_ok=True)
 
+  ne = sln.shape[0]
+
+  empirical_sln_label = "Empirical " + r"$SLN(i,j)$"
+  sln_bb_label = r"$SLN_{BB}(i,j)$"
+  node_community_label = r"$\Delta \hat{S}(i,j)$"
 
   data = pd.DataFrame({
-    "b_dist" : b,
-    "h_dist" : h,
-    "group" : connection_memberships,
+    empirical_sln_label : list(sln) * 2,
+    "value" : list(esln) + list(h),
+    "feature" : [sln_bb_label] * ne + [node_community_label] * ne
   })
 
-  trace_data_numeric = np.diag(membership_matrix).astype(int).astype(str)
-  trace_data = data.loc[np.isin(data["group"], trace_data_numeric)]
+  # print(data)
+  sns.set_style("white")
+  sns.set_context("talk")
 
-  for new, old in enumerate(trace_data_numeric):
-    trace_data["group"].loc[trace_data["group"] == old] = str(new)
+  fig, axes = plt.subplots(2, 1)
 
-  g=sns.FacetGrid(
-    data=trace_data,
-    col="group",
-    col_wrap=Z // 2,
+  sns.scatterplot(
+    data=data,
+    x="value",
+    y=empirical_sln_label,
+    hue="feature",
+    s=50,
+    alpha=0.7,
+    ax=axes[0]
   )
 
-  g.map_dataframe(
-    sns.scatterplot,
-    x="h_dist",
-    y="b_dist"
-  )
-
+  # box = axes[0].get_position()
+  # axes[0].set_position([box.x0, box.y0, box.width * 0.8, box.height])
+  # axes[0].legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
   from scipy.stats import pearsonr
 
-  for ax in g.axes.flatten():
-    title = ax.get_title().split(" = ")[-1]
-    hax = trace_data["h_dist"].loc[trace_data["group"] == title]
-    bax = trace_data["b_dist"].loc[trace_data["group"] == title]
-    r, pval = pearsonr(hax, bax)
-    p_val_trans = -np.floor(-np.log10(pval)).astype(int)
-    if p_val_trans == 0:
-      ax.set_title(ax.get_title() + "\n" + fr"$\rho = {r:.2f}$ with $p=n.s.$")
-    else:
-      ax.set_title(ax.get_title() + "\n" + fr"$\rho = {r:.2f}$ with $p<1E{p_val_trans}$")
+  hax = data["value"].loc[data["feature"] == sln_bb_label]
+  bax = data[empirical_sln_label].loc[data["feature"] == sln_bb_label]
+  r, pval = pearsonr(hax, bax)
+  print(pval)
+  pval = pvalue2asterisks(pval)
+  axes[0].set_title(r"$\rho_{BB} = $" + f"{r:.2f} ({pval})")
+  # ax.set_title(fr"$\rho_{bb}= {r:.2f}$   ({pval})")
 
-  g.add_legend()
+  hax = data["value"].loc[data["feature"] == node_community_label]
+  bax = data[empirical_sln_label].loc[data["feature"] == node_community_label]
+  r, pval = pearsonr(hax, bax)
+  print(pval)
+  pval = pvalue2asterisks(pval)
+  
+  axes[0].set_title(axes[0].get_title() + "\t" +r"$\rho_{S} = $" + f"{r:.2f}   ({pval})")
 
-  plt.gcf().tight_layout()
+  sns.histplot(
+    data=data,
+    x="value",
+    hue="feature",
+    ax=axes[1]
+  )
+
+  from scipy.stats import kstest
+
+  r = kstest(esln, h, N=h.shape[0], alternative="two-sided")
+
+  print(r)
+  
+  axes[1].set_title(f"KS = {pvalue2asterisks(r.pvalue)}")
+
+
+  fig.set_figwidth(7)
+  fig.set_figheight(11)
+  fig.tight_layout()
+
+  # plt.gcf().tight_layout()
+  # ax.set_xlabel(r"$H^{2}_i - H^{2}_j$")
+  # ax.set_ylabel("Estimated "+ r"$SLN\left(i,j\right)$")
+  # ax.set_ylabel(r"$SLN\left(i,j\right)$")
+
 
   plt.savefig(
-    f"{NET.plot_path}/sln/sln_asym_h2_1merging5.svg",
+    # f"{NET.plot_path}/sln/sln_asym_h2_1merging2.svg",
+    f"{NET.plot_path}/sln/sln_and_models_5B.svg",
+
     transparent=True
   )
+  # plt.show()
 
-  plt.close()
+  # def pvalue2asterisks(pvalue):
+  #   if  not np.isnan(pvalue): 
+  #     if pvalue > 0.05:
+  #       a = ""
+  #     elif pvalue <= 0.05 and pvalue > 0.001:
+  #       a = "*" 
+  #     elif pvalue <= 0.001 and pvalue > 0.0001:
+  #       a = "**" 
+  #     else:
+  #       a = "***"
+  #   else:
+  #     a = "nan"
+  #   return a
 
-  def pvalue2asterisks(pvalue):
-    if  not np.isnan(pvalue): 
-      if pvalue > 0.05:
-        a = ""
-      elif pvalue <= 0.05 and pvalue > 0.001:
-        a = "*" 
-      elif pvalue <= 0.001 and pvalue > 0.0001:
-        a = "**" 
-      else:
-        a = "***"
-    else:
-      a = "nan"
-    return a
+  # average_sln_membership = np.zeros((Z,Z))
 
-  average_sln_membership = np.zeros((Z,Z))
+  # from scipy.stats import ttest_1samp, ttest_ind
+  # sln_significance = np.array([""]* Z**2, dtype="<U21").reshape(Z,Z)
 
-  from scipy.stats import ttest_1samp, ttest_ind
-  sln_significance = np.array([""]* Z**2, dtype="<U21").reshape(Z,Z)
+  # for zi in np.arange(Z):
+  #   for zj in np.arange(Z):
+  #     x = data["b_dist"].loc[data["group"] == membership_matrix[zi, zj].astype(int).astype(str)]
+  #     average_sln_membership[zi, zj] = np.mean(x)
+  #     if zi != zj:
+  #       pval = ttest_1samp(x, 0.5).pvalue
+  #       sln_significance[zi, zj] = pvalue2asterisks(pval)
 
-  for zi in np.arange(Z):
-    for zj in np.arange(Z):
-      x = data["b_dist"].loc[data["group"] == membership_matrix[zi, zj].astype(int).astype(str)]
-      average_sln_membership[zi, zj] = np.mean(x)
-      if zi != zj:
-        pval = ttest_1samp(x, 0.5).pvalue
-        sln_significance[zi, zj] = pvalue2asterisks(pval)
+  # plt.close()
 
-  plt.close()
+  # fig, ax = plt.subplots(1,1)
 
-  fig, ax = plt.subplots(1,1)
+  # annotate_sln = np.array([""]*Z**2, dtype="<U21")
+  # for i, (av, pval) in enumerate(zip(average_sln_membership.ravel(), sln_significance.ravel())):
+  #   annotate_sln[i] = f"{av:.2f}\n{pval}"
 
-  annotate_sln = np.array([""]*Z**2, dtype="<U21")
-  for i, (av, pval) in enumerate(zip(average_sln_membership.ravel(), sln_significance.ravel())):
-    annotate_sln[i] = f"{av:.2f}\n{pval}"
+  # annotate_sln = annotate_sln.reshape(Z, Z)
 
-  annotate_sln = annotate_sln.reshape(Z, Z)
+  # import matplotlib
 
-  import matplotlib
+  # cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["#b20000","#cca3ff","#0047AB"])
 
-  cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["#b20000","#cca3ff","#0047AB"])
-
-  sns.heatmap(
-    average_sln_membership,
-    annot=annotate_sln,
-    fmt="",
-    cmap=cmap,
-    alpha=0.7,
-    center=0.5,
-    ax=ax
-  )
-
-  plt.gcf().tight_layout()
-
-
-  # plt.savefig(
-  #   f"{NET.plot_path}/sln/average_sln_covers5.svg",
-  #   transparent=True
+  # sns.heatmap(
+  #   average_sln_membership,
+  #   annot=annotate_sln,
+  #   fmt="",
+  #   cmap=cmap,
+  #   alpha=0.7,
+  #   center=0.5,
+  #   ax=ax
   # )
 
-  plt.close()
+  # plt.gcf().tight_layout()
 
-  g = sns.FacetGrid(
-    data=data,
-    col="group",
-    col_wrap=Z
-  )
 
-  g.map_dataframe(
-    sns.histplot,
-    stat="density",
-    x="b_dist",
-    common_bins = False,
-    common_norm = False
-  )
+  # # plt.savefig(
+  # #   f"{NET.plot_path}/sln/average_sln_covers5.svg",
+  # #   transparent=True
+  # # )
 
-  plt.gcf().tight_layout()
+  # plt.close()
 
-  plt.savefig(
-    f"{NET.plot_path}/sln/sln_hist_cover5.svg",
-    transparent=True
-  )
+  # g = sns.FacetGrid(
+  #   data=data,
+  #   col="group",
+  #   col_wrap=Z
+  # )
+
+  # g.map_dataframe(
+  #   sns.histplot,
+  #   stat="density",
+  #   x="b_dist",
+  #   common_bins = False,
+  #   common_norm = False
+  # )
+
+  # plt.gcf().tight_layout()
+
+  # plt.savefig(
+  #   f"{NET.plot_path}/sln/sln_hist_cover5.svg",
+  #   transparent=True
+  # )
 
 
  

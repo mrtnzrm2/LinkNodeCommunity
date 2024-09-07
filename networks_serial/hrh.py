@@ -8,7 +8,9 @@ from os.path import join
 # Personal libs ----
 from various.network_tools import *
 from modules.hierarmerge import Hierarchy
+from modules.hierarentropy import Hierarchical_Entropy
 from modules.sign.hierarmerge import Hierarchy as signed_Hierarchy
+
 from modules.colregion import colregion
 
 class HRH:
@@ -56,15 +58,95 @@ class HRH:
     self.hierarchical_association = np.zeros((iterations, self.nodes, self.nodes))
     # SLN matrices
     self.sln = {"1" : [], "0": []}
-    self.set_sln_matrix_one(H.data_sln)
+    # self.set_sln_matrix_one(H.data_sln_matrix)
     # Set save_class as method ----
     self.save_class = save_class
     self.read_class = read_class
     # Set stats ----
-
     if hasattr(H, "stats"):
       self.stats = H.stats
       self.stats["data"] = "1"
+    # Set hp ----
+      self.hp = []
+    # Set Corr SLN ----
+    self.corr_sln = {"1" : pd.DataFrame(), "0" : pd.DataFrame()}
+    self.cover_corr_sln = {"1" : pd.DataFrame(), "0" : pd.DataFrame()}
+
+  def set_cover_corr_sln_one(self, data : pd.DataFrame, cover : dict):
+    self.cover_corr_sln["1"] = pd.concat(
+      [self.cover_corr_sln["1"],
+      self.sln_corr(data, cover, xlabel="SLN_BB")],
+      ignore_index=True
+    )
+
+  def set_cover_corr_sln_zero(self, data : pd.DataFrame, cover : dict, iter : int, key : str):
+    sub = self.sln_corr(data, cover, xlabel="SLN_BB")
+    sub["iter"] = iter
+    sub["key"] = key
+    # print(sub)
+    self.cover_corr_sln["0"] = pd.concat(
+      [self.cover_corr_sln["0"], sub],
+      ignore_index=True
+    )
+
+  def set_corr_sln_one(self, data : pd.DataFrame, cover : dict):
+
+    self.corr_sln["1"] = pd.concat(
+      [self.corr_sln["1"],
+      self.sln_corr(data, cover)],
+      ignore_index=True
+    )
+
+  def set_corr_sln_zero(self, data : pd.DataFrame, cover : dict, iter : int, key : str):
+    sub = self.sln_corr(data, cover)
+    sub["iter"] = iter
+    sub["key"] = key
+    self.corr_sln["0"] = pd.concat(
+      [self.corr_sln["0"], sub],
+      ignore_index=True
+    )
+
+  def sln_corr(self, data : pd.DataFrame, cover : dict, xlabel=r"$\Delta\hat{S}$"):
+    Z = len(cover.keys())
+    membership_matrix = np.arange(Z**2).reshape(Z, Z)
+
+    corr_array = []
+
+    source_cover = []
+    target_cover = []
+
+    from scipy.stats import pearsonr
+
+    for i in np.arange(Z):
+      for j in np.arange(Z):
+        sub = data.loc[data["group"] == membership_matrix[i, j].astype(int).astype(str)]
+        hax = sub[xlabel].to_numpy()
+        bax = sub["Empirical SLN"].to_numpy()
+        if hax.shape[0] < 2 or bax.shape[0] < 2:
+          r = np.nan
+        else: r, _ = pearsonr(hax, bax)
+        corr_array.append(r)
+        source_cover.append(i+1)
+        target_cover.append(j+1)
+
+    return pd.DataFrame(
+      {
+        "feature" : [xlabel] * (Z*Z),
+        "correlation" : corr_array,
+        "source_cover" : source_cover,
+        "target_cover" : target_cover
+      }
+    )
+
+  def set_hp(self, hp1, ehmi_hp1 : float, Z : npt.NDArray, nodes : int):
+    from various.hit import EHMI, check, flattenator
+    hp2 = formating_Z2HMI(Z, nodes)
+    print(hp2)
+    if not check(hp2):
+      raise RuntimeError("Failed to transform Z into HMI format.")
+    e = EHMI(hp1, hp2).mean()
+    print(f"Expected HMI {e:.3f}")
+    self.hp.append(e / ehmi_hp1)
 
   def set_sln_matrix_one(self, SLN : npt.NDArray):
     self.sln["1"] = SLN
@@ -234,8 +316,8 @@ class HRH:
     self.data_measures = pd.concat(
       [
         self.data_measures,
-        get_H_from_BH_with_maxmu(H)[
-          ["K", "X", "D", "S", "SD"]
+        get_H_from_BH(H)[
+          ["K", "D", "S"]
         ]
       ],
       ignore_index=True
@@ -243,8 +325,8 @@ class HRH:
     self.data_measures["data"] = ["1"] * self.data_measures.shape[0]
   
   def set_data_measurements_zero(self, HH : Hierarchy, iter : int):
-    H = get_H_from_BH_with_maxmu(HH)[
-      ["K", "X", "D", "S", "SD"]
+    H = get_H_from_BH(HH)[
+      ["K", "D", "S"]
     ]
     H["data"] = ["0"] * H.shape[0]
     H["iter"] = [str(iter)] * H.shape[0]

@@ -30,6 +30,7 @@ def worker_distbase(
   linkage = "single"
   structure = "FLNe"
   nature = "original"
+  fitter = "EXPTRUNC"
   distance = distance_matrix
   mode = mode
   alpha = 0.
@@ -80,8 +81,13 @@ def worker_distbase(
     cut=cut, b=bias, alpha=alpha,
     discovery=discovery
   )
-  _, _, _, _, est = fitters["EXPMLE"](NET.D, NET.C, NET.nodes, __bin__)
-  lb = est.coef_[0]
+  pars, _, _, _, _ = fitters[fitter](NET.D, NET.CC, __bin__)
+  lb = 1 / pars[2]
+  loc = np.min(NET.D[NET.D > 0])
+  if __model__ == "M":
+    loc = 0
+  b = np.max(NET.D)
+
   # Load hierarhical analysis ----
   NET_H = read_class(
     NET.pickle_path,
@@ -105,18 +111,20 @@ def worker_distbase(
       __inj__, total_number_nodes,
       linkage, __bin__, mode, i,
       structure = structure,
-      version = __version__, model=distbase,
+      subject=subject,
+      version = __version__, model=distbase, fitter=fitter,
       nlog10=nlog10, lookup=lookup, cut=cut,
       topology=topology, distance=distance,
       mapping=mapping, index=index, b=bias,
       lb=lb, discovery=discovery,
-      subject=subject, rho=adj2Den(NET.A[:NET.nodes,:][:, :NET.nodes])
+      rho=adj2Den(NET.A[:NET.nodes,:][:, :NET.nodes])
     )
+
     RAND.rows = NET.rows
     # Create network ----
     print("Create random graph")
     RC = RAND.distbase_dict[__model__](
-      D, NET.CC, run=run, on_save_csv=F
+      D, NET.CC, loc=loc, b=b, run=run, on_save_csv=F
     )
     RA = column_normalize(RC)
     # Transform data for analysis ----
@@ -143,6 +151,7 @@ def worker_distbase(
     # Stats ----
     data.set_data_measurements_zero(RAND_H, i)
     data.set_hierarchical_association(RAND_H.Z, i)
+    # data.set_hp(NET_H.hp, NET_H.ehmi, RAND_H.Z, RAND_H.nodes)
     data.set_stats(RAND_H)
     # Set entropy ----
     data.set_entropy_zero(
@@ -158,7 +167,7 @@ def worker_distbase(
         rlabels = get_labels_from_Z(RAND_H.Z, r)
         rlabels = skim_partition(rlabels)
         # Overlap ----
-        for direction in ["source", "target", "both"]:
+        for direction in ["both"]: # "source", "target", 
           print("***", direction)
           noc, subcover, _, rlabels2 = discovery_channel[discovery](
             RAND_H, k, rlabels, direction=direction, index=index

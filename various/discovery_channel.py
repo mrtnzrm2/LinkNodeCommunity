@@ -367,6 +367,13 @@ def get_nocs_information(H, Cr, dA, labels, direction, index):
       Diss = 1 - H.target_sim_matrix
     else:
       raise ValueError("No accepted direction in discovery channel")
+  elif index == "Shortest_Path":
+    if direction == "source":
+      Diss = H.source_sim_matrix
+    elif direction == "target":
+      Diss = H.target_sim_matrix
+    else:
+      raise ValueError("No accepted direction in discovery channel")
   elif index == "bsim_2" or index == "bsim":
     if direction == "source":
       Diss = H.source_sim_matrix
@@ -430,11 +437,12 @@ def get_nocs_information(H, Cr, dA, labels, direction, index):
             DD[kk, ki] = np.abs(Dsn[non_trivial_covers][kk] - Dsn[non_trivial_covers][ki])
             DD[ki, kk] = DD[kk, ki]
 
-        # print(DD)
-
         DD = linkage(squareform(DD), method="complete")
-        h = np.argmax(DD[:, 2])
-        li = cut_tree(DD, height=DD[h-1, 2]).ravel()
+        ld = ladder_differences(DD[:, 2].ravel())
+        if ld.shape[0] > 1:
+          h = np.argmax(ld)
+        else: h = 0
+        li = cut_tree(DD, height=DD[h, 2]).ravel()
         min_point_region = li[indx_min]
 
       else:

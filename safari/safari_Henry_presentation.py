@@ -235,12 +235,15 @@ if __name__ == "__main__":
     L.get_regions()
     H.set_colregion(L)
     # Entropy ----
-    S = Hierarchical_Entropy(H.H, H.leaves, list(range(H.leaves)))
+    S = Hierarchical_Entropy(H.Z, H.nodes, list(range(H.nodes)))
+    print(H.Z)
     S.Z2dict("short")
-    H.entropy = [
-      H.node_entropy, H.node_entropy_H,
-      H.link_entropy, H.link_entropy_H
-    ]
+    H.set_hp(S.zdict2hp(S.tree))
+    print(H.hp)
+    # H.entropy = [
+    #   H.node_entropy, H.node_entropy_H,
+    #   H.link_entropy, H.link_entropy_H
+    # ]
 
     # # print(H.BH[0][["K", "D", "S"]])
     # print(H.equivalence)
@@ -324,7 +327,7 @@ if __name__ == "__main__":
 
     #   print(rlabels)
 
-    #   # plot_h.core_dendrogram([r], leaf_font_size=11, on=T) #
+    plot_h.core_dendrogram([r], leaf_font_size=11, on=T) #
 
     #   # plot_h.plot_networx(
     #   #   rlabels, cmap_name="husl", figwidth=6, figheight=5,
@@ -337,6 +340,8 @@ if __name__ == "__main__":
     #   )
 
     # Link hierarchies -----
+
+    raise ValueError()
 
     linkage = "single"
     nlog10 = F

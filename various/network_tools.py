@@ -12,6 +12,210 @@ import pickle as pk
 from various.omega import Omega
 import matplotlib.colors as mc
 
+# D_min, D_max = np.min(D), np.max(D)
+# dD = (D_max - D_min) / nbin
+# d_range = np.arange(D_min, D_max + 1e-5, dD / 2)
+# d_range[-1] += 1e-5
+
+# src_bin = [np.nanmean(src[np.where((D >= d_range[0]) & (D < d_range[1]))[0]])]
+# src_bin += [np.nanmean(src[np.where((D >= d_range[i]) & (D < d_range[i+2]))[0]]) for i in np.arange(1, 2 * nbin + 1e-5)[::2][:-1].astype(int)]
+# src_bin += [np.nanmean(src[np.where((D >= d_range[-2]) & (D < d_range[-1]))[0]])]
+# src_bin = np.array(src_bin)
+
+# tgt_bin = [np.nanmean(tgt[np.where((D >= d_range[0]) & (D < d_range[1]))[0]])]
+# tgt_bin += [np.nanmean(tgt[np.where((D >= d_range[i]) & (D < d_range[i+2]))[0]]) for i in np.arange(1, 2 * nbin + 1e-5)[::2][:-1].astype(int)]
+# tgt_bin += [np.nanmean(tgt[np.where((D >= d_range[-2]) & (D < d_range[-1]))[0]])]
+# tgt_bin = np.array(tgt_bin)
+
+# src_inset_bin = [np.nanmean(src_inset[np.where((D >= d_range[0]) & (D < d_range[1]))[0]])]
+# src_inset_bin += [np.nanmean(src_inset[np.where((D >= d_range[i]) & (D < d_range[i+2]))[0]]) for i in np.arange(1, 2 * nbin + 1e-5)[::2][:-1].astype(int)]
+# src_inset_bin += [np.nanmean(src_inset[np.where((D >= d_range[-2]) & (D < d_range[-1]))[0]])]
+# src_inset_bin = np.array(src_inset_bin)
+
+# tgt_inset_bin = [np.nanmean(tgt_inset[np.where((D >= d_range[0]) & (D < d_range[1]))[0]])]
+# tgt_inset_bin += [np.nanmean(tgt_inset[np.where((D >= d_range[i]) & (D < d_range[i+2]))[0]]) for i in np.arange(1, 2 * nbin + 1e-5)[::2][:-1].astype(int)]
+# tgt_inset_bin += [np.nanmean(tgt_inset[np.where((D >= d_range[-2]) & (D < d_range[-1]))[0]])]
+# tgt_inset_bin = np.array(tgt_inset_bin)
+
+# var_src_inset_bin = [np.nanvar(src_inset[np.where((D >= d_range[0]) & (D < d_range[1]))[0]])]
+# var_src_inset_bin += [np.nanvar(src_inset[np.where((D >= d_range[i]) & (D < d_range[i+2]))[0]]) for i in np.arange(1, 2 * nbin + 1e-5)[::2][:-1].astype(int)]
+# var_src_inset_bin += [np.nanvar(src_inset[np.where((D >= d_range[-2]) & (D < d_range[-1]))[0]])]
+# var_src_inset_bin = np.array(var_src_inset_bin)
+
+# var_tgt_inset_bin = [np.nanvar(tgt_inset[np.where((D >= d_range[0]) & (D < d_range[1]))[0]])]
+# var_tgt_inset_bin += [np.nanvar(tgt_inset[np.where((D >= d_range[i]) & (D < d_range[i+2]))[0]]) for i in np.arange(1, 2 * nbin + 1e-5)[::2][:-1].astype(int)]
+# var_tgt_inset_bin += [np.nanvar(tgt_inset[np.where((D >= d_range[-2]) & (D < d_range[-1]))[0]])]
+# var_tgt_inset_bin = np.array(var_tgt_inset_bin)
+
+def ladder_differences(d : npt.ArrayLike) -> npt.ArrayLike:
+  return np.array([d[i+1] - d[i] for i in np.arange(d.shape[0]-1)])
+
+def formating_Z2HMI(Z : npt.NDArray, nodes : int):
+  relabels = np.arange(nodes, 2*(nodes-1)+1)
+
+  rZ = np.zeros((Z.shape[0], Z.shape[1]+3))
+  rZ[:, :-3] = Z
+  rZ[:, -3] = relabels
+
+  c = 0
+  for i in np.arange(1, nodes-1):
+      if rZ[i, 2] > rZ[i-1, 2]:
+        c += 1
+      rZ[i, -2] = c
+
+  for i in np.arange(1, nodes-1):
+      if  rZ[nodes-1-(i+1), -2] == rZ[nodes-1-i, -2]:
+          rZ[nodes-1-(i+1), -1] = rZ[nodes-1-i, -1] + 1
+
+  tree = []
+
+  def insert(tree, k1, k2, r, nodes):
+      if isinstance(tree, list):
+          if len(tree) == 0 or r in tree:
+              if k1 >= nodes or k2 >= nodes:
+                tree.append([k1])
+                tree.append([k2])
+              elif k1 < nodes and k2 < nodes:
+                tree.append(k1)
+                tree.append(k2)
+              else:
+                tree.append([k1, k2])
+          else:
+              for t in tree:
+                insert(t, k1, k2, r, nodes)
+
+  def insert2(tree, k1, k2, r, nodes):
+      if isinstance(tree, list):
+          if len(tree) == 0 or r in tree:
+              if k1 >= nodes and k2 >= nodes:
+                tree.append([k1])
+                tree.append([k2])
+              elif k1 < nodes and k2 < nodes:
+                tree.append(k1)
+                tree.append(k2)
+              elif k1 < nodes and k2 >= nodes:
+                tree.append(k1)
+                tree.append([k2])
+              else:
+                tree.append([k1])
+                tree.append(k2)
+          else:
+              for t in tree:
+                insert2(t, k1, k2, r, nodes)
+  for i in np.arange(nodes-1):
+      k1 = int(rZ[nodes-2-i, 0])
+      k2 = int(rZ[nodes-2-i, 1])
+      r = int(rZ[nodes-2-i, 4])
+
+      if rZ[nodes-2-i, -1] > 0 and i > 0:
+        J = np.where(rZ[:, -2] == rZ[nodes-2-i, -2])[0]
+        f = False
+        for j in J:
+            if j > nodes-2-i and r == rZ[j, 1] and rZ[j, 0] < nodes:
+              r = int(rZ[j, 0])
+              insert2(tree, k1, k2, r, nodes)
+              f = True
+              break
+        if not f:
+          insert(tree, k1, k2, r, nodes)
+      else:
+        insert(tree, k1, k2, r, nodes)
+  
+  def remove(tree, r):
+      if isinstance(tree, list):
+        if r in tree:
+            tree.remove(r)
+        else:
+            for t in tree:
+              remove(t, r)
+  
+  def count_empty(tree, n):
+     if isinstance(tree, list):
+        if [] in tree:
+          n += 1
+        else:
+          for t in tree:
+              count_empty(t, n)
+
+  def remove_empty(tree):
+      if isinstance(tree, list):
+        if [] in tree:
+            tree.remove([])
+            return
+        else:
+            for t in tree:
+              remove_empty(t)
+
+  for z in -np.sort(-rZ[:, 4])[1:]:
+      remove(tree, int(z))
+
+  n = np.array([0])
+  count_empty(tree, n)
+  while n[0] != 0:
+      remove_empty(tree)
+      n = np.array([0])
+      count_empty(tree, n)
+
+  def check_mix(tree):
+    fi = 0
+    fl = 0
+    for t in tree:
+      if isinstance(t, int): fi += 1
+      if isinstance(t, list): fl += 1
+      if fi > 0 and fl > 0: return True
+    return False
+  
+  def check_list(tree):
+    for t in tree:
+      if not isinstance(t, list): return False
+    return True
+  
+  def repack(tree, id):
+    if isinstance(tree, list):
+      if len(tree) > 1 and check_mix(tree):
+        for i, t in enumerate(tree):
+          if t == id:
+            tree[i] = [id]
+          else:
+            repack(t, id)
+      elif check_list(tree):
+        for t in tree:
+          repack(t, id)
+
+  # from various.hit import check
+  # print(check(tree))
+  # print(tree, "\n", "\n")
+
+
+  for i in range(nodes):
+    repack(tree, i)
+
+  return tree
+
+def draw_brace(ax, xspan, yy, text, color="black"):
+    """Draws an annotated brace on the axes."""
+    xmin, xmax = xspan
+    xspan = xmax - xmin
+    ax_xmin, ax_xmax = ax.get_xlim()
+    xax_span = ax_xmax - ax_xmin
+
+    ymin, ymax = ax.get_ylim()
+    yspan = ymax - ymin
+    resolution = int(xspan/xax_span*100)*2+1 # guaranteed uneven
+    beta = 300./xax_span # the higher this is, the smaller the radius
+
+    x = np.linspace(xmin, xmax, resolution)
+    x_half = x[:int(resolution/2)+1]
+    y_half_brace = (1/(1.+np.exp(-beta*(x_half-x_half[0])))
+                    + 1/(1.+np.exp(-beta*(x_half-x_half[-1]))))
+    y = np.concatenate((y_half_brace, y_half_brace[-2::-1]))
+    y = yy + (.05*y - .01)*yspan # adjust vertical position
+
+    ax.autoscale(False)
+    ax.plot(x, y, color=color, lw=1)
+
+    ax.text((xmax+xmin)/2., yy+.04*yspan, text, ha='center', va='bottom', color=color)
+
 def adj2Den(A, dir=False):
     n = A.shape[0]
     if dir:
@@ -20,22 +224,26 @@ def adj2Den(A, dir=False):
     else:
       m = np.sum(A > 0)
       return m / (n * (n - 1))
+    
+def adj2barW(A, dir=False):
+    w = A[A!=0]
+    return np.mean(w)
 
 
-def random_partition_R(m : int, R : int) -> dict:
+def random_partition_R(m : int, R : int, labels : npt.ArrayLike) -> dict:
   A_nodes = np.arange(m)
   if R > m:
     raise RuntimeError("Number of communities more than the number of nodes.")
   
   initial_nodes = np.random.choice(A_nodes, size=R, replace=False)
-  partition = {i:[n] for i, n in enumerate(initial_nodes)}
+  partition = {i:[labels[n]] for i, n in enumerate(initial_nodes)}
 
   # Take out the initial nodes assigned to each urn.
   A_nodes = np.array([n for n in A_nodes if n not in initial_nodes])
   A_nodes_memberships = np.random.choice(np.arange(R), size=A_nodes.shape[0], replace=True)
 
   for mem, n in zip(A_nodes_memberships, A_nodes):
-    partition[mem].append(n)
+    partition[mem].append(labels[n])
   
   return partition
 
@@ -179,28 +387,44 @@ def minus_one_Dc(dA, undirected=False):
     if Dc <= 0:
       dA["id"].loc[dA["id"] == id] = -1
 
-def range_and_probs_from_DC(D, C, bins):
-  nodes = C.shape[1]
+def range_and_probs_from_DC(D, CC, bins):
+  nodes = CC.shape[1]
+  # C = CC.copy()[:nodes, :nodes]
+  # D_ = D[:nodes, :nodes]
+
+  C = CC.copy()
   D_ = D[:, :nodes]
+
   # Treat distances ----
   min_d = np.min(D_[D_ > 0])
   max_d = np.max(D_)
-  d_range = np.linspace(min_d, max_d, bins-1)
-  d_range[-1] += 1e-4
+  d_range = np.linspace(min_d, max_d, bins+1)
+
+  d_range[-1] += 1e-2
+
   # Bin size - delta ----
   delta = (d_range[1] - d_range[0]) / 2
-  counts = np.zeros(bins - 1)
+  counts = np.zeros(bins)
+
   # Sum counts ----
   for i in np.arange(C.shape[0]):
     for j in np.arange(C.shape[1]):
-      d = D[i, j]
-      for k in np.arange(bins - 1):
+      if i == j: continue
+      d = D_[i, j]
+      for k in np.arange(bins):
         if d_range[k] <= d and d_range[k + 1] > d:
           counts[k] += C[i, j]
           break
+
   # Prepare x and y ----
-  y = counts /(np.sum(counts) * 2 * delta)
+  y = counts / (np.sum(counts) * 2 * delta)
   x = d_range + delta
+  x = x[:-1]
+
+  # print(y)
+  # print(x)
+  # raise ValueError("")
+
   return d_range, x, y
 
 def get_best_kr(score, H, undirected=False, mapping="X_diag"):
@@ -248,6 +472,10 @@ def get_best_kr_equivalence(score, H):
       get_H_from_BH(H), order=0
     )
   elif score == "_S":
+    k, h = get_k_from_S(
+      get_H_from_BH(H)
+    )
+  elif score == "_S2":
     k, h = get_k_from_S(
       get_H_from_BH(H)
     )
@@ -378,7 +606,7 @@ def get_H_from_BH_with_maxmu(H):
   h = pd.DataFrame()
   for i in np.arange(len(H.BH)):
     h = pd.concat([h, H.BH[i]], ignore_index=True)
-  h = h.groupby(["K", "D", "X", "S", "SD"])["mu"].max().reset_index()
+  h = h.groupby(["K", "D", "S"])["mu"].max().reset_index()
   return h
 
 def get_k_from_ntrees(H):
@@ -450,7 +678,7 @@ def get_r_from_D(H):
     r = r.iloc[0]
   return r
 
-def get_k_from_D(H):
+def get_k_from_D(H : pd.DataFrame):
   r = H["K"].loc[
     H["D"] == np.nanmax(H["D"])
   ]
@@ -463,7 +691,7 @@ def get_k_from_D(H):
     h = h.iloc[0]
   return int(r), float(h)
 
-def   get_k_from_S(H):
+def   get_k_from_S(H : pd.DataFrame):
   r = H["K"].loc[
     H["S"] == np.nanmax(H["S"])
   ]
@@ -471,7 +699,18 @@ def   get_k_from_S(H):
     H["S"] == np.nanmax(H["S"])
   ]
   if r.shape[0] > 1:
-    print("warning: more than one k")
+    print(">>> warning: more than one k")
+  return int(r.iloc[0]), float(h.iloc[0])
+
+def   get_k_from_S2(H : pd.DataFrame):
+  r = H["K"].loc[
+    H["S2"] == np.nanmax(H["S2"])
+  ]
+  h = H["height"].loc[
+    H["S2"] == np.nanmax(H["S2"])
+  ]
+  if r.shape[0] > 1:
+    print(">>> warning: more than one k")
   return int(r.iloc[0]), float(h.iloc[0])
 
 def get_k_from_SD(H):
@@ -530,6 +769,11 @@ def get_r_from_equivalence(k, H):
   if isinstance(k, list):
     return [H.equivalence[H.equivalence[:, 0] == kk, 1][0] for kk in k]
   else: return np.min(H.equivalence[H.equivalence[:, 0] == k, 1])
+
+def get_k_from_equivalence(r, H):
+  if isinstance(r, list):
+    return [H.equivalence[H.equivalence[:, 1] == r, 1][0] for rr in r]
+  else: return np.min(H.equivalence[H.equivalence[:, 1] == r, 1])
 
 def get_r_from_X_diag(K, H, Z, R, nodes, **kwargs):
   from scipy.cluster.hierarchy import cut_tree, dendrogram

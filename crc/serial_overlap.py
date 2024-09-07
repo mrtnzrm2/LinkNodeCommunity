@@ -8,6 +8,7 @@ T = True
 F = False
 # Default libraties ----
 from numpy import zeros
+import networkx as nx
 # Import libraries ----
 from modules.hierarmerge import Hierarchy
 from modules.hierarentropy import Hierarchical_Entropy
@@ -114,8 +115,17 @@ def worker_overlap(
       RAND.random_WDN_overlap_cpp(run=run, random_seed=T, on_save_pickle = F)
     elif benchmark == "WN":
       RAND.random_WN_overlap_cpp(run=run, random_seed=T, on_save_pickle = F)
+
+    # gA = nx.DiGraph(RAND.A)
+
     if np.sum(np.isnan(RAND.A)) > 0:
       print("LFR failed to create the network with the desired properties.")
+    elif any((np.sum(RAND.A, axis=0) <= 0)) or any((np.sum(RAND.A, axis=1) <= 0)):
+      print("LFR failed to create the network with the desired properties.")
+      continue
+    # elif  ~nx.is_weakly_connected(gA):
+    #   print("LFR failed to create the network with the desired properties.")
+    #   continue
     else:   
       RAND.col_normalized_adj(on=F)
       L = colregion(RAND)
@@ -124,7 +134,7 @@ def worker_overlap(
       print("Compute Hierarchy")
       RAND_H = Hierarchy(
         RAND, RAND.A, RAND.A, zeros(RAND.A.shape),
-        __nodes__, linkage, __mode__, alpha=alpha
+        __nodes__, linkage, __mode__, alpha=alpha, chardist=False
       )
 
       dummy_pickle_path = get_pickle_path(RAND_H)
@@ -142,12 +152,8 @@ def worker_overlap(
 
       ## Compute features ----
       RAND_H.BH_features_cpp_no_mu()
-      ## Compute link entropy ----
-      # RAND_H.link_entropy_cpp("short", cut=cut)
       ## Compute lq arbre de merde ----
       RAND_H.la_abre_a_merde_cpp(RAND_H.BH[0])
-      ## Compute node entropy ----
-      # RAND_H.node_entropy_cpp("short", cut=cut)
       # Set colregion ----
       RAND_H.set_colregion(L)
       RAND_H.delete_dist_matrix()
@@ -161,11 +167,11 @@ def worker_overlap(
       for score in opt_score:
         # Get best k, r for given score ----
         K, R, _ = get_best_kr_equivalence(score, RAND_H)
-        for ii, kr in enumerate(zip(K, R)):
+        for _, kr in enumerate(zip(K, R)):
           k, r = kr
-          print("Score: {}".format(score))
+          print(">>> Score: {}".format(score))
           # Single linkage part ----
-          print("Best K: {}\nBest R: {}".format(k, r))
+          # print("Best K: {}\nBest R: {}".format(k, r))
           rlabels = get_labels_from_Z(RAND_H.Z, r)
           rlabels = skim_partition(rlabels)
           if benchmark == "WDN":

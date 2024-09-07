@@ -264,6 +264,7 @@ class SWAPNET(EDR):
       )
       if run:
         if not os.path.exists(path):
+          print(">>>>", self.rows, self.nodes)
           from rand_network import swap_one_k_dense
           t = swap_one_k_dense(
             self.A, self.rows, self.nodes, swaps

@@ -74,11 +74,14 @@ class MAC40(base):
     # Get structure network ----
     self.C, self.CC, self.A = self.get_structure()
     self.SN, self.IN, self.SLN = self.get_sln_structure()
+    self.get_beta_bbmodel()
     # Get network's spatial distances ----
     dist_dic = {
       "MAP3D" : self.get_distance_MAP3D,
-      "tracto16" : self.get_distance_tracto16
+      "tracto16" : self.get_distance_tracto16,
+      "tracto91" : self.get_distance_tracto91
     }
+    # self.D = self.get_distance_MAP3D_v2()
     self.D = dist_dic[self.distance]()
     # Set ANALYSIS NAME ----
     self.analysis =  "{}_{}_{}".format(
@@ -157,7 +160,8 @@ class MAC40(base):
         tmk[t].append(i)
     C = np.array(C)
     C[np.isnan(C)] = 0
-    CC = np.sum(C, axis=0)
+    CC = np.sum(C, axis=0).astype(int)
+
     c = np.zeros((total_areas, inj))
     for t, mnk in tmk.items(): c[:, t] = np.mean(C[mnk, :, t], axis=0)
     A = CC / np.sum(CC, axis=0)
@@ -165,15 +169,60 @@ class MAC40(base):
     self.nodes = c.shape[1]
     self.struct_labels = slabel
     self.struct_labels = np.char.lower(self.struct_labels)
+
+
+    # wolfA = A.copy()
+    # wolfA[wolfA != 0] = -1/np.log10(wolfA[wolfA != 0])
+    # pd.DataFrame(wolfA, index=self.struct_labels, columns=self.struct_labels[:self.nodes]).to_csv(
+    #   f"{self.csv_path}/boringness.csv"
+    # )
     # np.savetxt(f"{self.csv_path}/labels.csv", self.struct_labels,  fmt='%s')
+
     return c.astype(float), CC.astype(float), A.astype(float)
+  
+  def get_distance_MAP3D_v2(self):
+    # Get structure ----
+    file = pd.read_csv(f"{self.csv_path}/corticoconnectiviy database_kennedy-knoblauch-team-1_distances completed.csv")
+
+    ## Areas to index
+    tlabel = np.unique(file.TARGET)
+    inj = tlabel.shape[0]
+    slabel = np.unique(file.SOURCE)
+    total_areas = slabel.shape[0]
+    slabel1 = [lab for lab in slabel if lab not in tlabel]
+    slabel = np.array(list(tlabel) + slabel1)
+    file["SOURCE_IND"] = match(file.SOURCE, slabel)
+    file["TARGET_IND"] = match(file.TARGET, slabel)
+
+    ## Average Count
+    monkeys = np.unique(file.MONKEY)
+    D = []
+    for i, m in enumerate(monkeys):
+      Dm = np.zeros((total_areas, inj)) * np.nan
+      data_m = file.loc[file.MONKEY == m]
+      Dm[data_m.SOURCE_IND, data_m.TARGET_IND] = data_m["DISTANCE_(mm)"]
+      D.append(Dm)
+
+    D = np.array(D)
+    D = np.nanmean(D, axis=0)
+    D[np.isnan(D)] = 0
+    return D
+
 
   def get_distance_MAP3D(self):
     fname =  join(self.distance_path, "DistanceMatrix Map3Dmars2019_91x91.csv")
     file = pd.read_csv(fname, index_col=0)
+    
     clabel =file.columns.to_numpy()
     clabel = np.array([str(lab) for lab in clabel])
     clabel = np.char.lower(clabel)
+
+    rlabel =file.index.to_numpy()
+    rlabel = np.array([str(lab) for lab in rlabel])
+    rlabel = np.char.lower(rlabel)
+
+    # print(file)
+
     ## Rename areas from D to C
     D2C = {
       "perirhinal" : "peri",
@@ -185,14 +234,15 @@ class MAC40(base):
     }
     for key, val in D2C.items():
       clabel[clabel == key] = val
+      rlabel[rlabel == key] = val
     # labs = [lab for lab in clabel if lab not in self.struct_labels]
     # print(labs)
     D = file.to_numpy()
-    order = match(self.struct_labels, clabel)
-    D = D[order, :][:, order]
-    D = np.array(D)
+    D = pd.DataFrame(D, index=rlabel, columns=clabel)[self.struct_labels].reindex(self.struct_labels).to_numpy()
+
     np.fill_diagonal(D, 0.)
     D = D.astype(float)
+
     return D
   
   def get_distance_tracto16(self):
@@ -223,6 +273,51 @@ class MAC40(base):
     np.fill_diagonal(D, 0.)
     D = D.astype(float)
     return D
+  
+  def get_distance_tracto91(self):
+    fname =  join(self.distance_path, "Macaque_TractoDist_91x91_220418.csv")
+    file = pd.read_csv(fname, index_col=0)
+    clabel =file.columns.to_numpy()
+    clabel = np.array([str(lab) for lab in clabel])
+    clabel = np.char.lower(clabel)
+
+    clabel[clabel == "insula"] = "ins" 
+    clabel[clabel == "subi"] = "sub" 
+
+    file.columns = clabel
+    file.index = clabel
+  
+    D91 = file[self.struct_labels].loc[self.struct_labels].to_numpy()
+    D3d = self.get_distance_MAP3D()
+
+    def predict_missing_values(x, y):
+      from scipy.stats import linregress
+      res = linregress(x, y)
+      return res.intercept, res.slope
+
+    d91 = np.triu(D91, 1).ravel()
+    d3d = np.triu(D3d, 1).ravel()
+
+
+    d3d = d3d[(~np.isnan(d91)) & (d91 < 80)]
+    d91 = d91[(~np.isnan(d91)) & (d91 < 80)]
+
+    # print(np.sum(np.isnan(D91))-91)
+
+    b, m = predict_missing_values(d3d, d91)
+
+    # miss = np.isnan(D91)
+    # print(np.nanmax(D91))
+    D91[np.isnan(D91)] = m * D3d[np.isnan(D91)] + b
+    D91[D91 > 80] = m * D3d[D91 > 80] + b
+
+    # print(D91[miss])
+    np.fill_diagonal(D91, 0.)
+
+    # print(np.sum(np.isnan(D91)))
+
+    # raise ValueError("")
+    return D91.astype(float)
   
   def get_sln_structure(self):
     # Get structure ----
@@ -289,3 +384,7 @@ class MAC40(base):
     #   f"{self.csv_path}/mean_infra_neurons.csv"
     # )
     return s.astype(float), i.astype(float), A.to_numpy().astype(float)
+  
+  def get_beta_bbmodel(self):
+    beta = pd.read_csv(f"{self.csv_path}/sln/sln_beta_coefficients_40.csv", index_col=1).reindex(self.struct_labels[:self.nodes])
+    self.beta = beta["beta"].to_numpy()

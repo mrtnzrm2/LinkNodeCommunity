@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from os.path import join
 from pathlib import Path
 import seaborn as sns
+from various.network_tools import *
 
 class FLATMAP:
   def __init__(self, nodes, version, labels, regions, plot_path, **kwargs) -> None:
@@ -383,9 +384,202 @@ class FLATMAP:
     )
     plt.close()
 
+  def plot_flatmap_91(self, NET, H, ax: plt.Axes, cmap="deep", color_order=None, index_name="Hellinger2"):
+    import matplotlib.patheffects as path_effects
+    from modules.discovery import discovery_channel
+    file_path = "/Users/jmarti53/Documents/Projects/LINKPROJECT/Dlink/utils/flatmap_91/"
+    # Get best K and R ----
+    K, R, _ = get_best_kr_equivalence("_S", H)
+    k = K[0]
+    r = R[0]
+
+    clustering = get_labels_from_Z(H.Z, r)
+    clustering = skim_partition(clustering)
+    labels = NET.struct_labels[:NET.nodes]
+
+    print(">> reading data")
+    clusterColors = sns.color_palette(cmap)
+
+    print("> reading flatmap data")
+    f = open(file_path + "macaque_flatmap_91B.json")
+    polygonData = json.load(f)
+    f.close()
+
+    f = open(file_path + "label_coord.json")
+    data = json.load(f)
+    f.close()
+
+    print(">>> preparing data for creating polygons")
+    index = []
+    name = []
+    x = []
+    y = []
+    for pdindex, pd in enumerate(polygonData):            
+        for e in polygonData[pd][0]:          
+            index.append(pdindex)
+            name.append(pd)      
+            x.append(e[0])
+            y.append(e[1])
+
+    for index, n in enumerate(name):
+        name[index] = n.replace("\"", "")
+
+    totalAreas = len(set(name))
+    start = np.zeros(totalAreas)
+    end = np.zeros(totalAreas)
+    sindex = 0
+    eindex = 0
+    for index, n in enumerate(name):
+
+        if(index == 0):
+            start[sindex] = index
+            sindex += 1
+        if(index != len(name) - 1):
+            if(n != name[index + 1]):
+                end[eindex] = index
+                eindex += 1
+                start[sindex] = index + 1
+                sindex += 1
+        else:
+            end[eindex] = len(name) - 1
+
+    start = start.astype(int)
+    end = end.astype(int)
+
+    print("> Covers")
+    _, nocs, noc_sizes, partition  = discovery_channel["discovery_7"](
+        H, k, clustering, direction="both", index="Hellinger2"
+    )
+
+    unique_clusters_id = np.unique(partition)
+    keff = len(unique_clusters_id)
+    # Generate all the colors in the color map -----
+    if -1 in unique_clusters_id:
+      save_colors = sns.color_palette(cmap, keff - 1)
+      cmap_heatmap = [[]] * keff
+      # cmap_heatmap[0] = [199 / 255.0, 0, 57 / 255.0]
+      cmap_heatmap[0] = [1., 1., 1.]
+      cmap_heatmap[1:] = save_colors
+    else:
+      save_colors = sns.color_palette(cmap, keff)
+      cmap_heatmap = [[]] * (keff+1)
+      # cmap_heatmap[0] = [199 / 255.0, 0, 57 / 255.0]
+      cmap_heatmap[0] = [1., 1., 1.]
+      cmap_heatmap[1:] = save_colors
+    cmap_heatmap = np.array(cmap_heatmap)
+    if isinstance(color_order, np.ndarray):
+      cmap_heatmap[1:] = cmap_heatmap[1:][color_order]
+
+    def getAreaIndex(area, labels):
+      for index, l in enumerate(labels):
+          if(l == area):
+              return index
+          else:
+              if((l == "v1" or l == "v2" or l == "v4") and l in area and len(area) > 3):
+                  return index
+      return -1
+
+    nocs_indeces = [
+        getAreaIndex(labels[n].lower(), labels) for n in np.where(clustering == -1)[0]
+    ]
+
+    nodes_memberships = {
+      getAreaIndex(labels[n].lower(), labels) : {"id" : [0] * (keff+1), "size" : [0] * (keff+1)} for n in nocs_indeces
+    }
+
+    for _, key in enumerate(nocs.keys()):
+        index_key = getAreaIndex(key, labels)
+        if index_key not in nocs_indeces: continue
+        for id in nocs[key]:
+            if id == -1:
+              nodes_memberships[index_key]["id"][0] = 1
+              nodes_memberships[index_key]["size"][0] = 1
+            else:
+              nodes_memberships[index_key]["id"][id + 1] = 1
+              nodes_memberships[index_key]["size"][id + 1] = noc_sizes[key][id]
+
+    print("> plotting")
+
+    for index in range(totalAreas):
+        px = x[start[index]:(end[index] + 1)]
+        py = y[start[index]:(end[index] + 1)]
+
+        vertices = np.column_stack((px, py))
+
+        aindex = getAreaIndex(name[start[index]].lower(), labels)
+        if aindex != -1 and (clustering[aindex] != -1 or name[start[index]].lower() not in nocs.keys()):
+            colorIndex = clustering[aindex]
+            color = clusterColors[colorIndex]
+        elif aindex != -1 and clustering[aindex] == -1:
+            color = tuple((1, 1, 1, 0))
+        else:
+            color = tuple((.5, .5, .5, .25))
+        
+        pattern = ''
+
+        if aindex != -1 and clustering[aindex] != -1:
+          ax.add_patch(plt.Polygon(vertices, closed=True, edgecolor=[1, 1, 1], linewidth=.5, facecolor=color, hatch=pattern))
+        elif aindex != -1 and clustering[aindex] == -1:
+          ax.add_patch(plt.Polygon(vertices, closed=True, edgecolor=[0, 0, 0], linewidth=.5, facecolor=color, hatch=pattern))
+        else:
+          ax.add_patch(plt.Polygon(vertices, closed=True, edgecolor=[1, 1, 1], linewidth=.5, facecolor=color, hatch=pattern))
+
+
+    for d in data:
+        aindex = getAreaIndex(d.lower(), labels)
+        if aindex != -1:
+          t = ax.text(data[d][0][0], data[d][0][1], d, fontsize=6, weight="bold", color="yellow")
+          t.set_path_effects(
+          [
+            path_effects.Stroke(linewidth=0.5, foreground='k'),
+            path_effects.Normal()
+          ])
+        if d.lower() in nocs.keys():
+            wedgecolor = "k"
+            ax.pie(
+              [s for s in nodes_memberships[aindex]["size"] if s != 0],
+              center=np.array([data[d][0][0], data[d][0][1]]),
+              colors = [cmap_heatmap[i] for i, id in enumerate(nodes_memberships[aindex]["id"]) if id != 0],
+              radius=0.45,
+              wedgeprops={"linewidth" : 0.35, "edgecolor": wedgecolor}
+            )
+
+    ax.set_aspect("equal")
+    ax.autoscale()
+    ax.set_axis_off()
+
+    # plt.show()
+
+    # Arrange path ----
+    plot_path = join(self.plot_path, index_name)
+    # Crate path ----
+    
+    Path(
+      plot_path
+    ).mkdir(exist_ok=True, parents=True)
+
+    print(join(plot_path, "{}.png".format(K[0])))
+    plt.savefig(
+      join(plot_path, "{}.png".format(K[0])),
+      dpi=300
+    )
+    plt.close()
+
+    print("> done!")
+
+
   def plot_regions(self, direction="source", cmap_name="deep", **kwargs):
     # sns.set_theme()
     plt.style.use("dark_background")
+
+    # import matplotlib
+
+    # # Say, "the default sans-serif font is COMIC SANS"
+    # matplotlib.rcParams['font.sans-serif'] = "Arial"
+    # # Then, "ALWAYS use sans-serif fonts"
+    # matplotlib.rcParams['font.family'] = "sans-serif"
+    font = "Arial"
+
     import matplotlib.patheffects as path_effects
     # Format network area names ----
     self.struct_labels = self.format_areas(
@@ -419,52 +613,54 @@ class FLATMAP:
         plt.Polygon(
           vertices,
           closed=True,
-          edgecolor=[1, 1, 1],
+          edgecolor=[0.5, 0.5, 0.5],
           linewidth=.5,
           facecolor=color,
-          hatch=pattern
+          hatch=pattern,
+          alpha=0.5
         )
       )
 
     fontsize=15
+    fontcolor = "black"
     for i, nme in enumerate(uname):
       if nme == "v1fpuf_2": continue
       elif nme == "v1fplf":
-        txt = axFlatmap.text(data[i, 0] - 20, data[i, 1] - 10, nme, fontsize=fontsize, font="Times New Roman")
+        txt = axFlatmap.text(data[i, 0] - 20, data[i, 1] - 10, nme, fontsize=fontsize, font=font, color=fontcolor)
       elif nme == "v1pcuf_2": continue
       elif nme == "ento_2": continue
       elif nme == "ento_3": continue
       elif nme == "46v_1": continue
       elif nme == "v1fpuf_1":
-        txt = axFlatmap.text(data[i, 0] - 25, data[i, 1], "v1fpuf", fontsize=fontsize, font="Times New Roman")
+        txt = axFlatmap.text(data[i, 0] - 25, data[i, 1], "v1fpuf", fontsize=fontsize, font=font, color=fontcolor)
       elif nme == "v1pcuf_1":
-        txt = axFlatmap.text(data[i, 0] - 20, data[i, 1], "v1pcuf", fontsize=fontsize, font="Times New Roman")
+        txt = axFlatmap.text(data[i, 0] - 20, data[i, 1], "v1pcuf", fontsize=fontsize, font=font, color=fontcolor)
       elif nme == "v2pclf":
-        txt = axFlatmap.text(data[i, 0] - 25, data[i, 1] - 5, "v2pclf", fontsize=10, font="Times New Roman")
+        txt = axFlatmap.text(data[i, 0] - 25, data[i, 1] - 5, "v2pclf", fontsize=fontsize, font=font, color=fontcolor)
       elif nme == "v2fplf":
-        txt = axFlatmap.text(data[i, 0] - 25, data[i, 1], "v2fplf", fontsize=fontsize, font="Times New Roman")
+        txt = axFlatmap.text(data[i, 0] - 25, data[i, 1], "v2fplf", fontsize=fontsize, font=font, color=fontcolor)
       elif nme == "v2pcuf": 
-        txt = axFlatmap.text(data[i, 0] - 25, data[i, 1], "v2pcuf", fontsize=fontsize, font="Times New Roman")
+        txt = axFlatmap.text(data[i, 0] - 25, data[i, 1], "v2pcuf", fontsize=fontsize, font=font, color=fontcolor)
       elif nme == "v2c":
-        txt = axFlatmap.text(data[i, 0] - 15, data[i, 1] - 35, "v2c", fontsize=fontsize, font="Times New Roman")
+        txt = axFlatmap.text(data[i, 0] - 15, data[i, 1] - 35, "v2c", fontsize=fontsize, font=font, color=fontcolor)
       elif nme == "v6":
-        txt = axFlatmap.text(data[i, 0] - 10, data[i, 1] - 25, "v6", fontsize=fontsize, font="Times New Roman")
+        txt = axFlatmap.text(data[i, 0] - 10, data[i, 1] - 25, "v6", fontsize=fontsize, font=font, color=fontcolor)
       elif nme == "v1pclf":
-        txt = axFlatmap.text(data[i, 0] - 30, data[i, 1] - 10, "v1pclf", fontsize=fontsize, font="Times New Roman")
+        txt = axFlatmap.text(data[i, 0] - 30, data[i, 1] - 10, "v1pclf", fontsize=fontsize, font=font, color=fontcolor)
       elif nme == "v3fpuf":
-        txt = axFlatmap.text(data[i, 0] - 30, data[i, 1], "v2fpuf", fontsize=fontsize, font="Times New Roman")
+        txt = axFlatmap.text(data[i, 0] - 30, data[i, 1], "v2fpuf", fontsize=fontsize, font=font, color=fontcolor)
       elif nme == "v2fpuf":
-        txt = axFlatmap.text(data[i, 0] - 30, data[i, 1], "v2fpuf", fontsize=fontsize, font="Times New Roman")
+        txt = axFlatmap.text(data[i, 0] - 30, data[i, 1], "v2fpuf", fontsize=fontsize, font=font, color=fontcolor)
       elif nme == "v4uf":
-        txt = axFlatmap.text(data[i, 0] - 15, data[i, 1]+10, "v4uf", fontsize=fontsize, font="Times New Roman")
+        txt = axFlatmap.text(data[i, 0] - 15, data[i, 1]+10, "v4uf", fontsize=fontsize, font=font, color=fontcolor)
       else:
-        txt = axFlatmap.text(data[i, 0], data[i, 1], nme, fontsize=fontsize, font="Times New Roman")
-      txt.set_path_effects(
-        [ 
-          path_effects.Stroke(linewidth=1, foreground='black'),
-          path_effects.Normal()
-        ]
-      )
+        txt = axFlatmap.text(data[i, 0], data[i, 1], nme, fontsize=fontsize, font=font, color=fontcolor)
+      # txt.set_path_effects(
+      #   [ 
+      #     path_effects.Stroke(linewidth=1, foreground='black'),
+      #     path_effects.Normal()
+      #   ]
+      # )
     axFlatmap.set_aspect("equal")
     axFlatmap.autoscale()
     axFlatmap.set_axis_off()

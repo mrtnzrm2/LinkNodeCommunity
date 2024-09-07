@@ -13,9 +13,10 @@ from networks.overlapping import OVERLAPPING
 from modules.colregion import colregion
 from numpy import zeros
 from various.network_tools import *
+from modules.discovery import discovery_channel
 # Declare global variables ----
-__iter__ = 1
-__nodes__ = 128
+__iter__ = 2
+__nodes__ = 100
 linkage = "single"
 nlog10 = F
 lookup = F
@@ -24,27 +25,28 @@ cut = F
 run = T
 topology = "MIX"
 mapping = "trivial"
-index  = "D1_2_4"
+index  = "Hellinger2"
 __mode__ = "ZERO"
 alpha = 0.
-opt_score = ["_X" ,"_D", "_S", "_SD"]
+opt_score = ["_D", "_S"]
 save_datas = T
 # Overlapping WDN paramters ----
 opar = {
   "-N" : "{}".format(
     str(__nodes__)
   ),
-  "-k" : "7",
-  "-maxk" : "20",
+  "-k" : "10",
+  "-maxk" : "30",
   "-mut" : "0.1",
   "-muw" : "0.01",
-  "-beta" : "3",
+  "-beta" : "2",
   "-t1" : "2",
   "-t2" : "1",
-  "-nmin" : "6",
+  "-nmin" : "5",
   "-nmax" : "25",
-  "-on" : "10",
-  "-om" : "2"
+  "-on" : "5",
+  "-om" : "3",
+  "-fixed_range" : T
 }
 if __name__ == "__main__":
   # Create EDR network ----
@@ -59,12 +61,13 @@ if __name__ == "__main__":
     index=index,
     cut=cut
   )
+
   NET.create_plot_path()
-  NET.create_pickle_path()
-  # Create network ----
+  # NET.create_pickle_path()
+  # # Create network ----
   print("Create random graph")
-  NET.random_BN_overlap_cpp(
-    run=run, on_save_pickle=T
+  NET.random_WDN_overlap_cpp(
+    run=run, on_save_pickle=F, random_seed=T
   )
   if np.sum(np.isnan(NET.A)) > 0:
     raise RuntimeError(
@@ -72,6 +75,30 @@ if __name__ == "__main__":
     )
   NET.col_normalized_adj(on=F)
   number_of_communities = len(np.unique(NET.labels))
+
+
+  # import matplotlib.pyplot as plt
+  # import networkx as nx
+
+  # models = nx.DiGraph(NET.A)
+
+  # fig, axes = plt.subplots(1, 1)
+
+  
+  # edge_widths = 0.1
+  # alphas = 0.4
+
+
+  # pos = nx.spring_layout(models)
+  # nx.draw_networkx_nodes(models, pos=pos, node_size=20, node_color="black", ax=axes)
+  # nx.draw_networkx_edges(models, pos=pos, width=edge_widths, ax=axes, alpha=alphas)
+
+  # axes.axis('off')
+
+  # plt.savefig("../plots/RAN/Thesis/LFRo_05_3.svg", trasparent=True)
+
+  # plt.show()
+  
   # Compute Hierarchy ----
   print("Compute Hierarchy")
   # Create colregions ----
@@ -82,7 +109,7 @@ if __name__ == "__main__":
     ## Hierarchy object!! ----
     H = Hierarchy(
       NET, NET.A, NET.A, zeros(NET.A.shape),
-      __nodes__, linkage, __mode__, alpha=alpha
+      __nodes__, linkage, __mode__, alpha=alpha, chardist=False
     )
     ## Compute features ----
     H.BH_features_cpp_no_mu()
@@ -108,13 +135,13 @@ if __name__ == "__main__":
   # plot_h.plot_measurements_S(on=T)
   # plot_h.plot_measurements_mu(on=T)
   # plot_h.plot_measurements_X(on=T)
-  # plot_h.heatmap_pure(
-  #    0, np.log(1 + NET.A), score = "_GT_{}".format(number_of_communities), linewidth=0.5, 
-  #    font_size=1, labels = NET.labels, on=T
-  # )
+  plot_h.heatmap_pure(
+     0, NET.A, score = "_GT_{}".format(number_of_communities), linewidth=0.5, 
+     font_size=1, labels = NET.labels, on=T
+  )
   for score in opt_score:
     # Find best k partition ----
-    K, R = get_best_kr_equivalence(score, H)
+    K, R, _ = get_best_kr_equivalence(score, H)
     for ii, kr in enumerate(zip(K, R)):
       k, r = kr
       rlabels = get_labels_from_Z(H.Z, r)
@@ -122,16 +149,10 @@ if __name__ == "__main__":
       if np.nan in rlabels:
           print("Warning: Impossible node dendrogram")
           break
-      nocs, noc_covers, _ = H.discovery_channel["discovery_7"](H, k, rlabels)
+      nocs, noc_covers, _, rlabels2 = discovery_channel["discovery_7"](H, k, rlabels, direction="both", index=index)
       #Prints ----
-      nmi = AD_NMI_overlap(
-        NET.labels, rlabels, NET.overlap, noc_covers, on=T
-      )
-      sen, sep = NET.overlap_score_discovery(
-        k, nocs, H.colregion.labels[:H.nodes], on=T
-      )
       omega = NET.omega_index(
-        rlabels, noc_covers, H.colregion.labels[:H.nodes], on=T
+        rlabels2, noc_covers, H.colregion.labels[:H.nodes], on=T
       )
       ## Plots ---
       # plot_h.core_dendrogram(

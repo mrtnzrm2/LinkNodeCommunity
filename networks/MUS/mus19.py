@@ -242,3 +242,21 @@ class MUS19(base):
     np.fill_diagonal(D, 0.)
     D = D.astype(float)
     return D
+  
+  def get_ODR_structure(self):
+    file = pd.read_csv(os.path.join(self.csv_path, "SourceData_Fig3.csv"))
+    pathway_var = file["pathway"]
+    pathway_var = [(s.split(" to ")[0], s.split(" to ")[1]) for s in pathway_var]
+    file["SOURCE_IND"] = [s for s, t in pathway_var]
+    file["TARGET_IND"] = [t for s, t in pathway_var] 
+    file["SOURCE_IND"] = np.char.lower([s[1:] for s in file["SOURCE_IND"]])
+    file["TARGET_IND"] = np.char.lower([s[:-1] for s in file["TARGET_IND"]])
+
+    labels_order_paper_DSouzza = np.char.lower(
+      ["V1", "LM", "RL", "AL", "A", "PM", "P", "LI", "AM", "POR"]
+    )
+
+    file["SOURCE_IND"] = pd.Categorical(file["SOURCE_IND"], labels_order_paper_DSouzza)
+    file["TARGET_IND"] = pd.Categorical(file["TARGET_IND"], labels_order_paper_DSouzza)
+
+    # return file.pivot("SOURCE_IND", "TARGET_IND", "mean"), labels_order_paper_DSouzza
