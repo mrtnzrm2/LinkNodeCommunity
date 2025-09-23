@@ -5,3 +5,4 @@ data/
 .venv/
 src/LinkNodeCommunity/__pycache__/
 src/LinkNodeCommunity/core/__pycache__/
+.github/
