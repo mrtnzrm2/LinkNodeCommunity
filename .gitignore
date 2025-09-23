@@ -6,3 +6,12 @@ data/
 src/LinkNodeCommunity/__pycache__/
 src/LinkNodeCommunity/core/__pycache__/
 .github/
+build/
+
+*.so
+*.pyd
+*.dylib
+*.dll
+*.o
+*.a
+*.lib
