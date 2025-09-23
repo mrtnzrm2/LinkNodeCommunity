@@ -1,0 +1,17 @@
+LinkNodeCommunity — Notices and Attributions
+
+Project License
+- This project is licensed under the BSD 3-Clause License. See `LICENSE`.
+
+Third-Party Components
+- fastcluster C++ standalone (hclust-cpp)
+  - Copyright © 2011 Daniel Müllner; © 2018–2020 Christoph Dalitz
+  - License: BSD-style (2-clause). The verbatim license is included at
+    `cpp/libs/hclust-cpp/LICENSE` in this repository.
+  - Files vendored: `cpp/libs/hclust-cpp/*` (including `fastcluster.h`, `fastcluster.cpp`,
+    `fastcluster_dm.h`, `fastcluster_R_dm.h`, `demo.cpp`, `plotresult.r`).
+
+Notes
+- Redistributed third‑party code is kept with its original license and notices.
+- If you add more third‑party code, include its license file alongside the code
+  and add an entry here (name, copyright, license, path).

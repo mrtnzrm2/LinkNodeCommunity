@@ -1,29 +1,7 @@
+# Byte-compiled / optimized / DLL files
 
-cpp/process_hclust/src/hclust-cpp
-cpp/la_arbre_a_merde/src/hclust-cpp/
-cpp/la_arbre_a_merde/build
-cpp/la_arbre_a_merde/la_arbre_a_merde.egg-info
-cpp/process_hclust/src/hclust-cpp
-cpp/process_hclust/build
-cpp/process_hclust/process_hclust.egg-info
-cpp/simquest/build/
-cpp/simquest/simquest.egg-info
-cpp/signsimquest/build/
-cpp/signsimquest/signsimquest.egg-info
-cpp/process_hclust/src/hclust-cpp
-cpp/ctools/src/hclust-cpp/
-cpp/process_hclust/src/hclust-cpp
-cpp/process_hclust/src/hclust-cpp
-
-cpp/ctools/build/
-cpp/ctools/ctools.egg-info
-
-cpp/entropy/build/
-cpp/entropy/h_entropy.egg-info
-
-cpp/rand_network/build/
-cpp/rand_network/rand_network.egg-info
-node_modules
-
-.vscode
-.dlinkcopy
+.vscode/
+data/
+.venv/
+src/LinkNodeCommunity/__pycache__/
+src/LinkNodeCommunity/core/__pycache__/

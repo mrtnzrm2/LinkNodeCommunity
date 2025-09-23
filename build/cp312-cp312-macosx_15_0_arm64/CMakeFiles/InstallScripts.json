@@ -1,0 +1,13 @@
+{
+	"InstallScripts" : 
+	[
+		"/Users/jmrtnza/Documents/Documents - Jorge\u2019s MacBook Air/Work/Research/LINKPROJECT/LinkNodeCommunity/build/cp312-cp312-macosx_15_0_arm64/cmake_install.cmake",
+		"/Users/jmrtnza/Documents/Documents - Jorge\u2019s MacBook Air/Work/Research/LINKPROJECT/LinkNodeCommunity/build/cp312-cp312-macosx_15_0_arm64/cpp/cmake_install.cmake",
+		"/Users/jmrtnza/Documents/Documents - Jorge\u2019s MacBook Air/Work/Research/LINKPROJECT/LinkNodeCommunity/build/cp312-cp312-macosx_15_0_arm64/cpp/libs/hclust-cpp/cmake_install.cmake",
+		"/Users/jmrtnza/Documents/Documents - Jorge\u2019s MacBook Air/Work/Research/LINKPROJECT/LinkNodeCommunity/build/cp312-cp312-macosx_15_0_arm64/cpp/link_hierarchy_statistics_cpp/cmake_install.cmake",
+		"/Users/jmrtnza/Documents/Documents - Jorge\u2019s MacBook Air/Work/Research/LINKPROJECT/LinkNodeCommunity/build/cp312-cp312-macosx_15_0_arm64/cpp/node_community_hierarchy_cpp/cmake_install.cmake",
+		"/Users/jmrtnza/Documents/Documents - Jorge\u2019s MacBook Air/Work/Research/LINKPROJECT/LinkNodeCommunity/build/cp312-cp312-macosx_15_0_arm64/cpp/utlis_cpp/cmake_install.cmake",
+		"/Users/jmrtnza/Documents/Documents - Jorge\u2019s MacBook Air/Work/Research/LINKPROJECT/LinkNodeCommunity/build/cp312-cp312-macosx_15_0_arm64/cpp/linksim_cpp/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

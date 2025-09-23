@@ -72,7 +72,7 @@
 #include <stdexcept>
 #include <cassert>
 #include <cstddef>
-#include "hclust-cpp/fastcluster.h"
+#include "../../libs/hclust-cpp/fastcluster.h"
 
 #include <pybind11/stl.h>
 #include <pybind11/pybind11.h>
@@ -516,7 +516,7 @@ std::vector<double> core::get_S() {return S;}
 
 
 PYBIND11_MODULE(link_hierarchy_statistics_cpp, m) {
-    py::class_<core>(m, "core")
+    py::class_<core>(m, "core", py::module_local())
         .def(
           py::init<
             const int,
@@ -533,5 +533,5 @@ PYBIND11_MODULE(link_hierarchy_statistics_cpp, m) {
         .def("get_K", &core::get_K)
 				.def("get_Height", &core::get_Height)
 				.def("get_D", &core::get_D)
-        .def("get_S", &core::get_S)
+        .def("get_S", &core::get_S);
 }

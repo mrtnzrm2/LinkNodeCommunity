@@ -1,0 +1,245 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"childIndexes" : 
+					[
+						1
+					],
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-Release-f5ebdc15457944623624.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.24"
+					},
+					"projectIndex" : 0,
+					"source" : "."
+				},
+				{
+					"build" : "cpp",
+					"childIndexes" : 
+					[
+						2,
+						3,
+						4,
+						5,
+						6
+					],
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-cpp-Release-28b735f6cb18e002ddf0.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.24"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "cpp"
+				},
+				{
+					"build" : "cpp/libs/hclust-cpp",
+					"jsonFile" : "directory-cpp.libs.hclust-cpp-Release-fee650ef4674884206c0.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.24"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "cpp/libs/hclust-cpp",
+					"targetIndexes" : 
+					[
+						0
+					]
+				},
+				{
+					"build" : "cpp/link_hierarchy_statistics_cpp",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-cpp.link_hierarchy_statistics_cpp-Release-9fa014596da57cf30327.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.24"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 1,
+					"source" : "cpp/link_hierarchy_statistics_cpp",
+					"targetIndexes" : 
+					[
+						1
+					]
+				},
+				{
+					"build" : "cpp/node_community_hierarchy_cpp",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-cpp.node_community_hierarchy_cpp-Release-436b8d5a047c2fba7b1f.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.24"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 2,
+					"source" : "cpp/node_community_hierarchy_cpp",
+					"targetIndexes" : 
+					[
+						3
+					]
+				},
+				{
+					"build" : "cpp/utlis_cpp",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-cpp.utlis_cpp-Release-3dc2ca73530cd25c5480.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.24"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 3,
+					"source" : "cpp/utlis_cpp",
+					"targetIndexes" : 
+					[
+						4
+					]
+				},
+				{
+					"build" : "cpp/linksim_cpp",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-cpp.linksim_cpp-Release-638d4c0f6df0d7785be5.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.24"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 4,
+					"source" : "cpp/linksim_cpp",
+					"targetIndexes" : 
+					[
+						2
+					]
+				}
+			],
+			"name" : "Release",
+			"projects" : 
+			[
+				{
+					"childIndexes" : 
+					[
+						1,
+						2,
+						3,
+						4
+					],
+					"directoryIndexes" : 
+					[
+						0,
+						1,
+						2
+					],
+					"name" : "LinkNodeCommunity",
+					"targetIndexes" : 
+					[
+						0
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						3
+					],
+					"name" : "link_hierarchy_statistics_cpp",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						1
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						4
+					],
+					"name" : "node_community_hierarchy_cpp",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						3
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						5
+					],
+					"name" : "utils_cpp",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						4
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						6
+					],
+					"name" : "linksim_cpp",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						2
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 2,
+					"id" : "fastcluster::@cf481068e025e725792c",
+					"jsonFile" : "target-fastcluster-Release-b9ecd9c4c2e162230d1c.json",
+					"name" : "fastcluster",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 3,
+					"id" : "link_hierarchy_statistics_cpp::@2a37474362789a8c394b",
+					"jsonFile" : "target-link_hierarchy_statistics_cpp-Release-83eeb626882add861cae.json",
+					"name" : "link_hierarchy_statistics_cpp",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 6,
+					"id" : "linksim_cpp::@745b09713325bc21005a",
+					"jsonFile" : "target-linksim_cpp-Release-e4da817dcc3c4123d147.json",
+					"name" : "linksim_cpp",
+					"projectIndex" : 4
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "node_community_hierarchy_cpp::@3e3da69cb29d9630c0c1",
+					"jsonFile" : "target-node_community_hierarchy_cpp-Release-462b27ab26272218db11.json",
+					"name" : "node_community_hierarchy_cpp",
+					"projectIndex" : 2
+				},
+				{
+					"directoryIndex" : 5,
+					"id" : "utils_cpp::@f93ef93ff23c8537a939",
+					"jsonFile" : "target-utils_cpp-Release-2fcedf08045956f1b89b.json",
+					"name" : "utils_cpp",
+					"projectIndex" : 3
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/Users/jmrtnza/Documents/Documents - Jorge\u2019s MacBook Air/Work/Research/LINKPROJECT/LinkNodeCommunity/build/cp312-cp312-macosx_15_0_arm64",
+		"source" : "/Users/jmrtnza/Documents/Documents - Jorge\u2019s MacBook Air/Work/Research/LINKPROJECT/LinkNodeCommunity"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 8
+	}
+}

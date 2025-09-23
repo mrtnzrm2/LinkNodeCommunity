@@ -1,9 +1,9 @@
 [build-system]
 requires = [
   "scikit-build-core>=0.11.6",
-  "setuptools_scm[toml]>=8",
+  "setuptools_scm[toml]>=9.2.0",
   "pybind11>=3.0.1",
-  "cmake>=3.24",
+  "cmake>=3.24.0",      # minimum required by pybind11
   "ninja"                # fast builds
 ]
 build-backend = "scikit_build_core.build"
@@ -28,9 +28,11 @@ dependencies = [
   "scipy>=1.16.2",
   "networkx>=3.5",
   "pandas>=2.3.2",
-  "tqdm",
+  "tqdm>=4.66.4",
   "matplotlib>=3.10.6",
   "pydantic>=2.11.9",          # configs
+  "scikit-learn>=1.4.2",
+  "seaborn>=0.13.2",
 ]
 dynamic = ["version"]                          # from Git tags
 
@@ -42,8 +44,10 @@ local_scheme = "node-and-date"
 [tool.scikit-build]
 # Helpful defaults
 wheel.expand-macos-universal-tags = true       # build universal2 on macOS if possible
-cmake.verbose = true
+build.verbose = true
 build-dir = "build/{wheel_tag}"
+# Include the Python package in wheels & editable installs (src layout)
+wheel.packages = ["src/LinkNodeCommunity"]
 # If you need to pass flags:
 # cmake.define.CMAKE_CXX_STANDARD = "17"
 # cmake.define.PYBIND11_FINDPYTHON = "ON"

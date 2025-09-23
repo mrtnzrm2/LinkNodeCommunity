@@ -83,7 +83,7 @@
 #ifdef _OPENMP
 #include <omp.h>
 #endif
-#include "hclust-cpp/fastcluster.h"
+#include "../../libs/hclust-cpp/fastcluster.h"
 #include <pybind11/stl.h>
 #include <pybind11/pybind11.h>
 
@@ -312,49 +312,56 @@ std::vector<int> nodes_in_triads(const NeighborNodes& G) {
   }
 
   // Parallelized version using OpenMP and thread-local sets
-  int num_threads = 1;
-  #ifdef _OPENMP
+int num_threads = 1;
+#ifdef _OPENMP
     num_threads = omp_get_max_threads();
-  #endif
-    std::vector<std::unordered_set<int>> thread_triangles(num_threads);
+#endif
+std::vector<std::unordered_set<int>> thread_triangles(num_threads);
 
-  #pragma omp parallel {
+// Collect keys for deterministic and thread-safe access
+std::vector<int> fwd_keys;
+fwd_keys.reserve(fwd.size());
+for (const auto& kv : fwd) {
+    fwd_keys.push_back(kv.first);
+}
+
+#pragma omp parallel
+{
     #ifdef _OPENMP
         int tid = omp_get_thread_num();
     #else
         int tid = 0;
     #endif
-        auto& local_set = thread_triangles[tid];
+    auto& local_set = thread_triangles[tid];
 
     #pragma omp for schedule(static)
-      for (size_t idx = 0; idx < fwd.size(); ++idx) {
-        auto it_kv = std::next(fwd.begin(), idx);
-        int u = it_kv->first;
-        const auto& Nu = it_kv->second;
+    for (size_t idx = 0; idx < fwd_keys.size(); ++idx) {
+        int u = fwd_keys[idx];
+        const auto& Nu = fwd.at(u);
         for (int v : Nu) {
-          const auto it = fwd.find(v);
-          if (it == fwd.end()) continue;
-          const auto& Nv = it->second;
+            const auto it = fwd.find(v);
+            if (it == fwd.end()) continue;
+            const auto& Nv = it->second;
 
-          std::size_t i = 0, j = 0;
-          while (i < Nu.size() && j < Nv.size()) {
-            int a = Nu[i];
-            int b = Nv[j];
-            if (a == v) { ++i; continue; }
-            if (b == u) { ++j; continue; }
-            if (a == b) {
-              int w = a;
-              local_set.insert(u);
-              local_set.insert(v);
-              local_set.insert(w);
-              ++i; ++j;
+            std::size_t i = 0, j = 0;
+            while (i < Nu.size() && j < Nv.size()) {
+                int a = Nu[i];
+                int b = Nv[j];
+                if (a == v) { ++i; continue; }
+                if (b == u) { ++j; continue; }
+                if (a == b) {
+                    int w = a;
+                    local_set.insert(u);
+                    local_set.insert(v);
+                    local_set.insert(w);
+                    ++i; ++j;
+                }
+                else if (rank_less(a, b)) {++i;}
+                else {++j;}
             }
-            else if (rank_less(a, b)) {++i;}
-            else {++j;}
-          }
         }
     }
-  }
+}
   // Merge thread-local sets
   std::unordered_set<int> in_triangle;
   for (const auto& s : thread_triangles) {
@@ -985,8 +992,8 @@ void core::fit_matrix_directed(std::vector<double> &condensed_distance_matrix) {
     delete[] condensed_distance_array;
 }
 
-PYBIND11_MODULE(node_community_hierarchy, m) {
-    py::class_<core>(m, "core")
+PYBIND11_MODULE(node_community_hierarchy_cpp, m) {
+    py::class_<core>(m, "core", py::module_local())
         .def(
           py::init<
             const int,

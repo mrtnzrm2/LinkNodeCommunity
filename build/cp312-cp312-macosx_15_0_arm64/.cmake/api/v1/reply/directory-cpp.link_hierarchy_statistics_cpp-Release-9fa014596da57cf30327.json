@@ -1,0 +1,56 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"install"
+		],
+		"files" : 
+		[
+			"cpp/link_hierarchy_statistics_cpp/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 27,
+				"parent" : 0
+			}
+		]
+	},
+	"installers" : 
+	[
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : ".",
+			"paths" : 
+			[
+				"cpp/link_hierarchy_statistics_cpp/link_hierarchy_statistics_cpp.cpython-312-darwin.so"
+			],
+			"targetId" : "link_hierarchy_statistics_cpp::@2a37474362789a8c394b",
+			"targetIndex" : 1,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"cxxModuleBmiTarget" : 
+			{
+				"id" : "link_hierarchy_statistics_cpp::@2a37474362789a8c394b",
+				"index" : 1
+			},
+			"destination" : ".",
+			"type" : "cxxModuleBmi"
+		}
+	],
+	"paths" : 
+	{
+		"build" : "cpp/link_hierarchy_statistics_cpp",
+		"source" : "cpp/link_hierarchy_statistics_cpp"
+	}
+}

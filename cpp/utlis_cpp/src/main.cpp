@@ -573,4 +573,5 @@ PYBIND11_MODULE(utils_cpp, m) {
         "weighted_jaccard_graph",
         &weighted_jaccard_graph,
         py::return_value_policy::reference_internal
+    );
 }

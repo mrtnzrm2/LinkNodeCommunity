@@ -111,7 +111,7 @@ int hclust_fast(int n, double* distmat, int method, int* merge, double* height);
 // utilities. This method is recommended for sparse graphs where the majority
 // of link pairs are not neighbors.
 //
-int hclust_fast_MeMSINGLE(int n, const std::vector<edge_struct>& edges, t_float max_dist, int* merge, double* height);
+int hclust_fast_edgelist(int n, const std::vector<edge_struct>& edges, double max_dist, int* merge, double* height);
 
 //
 // Constructs the (n-1)x4 linkage matrix in R format from merge/height arrays

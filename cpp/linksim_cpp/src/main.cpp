@@ -821,7 +821,7 @@ double core::jaccard_probability_graph(
 }
 
 PYBIND11_MODULE(linksim_cpp, m) {
-    py::class_<core>(m, "core")
+    py::class_<core>(m, "core", py::module_local())
         .def(
             py::init<
             const std::vector<std::vector<double>>,
