@@ -1,6 +1,4 @@
 """
-src/linknode/core/nocs.py
-
 Module: linknode
 Author: Jorge S. Martinez Armas
 
@@ -32,6 +30,8 @@ NOCFinder(G, node_partition, n_linkclusters, undirected=False,
 - node_order (array-like | None): Explicit node order aligning G, partition,
   and similarity matrices. Defaults to sorted G nodes if None.
 
+
+
 Goals:
 ------
 - Fill community memberships for nodes with partition == -1.
@@ -47,6 +47,8 @@ Notes:
   correlation/cosine/hellinger (sqrt(2(1-s))) vs. Jaccard/Tanimoto (1-s).
 - Outputs: node_cover_partition (hard assignments where unique),
   single_node_cover_map (overlaps), single_nodes_cover_scores (scores).
+- This class may be slow for large graphs, as it relies on Python for-loops
+  and does not use a low-level backend.
 - Tie handling: If multiple candidate communities are close, a COST matrix of
   |Δ distance| is hierarchically clustered and a tie policy selects covers.
 - Validation: Shapes, accepted parameters, and node_order content are checked.

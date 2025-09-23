@@ -1,3 +1,55 @@
+"""
+src/linknode/core/framework.py
+
+Module: linknode
+Author: Jorge S. Martinez Armas
+
+Overview:
+---------
+Clustering provides a lightweight framework around link-based similarity and
+hierarchical community construction. It prepares an edge list from the input
+graph, computes link–link similarity (via a C++ backend), derives distance
+representations, and exposes helpers to obtain link and node hierarchies and
+basic linkage features. For directed graphs, it restricts N and M to the
+intersection of nodes that appear as both sources and targets while still using
+the full network’s edges to estimate similarities.
+
+Parameters (Clustering):
+------------------------
+Clustering(G, linkage="single", similarity_index="hellinger_similarity")
+
+- G (nx.Graph | nx.DiGraph): Input graph. Edge weight is taken from the
+  "weight" attribute when present, otherwise defaults to 1.0.
+- linkage (str): Hierarchical linkage used downstream. Supported values are
+  {single, average}; other values raise a ValueError in downstream steps.
+- similarity_index (str): One of {hellinger_similarity, cosine_similarity,
+  pearson_correlation, weighted_jaccard, jaccard_probability,
+  tanimoto_coefficient}. Passed to LinkSimilarity to control how link
+  similarities are computed before distance transforms.
+
+Goals:
+------
+- Prepare an edge list DataFrame from the graph with source, target, weight.
+- Compute LinkSim outputs (condensed matrix or edgelist) via C++ backends.
+- Build link and node hierarchies from distance data.
+- Compute summary features (K, height, D, S) for link hierarchies.
+
+Notes:
+------
+- Directed handling: N and M are taken from the subgraph induced by nodes that
+  are both sources and targets; similarity estimation uses the full edge list
+  for better statistics. The `undirected` flag is inferred from the graph type.
+- Distance data: Attributes `dist_mat` and `dist_edgelist` are expected to be
+  populated (from LinkSim outputs) before calling hierarchy/feature routines.
+- Linkage support: Only "single" is implemented in feature and
+  node-hierarchy routines; other options raise a ValueError.
+- Backends: Uses C++ modules `link_hierarchy_statistics_cpp`,
+  `node_community_hierarchy_cpp`, and `utils_cpp` for performance-critical
+  operations. Link similarity is provided by `LinkSimilarity`.
+- Outputs: Sets `linksim_condense_matrix` or `linksim_edgelist`, and after
+  node hierarchy routines, `Z` (linkage array) and `linknode_equivalence` (component map).
+"""
+
 # Standard libs ----
 import numpy as np
 import pandas as pd
@@ -5,6 +57,9 @@ import networkx as nx
 
 #  Framework libs ----
 from similarity import LinkSimilarity
+from tonewick import LinkageToNewick
+
+# C++ libs ----
 import link_hierarchy_statistics_cpp as link_stats
 import node_community_hierarchy_cpp as node_builder
 import utils_cpp
@@ -26,7 +81,7 @@ class Clustering:
     targets = set(v for _, v, _ in self.G.edges(data=True))
     intersection_nodes = sources & targets
 
-    # Create subgraph with only intersection nodes
+    # Create subgraph with only intersection nodes (in case of directed graph)
     subgraph = self.G.subgraph(intersection_nodes)
 
     self.N = subgraph.number_of_nodes()  # Nodes in intersection
@@ -41,6 +96,7 @@ class Clustering:
     self.dist_edgelist = None
 
     # Get edge list with source, target, and weight as a pandas DataFrame
+    # from the whole network to have better estimates of similarities
     edgelist = [
       {"source": u, "target": v, "weight": data.get("weight", 1.0)}
       for u, v, data in self.G.edges(data=True)
@@ -128,10 +184,7 @@ class Clustering:
   def process_features_matrix(self):
     if self.linkage == "single":
       linkage = 0
-    elif self.linkage == "average":
-      linkage = 2
     else:
-      linkage = -1
       raise ValueError("Link community model has not been tested with the input linkage.")
 
     features = self.compute_features_matrix(linkage)
@@ -147,10 +200,7 @@ class Clustering:
   def process_features_edgelist(self, max_dist=1):
     if self.linkage == "single":
       linkage = 0
-    elif self.linkage == "average":
-      linkage = 2
     else:
-      linkage = -1
       raise ValueError("Link community model has not been tested with the input linkage.")
 
     features = self.compute_features_edgelist(linkage, max_dist=max_dist)
@@ -186,8 +236,8 @@ class Clustering:
 
     self.Z = NH.get_node_hierarchy()
     self.Z = np.array(self.Z)
-    self.equivalence = NH.get_equivalence()
-    self.equivalence = np.array(self.equivalence)
+    self.linknode_equivalence = NH.get_linknode_equivalence()
+    self.linknode_equivalence = np.array(self.linknode_equivalence)
 
   def node_community_hierarchy_edgelist(self, undirected=None, max_dist=1):
     if self.linkage == "single":
@@ -212,6 +262,15 @@ class Clustering:
 
     self.Z = NH.get_node_hierarchy()
     self.Z = np.array(self.Z)
-    self.equivalence = NH.get_equivalence()
-    self.equivalence = np.array(self.equivalence)
+    self.linknode_equivalence = NH.get_linknode_equivalence()
+    self.linknode_equivalence = np.array(self.linknode_equivalence)
+
+  def to_newick(self, labels=None, branch_length=True):
+    if not hasattr(self, 'Z'):
+      raise ValueError("Hierarchy not computed. Run node_community_hierarchy_matrix() or node_community_hierarchy_edgelist() first.")
+
+    TN = LinkageToNewick(self.Z, labels=labels, branch_length=branch_length)
+    TN.fit()
+    self.newick = TN.newick
+    return self.newick
     

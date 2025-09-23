@@ -1,6 +1,41 @@
+"""
+src/linknode/core/similarity.py
+
+Module: linknode
+Author: Jorge S. Martinez Armas
+
+Overview:
+---------
+LinkSimilarity wraps C++ backends to compute pairwise link similarities from
+an input edge list. It supports two output modes: a condensed matrix and an
+edge-list representation, and also exposes per-endpoint (source/target)
+similarity matrices.
+
+Parameters (LinkSimilarity):
+----------------------------
+LinkSimilarity(edgelist, N, M, similarity_index="hellinger_similarity", undirected=True)
+
+- edgelist (pd.DataFrame): Edge list with columns [source, target, weight].
+- N (int): Number of nodes in the analyzed subgraph.
+- M (int): Number of edges in the analyzed subgraph.
+- similarity_index (str): One of {hellinger_similarity, cosine_similarity,
+  pearson_correlation, weighted_jaccard, jaccard_probability,
+  tanimoto_coefficient}.
+- undirected (bool): Whether to treat the graph as undirected for similarity.
+
+Notes:
+------
+- Backends: Uses C++ module `linksim_cpp` via `linksim.core` for performance.
+- API: Call `similarity_linksim_matrix()` or `similarity_linksim_edgelist()`
+  to populate attributes.
+- Outputs: Sets `linksim_condense_matrix` or `linksim_edgelist`, and always
+  `source_sim_matrix` and `target_sim_matrix`.
+"""
+
 import numpy as np
 import pandas as pd
 import networkx as nx
+
 # cpp libs ----
 import linksim_cpp as linksim
 
