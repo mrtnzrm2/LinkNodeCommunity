@@ -38,8 +38,17 @@ class base:
       self.distance, self.model,
       self.inj
     )
-    self.csv_path = "../CSV/MAC/57d106_230605/"
-    self.distance_path = f"../CSV/MAC/57d106_230605/{self.distance}/"
+
+    if "root_path" in kwargs.keys():
+      self.csv_path = kwargs["root_path"] + "/CSV/MAC/57d106_230605/"
+      self.distance_path = f"{self.csv_path}/{self.distance}/"
+
+    else:
+      self.csv_path = "../CSV/MAC/57d106_230605/"
+      self.distance_path = f"../CSV/MAC/57d106_230605/{self.distance}/"
+
+    # self.csv_path = "../CSV/MAC/57d106_230605/"
+    # self.distance_path = f"../CSV/MAC/57d106_230605/{self.distance}/"
     # Labels and regions ----
     self.labels_path = self.csv_path
   
@@ -93,22 +102,39 @@ class MAC57(base):
       if kwargs["EC"]:
        self.analysis = self.analysis + "_EC" 
     # Create paths ----
-    if "plot_path" in kwargs.keys():
-      self.plot_path = kwargs["plot_path"]
+    self.root_path  = ""
+    if "root_path" in kwargs.keys():
+      self.root_path = kwargs["root_path"]
+
+      self.plot_path = join(
+        self.root_path , "plots", self.common_path,
+        self.analysis, mode, self.subfolder,
+        "b_"+str(self.b)
+      ) 
+
+      self.pickle_path = join(
+        self.root_path , "pickle", self.common_path,
+        self.analysis, mode, self.subfolder,
+        "b_"+str(self.b)
+      )
+
+      self.regions_path = join(
+        self.root_path , "CSV/Regions",
+        "Table_areas_regions_09_2019.csv"
+      )
+      
     else:
       self.plot_path = join(
         "../plots", self.common_path,
         self.analysis, mode, self.subfolder,
-        f"b_{self.b}", discovery
+        "b_"+str(self.b)
       )
-    self.pickle_path = join(
-      "../pickle", self.common_path,
-      self.analysis, mode, self.subfolder,
-      f"b_{self.b}", discovery
-    )
-    if "regions_path" in kwargs.keys():
-      self.regions_path = kwargs["regions_path"]
-    else:
+
+      self.pickle_path = join(
+        "../pickle", self.common_path,
+        self.analysis, mode, self.subfolder,
+        "b_"+str(self.b)
+      )
       self.regions_path = join(
         "../CSV/Regions",
         "Table_areas_regions_09_2019.csv"

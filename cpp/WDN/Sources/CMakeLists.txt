@@ -1,1 +1,0 @@
-add_library(wdr_dir dir_benchm.cpp)

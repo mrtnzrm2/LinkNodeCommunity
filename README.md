@@ -1,10 +1,12 @@
-# Dlink
+# LinkNodeCommunity
 Dlink is a link community algorithm created to find communities in directed networks with heterogeneous weights.
 
  ## Introduction
  Welcome everyone! How good of you to spend some time looking at this software. I consider this software an extension of the original link community algorithm ([Ahn et al., 2010](https://doi.org/10.1038/nature09182)).
  
  The problem of community detection is profound since it is connected to the problem of data encoding. Each day, millions of bytes of information are saved by governments and companies all around the world. However, all the data is only helpful if you can process it and reveal its structures, symmetries, global features, and laws. Finding communities is like separating the data into homogeneous pieces. In the context of information theory, partitioning the data into clusters can allow you to decode the information faster since the data is arranged correctly, like your clothes when you decide to fold them nicely, which is easier to interpret. Networks in the real world naturally form communities since it is the way to minimize entropy, steps to reach specific information or execute a particular action, a property crucial if the system is under the forces of natural selection.
+
+
 
  There are several community detection algorithms for different network classes. However, finding communities in **dense**, **directed**, **weighted**, and **heterogeneous** networks, as the macaque fraction of extrinsic labeled neurons (FLNe) network (Markov et al. 2011 and 2012), is still an open question since it is not clear what a community representative in such complex systems with many degrees of freedom. Therefore, we started to work on an algorithm to overcome the challenges of identifying communities in this type of network.
 

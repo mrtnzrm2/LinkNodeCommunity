@@ -11,6 +11,86 @@ from os import remove, stat
 import pickle as pk
 from various.omega import Omega
 import matplotlib.colors as mc
+import seaborn as sns
+
+def make_cmap_from_K(K, trivial="-1", cmap="hls", seed=None, numeric=True):
+  '''
+  Create a dictionary from a list of community memberships K, where each unique
+  element in K is associated with a color from palette cmap. Notice, K is expected
+  to have numeric strings, but it also can handle other formats. The trivial element '-1'
+  is especial and it is linked to the gray color.
+  '''
+  from matplotlib.colors import to_hex
+  if numeric:
+    uK = np.sort(np.unique(K.astype(int))).astype(str)
+  else:
+    uK = np.sort(np.unique(K)).astype(str)
+
+  if np.isin(trivial, uK):
+      if seed is None:
+        cm = list(sns.color_palette(cmap, uK.shape[0]-1))
+      else:
+        print(f"Seed: {seed}")
+        np.random.seed(seed)
+        n = len(uK)
+        cm = list(np.array(sns.color_palette(cmap, uK.shape[0]-1))[np.random.permutation(np.arange(n-1))])
+      cm = [to_hex((0.5, 0.5, 0.5))] + cm
+  else:
+    if seed is None:
+      cm = list(sns.color_palette(cmap, uK.shape[0]))
+    else:
+      print(f"Seed: {seed}")
+      np.random.seed(seed)
+      n = len(uK)
+      cm = list(np.array(sns.color_palette(cmap, uK.shape[0]))[np.random.permutation(np.arange(n))])
+    
+  cm = {u: to_hex(c) for u, c in zip(uK, cm)}
+  return cm
+
+def custom_cut_tree(H : npt.NDArray, n_clusters=None, height=None):
+  '''
+  Similar to scipy.cluster.hierarchy function cut_tree, but more optimized.
+
+  '''
+
+  if n_clusters is None and height is None:
+    raise ValueError("n_clusters or height must be given.")
+  elif n_clusters is not None and height is None:
+    thrd = n_clusters
+    thrd_t = 0
+  elif height is not None and n_clusters is None:
+    thrd = height
+    thrd_t = 1
+  else:
+     pass
+    
+  N = H.shape[0]+1
+  T = {(i) : [i] for i in np.arange(N)}
+
+  K = N
+  i = 0
+  while True:
+    if thrd_t == 0:
+      if K <= thrd: break
+    else:
+      if H[i, 2] > thrd: break
+
+    nx, ny = int(H[i, 0]), int(H[i, 1])
+
+    T[(N+i)] = T[(nx)] + T[(ny)]
+    
+    del T[(nx)]
+    del T[(ny)]
+    
+    i += 1
+    K -= 1
+  
+  partition = np.zeros(N, dtype=np.int64)
+  for key, val in T.items():
+    members = np.array(val)
+    partition[members] = key
+  
+  return partition
 
 # D_min, D_max = np.min(D), np.max(D)
 # dD = (D_max - D_min) / nbin
@@ -343,7 +423,118 @@ def invert_permutation(permutation):
     inv[permutation] = np.arange(len(inv), dtype=inv.dtype)
     return inv
 
-def skim_partition(partition):
+
+def fast_cut_tree(H : npt.NDArray, n_clusters=None, height=None):
+  '''
+  Similar to scipy.cluster.hierarchy function cut_tree, but optimized.
+    Parameters
+    ----------
+
+    H : npt.NDArray
+        Hierarchical clustering linkage matrix.
+    n_clusters : int, optional
+        Number of clusters to form. If None, height must be specified.
+    height : float, optional
+        Threshold to apply when forming clusters. If None, n_clusters must be specified.
+
+    Returns
+    -------
+
+    partition : npt.NDArray
+        Array of cluster labels for each node in the hierarchy.
+  '''
+
+  if H.ndim != 2 or H.shape[1] != 4:
+    raise ValueError("H must be a linkage matrix with shape (n-1, 4).")
+
+  if n_clusters is None and height is None:
+    raise ValueError("n_clusters or height must be given.")
+  elif n_clusters is not None and height is None:
+    thrd = n_clusters
+    thrd_t = 0
+  elif height is not None and n_clusters is None:
+    thrd = height
+    thrd_t = 1
+  else:
+     pass
+    
+  N = H.shape[0]+1
+  T = {(i) : [i] for i in np.arange(N)}
+
+  K = N
+  i = 0
+
+  while True:
+    if thrd_t == 0:
+      if K <= thrd: break
+    else:
+      if H[i, 2] > thrd: break
+
+    nx, ny = int(H[i, 0]), int(H[i, 1])
+
+    T[(N+i)] = T[(nx)] + T[(ny)]
+    
+    del T[(nx)]
+    del T[(ny)]
+    
+    i += 1
+    K -= 1
+  
+  partition = np.zeros(N, dtype=np.int64)
+  for key, val in T.items():
+    members = np.array(val)
+    partition[members] = key
+  
+  return partition
+
+def linear_partition(partition : npt.ArrayLike):
+  ''' 
+  Renumber the communities linearly. From 0 to number of communities - 1.
+  Parameters
+  ----------
+
+  partition : npt.ArrayLike
+      Array of community labels for each node.
+
+  Returns
+  -------
+
+  npt.NDArray
+      Renumbered partition with labels from 0 to number of communities - 1.'''
+  
+  par = partition.copy()
+  new_partition = par
+  ndc = np.unique(par)
+  for i, c in enumerate(ndc):
+    new_partition[par == c] = i
+  return new_partition
+
+def collapsed_partition(partition : npt.ArrayLike):
+  ''' Renumber the communities linearly. From 0 to number of communities - 1. Singletons are replaced by -1.
+
+  Parameters
+  ----------
+
+  partition : npt.ArrayLike
+      Array of community labels for each node.
+
+  Returns
+  -------
+
+  npt.NDArray
+      Renumbered partition with labels from 0 to number of communities - 1. Singletons are replaced by -1.'''
+  par = partition.copy()
+  from collections import Counter
+  fq = Counter(par)
+  for i in fq.keys():
+    if fq[i] == 1: par[par == i] = -1
+  new_partition = par
+  ndc = np.unique(par[par != -1])
+  for i, c in enumerate(ndc):
+    new_partition[par == c] = i
+  return new_partition
+
+def skim_partition(partition : npt.ArrayLike):
   par = partition.copy()
   from collections import Counter
   fq = Counter(par)
@@ -385,7 +576,7 @@ def minus_one_Dc(dA, undirected=False):
   for id in ids:
     Dc = Dc_id(dA, id, undirected=undirected)
     if Dc <= 0:
-      dA["id"].loc[dA["id"] == id] = -1
+      dA.loc[dA["id"] == id, "id"] = -1
 
 def range_and_probs_from_DC(D, CC, bins):
   nodes = CC.shape[1]
@@ -579,7 +770,7 @@ def bar_data(dA, nodes, labels, norm=False):
   return data
 
 def reverse_partition(Cr, labels):
-  s = np.unique(Cr).astype(int)
+  s = np.sort(np.unique(Cr).astype(int))
   s = s[s != -1]
   k = {r : [] for r in s}
   for i, r in enumerate(Cr):
@@ -650,14 +841,13 @@ def get_k_from_X(H, order=0):
     h = h[0]
   return int(k), float(h)
 
-def get_labels_from_Z(Z, r):
+def get_labels_from_Z(Z : npt.NDArray, r : int):
   save_Z = np.sum(Z, axis=1)
   if 0 in save_Z: return np.array([np.nan])
-  from scipy.cluster.hierarchy import cut_tree
-  labels = cut_tree(
+  labels = fast_cut_tree(
     Z,
     n_clusters=r
-  ).reshape(-1)
+  )
   return labels
 
 def get_r_from_mu(H):
@@ -700,7 +890,7 @@ def   get_k_from_S(H : pd.DataFrame):
   ]
   if r.shape[0] > 1:
     print(">>> warning: more than one k")
-  return int(r.iloc[0]), float(h.iloc[0])
+  return int(r.iloc[-1]), float(h.iloc[-1])
 
 def   get_k_from_S2(H : pd.DataFrame):
   r = H["K"].loc[

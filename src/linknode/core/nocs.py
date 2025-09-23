@@ -1,3 +1,57 @@
+"""
+src/linknode/core/nocs.py
+
+Module: linknode
+Author: Jorge S. Martinez Armas
+
+Overview:
+---------
+NOCFinder assigns isolated/single nodes (partition == -1) to one or more
+non‑trivial communities based on distances derived from node–node similarity
+matrices. For directed graphs it considers two perspectives (source/outgoing
+and target/incoming) and merges evidence from both. When a single node is
+assigned to multiple communities, it is considered a NOC (Node with Overlapping
+Community membership).
+
+Parameters (NOCFinder):
+-----------------------
+NOCFinder(G, node_partition, n_linkclusters, undirected=False,
+          similarity_index="hellinger_similarity",
+          tie_policy="include_equal", eps=0.0, node_order=None)
+
+- G (nx.Graph | nx.DiGraph): Input graph. Nodes may be any hashables.
+- node_partition (array-like, len N): Community id per node; use -1 for singles.
+- n_linkclusters (int): Present for API compatibility; not used internally here.
+- undirected (bool): Whether upstream steps treat edges as undirected.
+- similarity_index (str): One of {hellinger_similarity, cosine_similarity,
+  pearson_correlation, weighted_jaccard, jaccard_probability,
+  tanimoto_coefficient}. Controls similarity→distance transform.
+- tie_policy (str): One of {cluster_only, include_equal, include_equal_same_cluster,
+  deterministic}. Governs how multiple close communities are selected.
+- eps (float): Tolerance for equality comparisons in tie handling.
+- node_order (array-like | None): Explicit node order aligning G, partition,
+  and similarity matrices. Defaults to sorted G nodes if None.
+
+Goals:
+------
+- Fill community memberships for nodes with partition == -1.
+- Allow overlapping assignments via configurable tie policies.
+- Provide a similarity‑proxy score per assigned cover.
+- Support directed/undirected graphs and several similarity indices.
+
+Notes:
+------
+- Ordering/alignment: Builds or validates a node order and maps node ids to
+  contiguous indices so that partition and similarity matrices align.
+- Distance transforms: Similarities are converted to distances differently for
+  correlation/cosine/hellinger (sqrt(2(1-s))) vs. Jaccard/Tanimoto (1-s).
+- Outputs: node_cover_partition (hard assignments where unique),
+  single_node_cover_map (overlaps), single_nodes_cover_scores (scores).
+- Tie handling: If multiple candidate communities are close, a COST matrix of
+  |Δ distance| is hierarchically clustered and a tie policy selects covers.
+- Validation: Shapes, accepted parameters, and node_order content are checked.
+"""
+
 import numpy as np
 import networkx as nx
 import pandas as pd

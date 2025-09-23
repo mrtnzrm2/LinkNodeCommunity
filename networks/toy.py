@@ -12,7 +12,9 @@ class TOY(BASE):
     **In the future, there will be another class to run the link community algorithm
     in particular netowrks.** For the moment, the network has to be directed.
     
-    Parameters:
+    Parameters
+    ----------
+
         A: An NxM directed adjacency matrix.
           The algorithm can compute similarities using
           the whole data, but only classsify links from the edge-comple graph.
@@ -62,7 +64,7 @@ class TOY(BASE):
             
   """
   def __init__(
-    self, A, linkage, nlog10=False, lookup=False, cut=False,
+    self, A, linkage, labels=None, nlog10=False, lookup=False, cut=False,
     mapping="trivial", index="jacp", topology="MIX", discovery="discovery_7",
     **kwargs
   ) -> None:
@@ -77,6 +79,8 @@ class TOY(BASE):
     self.A = A
     self.subfolder = f"{topology}_{index}_{mapping}"
     self.rows, self.nodes = A.shape
+    if labels is not None:
+      self.set_labels(labels)
     # Set ANALYSIS NAME ----
     self.analysis = linkage.upper() + "_{}_{}".format(
       self.rows, self.nodes

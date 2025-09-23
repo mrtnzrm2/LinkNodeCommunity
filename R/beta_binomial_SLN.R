@@ -24,11 +24,11 @@ betabin.2 = function (
     if (length(formula) != 3) 
       stop(paste(tr(deparse(formula)), collapse = " "), "is not a valid formula.")
     else if (substring(deparse(formula)[1], 1, 5) != "cbind") 
-      stop(paste(tr(deparse(formula)), collapse = ""), " is not a valid formula.\n", 
+      stop(paste(tr(deparse(formula)), collapse = ""), " is not a valid formula.\n",  # nolint: line_length_linter.
            "The response must be a matrix of the form cbind(success, failure)")
     if (length(random) == 3) {
       form <- deparse(random)
-      warning("The formula for phi (", form, ") contains a response which is ignored.")
+      warning("The formula for phi (", form, ") contains a response which is ignored.") # nolint: line_length_linter.
       random <- random[-2]
     }
     explain <- as.character(attr(terms(random), "variables"))[-1]

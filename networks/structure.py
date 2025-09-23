@@ -9,10 +9,6 @@ from networks.MAC.mac49 import MAC49
 from networks.MAC.mac57 import MAC57
 from networks.MAC.mac57i import MAC57i
 
-# MUS classes
-from networks.MUS.mus19 import MUS19
-from networks.MUS.mus7 import MUS7
-
 STR = {
     "MAC29" : MAC29,
     "MAC29i" : MAC29i,
@@ -22,7 +18,5 @@ STR = {
     "MAC47" : MAC47,
     "MAC49" : MAC49,
     "MAC57" : MAC57,
-    "MAC57i" : MAC57i,
-    "MUS19" : MUS19,
-    "MUS7" : MUS7
+    "MAC57i" : MAC57i
 }

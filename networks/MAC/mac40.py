@@ -18,6 +18,8 @@ class base:
     else: self.structure = "FLN"
     if "distance" in kwargs.keys():
       self.distance = kwargs["distance"]
+    if "version" in kwargs.keys():
+      self.version = kwargs["version"]
     else: self.distance = "MAP3D"
     if "model" in kwargs.keys():
       self.model = kwargs["model"]
@@ -39,8 +41,14 @@ class base:
       self.distance, self.model,
       self.inj
     )
-    self.csv_path = "../CSV/MAC/40d91/"
-    self.distance_path = f"../CSV/MAC/40d91/{self.distance}/"
+
+    if "root_path" in kwargs.keys():
+      self.csv_path = kwargs["root_path"] + "/CSV/MAC/40d91/"
+      self.distance_path = f"{self.csv_path}/{self.distance}/"
+
+    else:
+      self.csv_path = "../CSV/MAC/40d91/"
+      self.distance_path = f"../CSV/MAC/40d91/{self.distance}/"
     # Labels and regions ----
     self.labels_path = self.csv_path
   
@@ -81,7 +89,7 @@ class MAC40(base):
       "tracto16" : self.get_distance_tracto16,
       "tracto91" : self.get_distance_tracto91
     }
-    # self.D = self.get_distance_MAP3D_v2()
+    self.D = self.get_distance_MAP3D_v2()
     self.D = dist_dic[self.distance]()
     # Set ANALYSIS NAME ----
     self.analysis =  "{}_{}_{}".format(
@@ -97,26 +105,44 @@ class MAC40(base):
       if kwargs["EC"]:
        self.analysis = self.analysis + "_EC" 
     # Create paths ----
-    if "plot_path" in kwargs.keys():
-      self.plot_path = kwargs["plot_path"]
+    self.root_path  = ""
+    if "root_path" in kwargs.keys():
+      self.root_path = kwargs["root_path"]
+
+      self.plot_path = join(
+        self.root_path , "plots", self.common_path,
+        self.analysis, mode, self.subfolder,
+        "b_"+str(self.b)
+      ) 
+
+      self.pickle_path = join(
+        self.root_path , "pickle", self.common_path,
+        self.analysis, mode, self.subfolder,
+        "b_"+str(self.b)
+      )
+
+      self.regions_path = join(
+        self.root_path , "CSV/Regions",
+        "Table_areas_regions_09_2019.csv"
+      )
+      
     else:
       self.plot_path = join(
         "../plots", self.common_path,
         self.analysis, mode, self.subfolder,
         "b_"+str(self.b)
       )
-    self.pickle_path = join(
-      "../pickle", self.common_path,
-      self.analysis, mode, self.subfolder,
-      "b_"+str(self.b)
-    )
-    if "regions_path" in kwargs.keys():
-      self.regions_path = kwargs["regions_path"]
-    else:
+
+      self.pickle_path = join(
+        "../pickle", self.common_path,
+        self.analysis, mode, self.subfolder,
+        "b_"+str(self.b)
+      )
       self.regions_path = join(
         "../CSV/Regions",
         "Table_areas_regions_09_2019.csv"
       )
+      
     # entropy ----
     self.entropy = np.array([0, 0, 0])
     # NOCS labels ----
@@ -322,6 +348,7 @@ class MAC40(base):
   def get_sln_structure(self):
     # Get structure ----
     file = pd.read_csv(f"{self.csv_path}/corticoconnectiviy database_kennedy-knoblauch-team-1_distances completed.csv")
+    # file = pd.read_csv(f"{self.csv_path}/Neuron_2021_Database.csv")
     ## Areas to index
     tlabel = np.unique(file.TARGET).astype(str)
     inj = tlabel.shape[0]

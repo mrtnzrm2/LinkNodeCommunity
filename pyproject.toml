@@ -1,0 +1,62 @@
+[build-system]
+requires = [
+  "scikit-build-core>=0.11.6",
+  "setuptools_scm[toml]>=8",
+  "pybind11>=3.0.1",
+  "cmake>=3.24",
+  "ninja"                # fast builds
+]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "LinkNodeCommunity"
+description = "Implements the main algorithm from the paper: \"An information theoretic approach to community detection in dense cortical networks reveals a nested hierarchical structure.\" Provides tools for detecting communities and analyzing hierarchical structures in dense, directed, and weighted graphs."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{name = "Jorge S. Martinez Armas"}]
+keywords = ["pybind11","cmake","neuroscience","graph","community-detection"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: C++",
+  "Operating System :: MacOS",
+  "Operating System :: POSIX :: Linux",
+  "Operating System :: Microsoft :: Windows",
+]
+dependencies = [
+  "numpy>=2.3.3",
+  "scipy>=1.16.2",
+  "networkx>=3.5",
+  "pandas>=2.3.2",
+  "tqdm",
+  "matplotlib>=3.10.6",
+  "pydantic>=2.11.9",          # configs
+]
+dynamic = ["version"]                          # from Git tags
+
+[tool.setuptools_scm]
+# Tag your repo like v0.3.1; this becomes 0.3.1
+version_scheme = "no-guess-dev"
+local_scheme = "node-and-date"
+
+[tool.scikit-build]
+# Helpful defaults
+wheel.expand-macos-universal-tags = true       # build universal2 on macOS if possible
+cmake.verbose = true
+build-dir = "build/{wheel_tag}"
+# If you need to pass flags:
+# cmake.define.CMAKE_CXX_STANDARD = "17"
+# cmake.define.PYBIND11_FINDPYTHON = "ON"
+
+[tool.cibuildwheel]
+build = "cp310-* cp311-* cp312-*"
+skip = "pp* *-musllinux_*"
+test-command = "pytest -q {project}/tests"
+manylinux-x86_64-image = "manylinux2014"
+manylinux-aarch64-image = "manylinux2014"
+# macOS universal2 + delocate handled automatically
+# Windows MSVC handled automatically
+environment = { CIBW_ENVIRONMENT="PIP_ONLY_BINARY=:all:" }
+
+[project.optional-dependencies]
+dev = ["pytest","pytest-cov","mypy","ruff"]
