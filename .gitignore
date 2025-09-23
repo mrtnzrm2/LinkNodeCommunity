@@ -7,8 +7,15 @@ src/LinkNodeCommunity/__pycache__/
 src/LinkNodeCommunity/core/__pycache__/
 .github/
 build/
-pycache/
+dist/
 
+pycache/
+pytest_cache/
+mypy_cache/
+ruff_cache/
+tox/
+
+*.egg-info/
 *.so
 *.pyd
 *.dylib
@@ -16,3 +23,11 @@ pycache/
 *.o
 *.a
 *.lib
+
+cpp/**/build/
+cpp/**/CMakeFiles/
+cpp/**/CMakeCache.txt
+cpp/**/cmake-build-*/
+*.ninja
+.ninja_*
+.DS_Store
