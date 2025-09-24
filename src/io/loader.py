@@ -22,10 +22,10 @@ general_colors = pd.DataFrame(
     }
 )
 
-colors = dict(zip(general_colors["REGION"], general_colors["COLOR"]))
+general_colors = dict(zip(general_colors["REGION"], general_colors["COLOR"]))
 
 
-def load_macaque_fln_40d91():
+def load_macaque_fln_40d91(path=""):
     """Load the Macaque FLN 40D91 dataset.
 
     Returns
@@ -39,11 +39,11 @@ def load_macaque_fln_40d91():
     colors : np.ndarray
         Array of color codes corresponding to each region.
     """
-    data = pd.read_csv("data/macaque/FLN40d91.csv", header=None)
+    data = pd.read_csv(f"{path}/FLN40d91.csv", header=None)
 
     # Load labels and regions
-    labels = pd.read_csv("data/macaque/labels40.csv", header=None).squeeze().to_numpy()
-    regions = pd.read_csv("data/macaque/Table_areas_regions_09_2019.csv", header=0).to_numpy()
+    labels = pd.read_csv(f"{path}/labels40.csv", header=None).squeeze().to_numpy()
+    regions = pd.read_csv(f"{path}/Table_areas_regions_09_2019.csv", header=0).to_numpy()
     regions = {regions[i, 0].lower(): regions[i, 1] for i in np.arange(regions.shape[0])}
     regions = np.array([regions[l] for l in labels])
 

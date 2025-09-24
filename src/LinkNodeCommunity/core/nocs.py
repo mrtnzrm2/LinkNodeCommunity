@@ -13,13 +13,12 @@ Community membership).
 
 Parameters (NOCFinder):
 -----------------------
-NOCFinder(G, node_partition, n_linkclusters, undirected=False,
+NOCFinder(G, node_partition, undirected=False,
           similarity_index="hellinger_similarity",
           tie_policy="include_equal", eps=0.0, node_order=None)
 
 - G (nx.Graph | nx.DiGraph): Input graph. Nodes may be any hashables.
 - node_partition (array-like, len N): Community id per node; use -1 for singles.
-- n_linkclusters (int): Present for API compatibility; not used internally here.
 - undirected (bool): Whether upstream steps treat edges as undirected.
 - similarity_index (str): One of {hellinger_similarity, cosine_similarity,
   pearson_correlation, weighted_jaccard, jaccard_probability,
@@ -62,45 +61,59 @@ from ..utils import fast_cut_tree, consecutive_differences, match
 
 # Node Overlapping Communities ----
 class NOCFinder:
-  """
-  Assigns single/isolated nodes (partition == -1) to one or more
-  non-trivial communities using distances derived from node-node
-  similarity matrices. Nodes assigned to multiple communities are
-  treated as NOCs (overlapping memberships).
-  """
   def __init__(
     self,
     G : nx.DiGraph | nx.Graph,
     node_partition : npt.ArrayLike,
-    n_linkclusters : int,
     undirected: bool = False,
     similarity_index: str = "hellinger_similarity",
     tie_policy: str = "include_equal",
     eps: float = 0.0,
     node_order: npt.ArrayLike | None = None,
-    **kwargs,
   ):
     """
-    Initialize the NOCFinder.
+    Assigns single/isolated nodes (partition == -1) to one or more
+    non-trivial communities using distances derived from node-node
+    similarity matrices. Nodes assigned to multiple communities are
+    treated as NOCs (overlapping memberships).
 
-    Args:
-      G: NetworkX graph (directed or undirected).
-      node_partition: Length-N array of community ids; -1 marks single nodes.
-      n_linkclusters: Number of link clusters (kept for API compatibility).
-      undirected: Whether upstream logic treats edges as undirected.
-      similarity_index: Controls the distance transform of similarity matrices.
-      **kwargs: Reserved for future extensions.
+    NOTE: node_partition must have -1 for single nodes.
+    
+    NOTE: No low-level backend; may be slow for large graphs.
+
+    Parameters
+    ----------
+    G : nx.DiGraph | nx.Graph
+        Input graph. Nodes may be any hashables.
+    node_partition : array-like, len N
+        Community id per node; use -1 for singles. Must contain -1 for single nodes.
+    undirected : bool, optional
+        Whether upstream steps treat edges as undirected. Default is False.
+    similarity_index : str, optional
+        One of {hellinger_similarity, cosine_similarity,
+        pearson_correlation, weighted_jaccard, jaccard_probability,
+        tanimoto_coefficient}. Controls similarity→distance transform.
+        Default is "hellinger_similarity".
+    tie_policy : str, optional
+        One of {cluster_only, include_equal, include_equal_same_cluster, deterministic}.
+        Controls tie-breaking behavior. Default is "include_equal".
+    eps : float, optional
+        Small value to avoid division by zero in similarity calculations. Default is 1e-6.
+    node_order : array-like | None, optional
+        Node order for consistent indexing. If None, uses graph node order. Default is None.
     """
+
+    if not np.any(np.asarray(node_partition) != -1):
+      raise ValueError("node_partition must have -1 for single nodes.")
+    
     self.G = G
     self.N = G.number_of_nodes()
-    self.n_linkclusters = n_linkclusters
     self.node_partition = np.asarray(node_partition)
     self.undirected = undirected
     self.similarity_index = similarity_index
     self.tie_policy = tie_policy
     self.eps = float(eps)
     self.node_order = np.asarray(node_order) if node_order is not None else None
-    self.kwargs = kwargs
 
     # Validate accepted arguments up front
     accepted_indices = {
@@ -127,12 +140,30 @@ class NOCFinder:
     """
     Assign covers to single nodes and compute NOCs.
 
-    Args:
+    Steps
+    -----
+      1) Transform similarities to distances according to `index`.
+      2) Collect neighbor set of the single node in the chosen direction.
+      3) For each non-trivial community, compute average distance to its neighbors;
+      use max distance if there are no neighbors in that community.
+      4) Select candidate covers where distance < max_dist (finite).
+      5) If >1 candidate, build COST=|Δ distance| matrix, cluster with complete
+          linkage, cut at max jump, and select covers tied to the closest.
+      6) Compute a similarity-proxy score for each selected cover.
+
+    Parameters
+    ----------
       source_sim_matrix: NxN similarity for source/outgoing perspective.
       target_sim_matrix: NxN similarity for target/incoming perspective.
 
-    Populates:
-      node_cover_partition, single_node_cover_map, single_nodes_cover_scores.
+    Populates
+    ----------
+      - node_cover_partition:
+          Hard assignments where unique; otherwise -1 for NOCs.
+      - single_node_cover_map:
+          Maps single nodes to their cover nodes.
+      - single_nodes_cover_scores:
+          Stores scores for single node covers.
     """
     # Validate partition length and matrix shapes
     if self.node_partition.shape[0] != self.N:
@@ -228,7 +259,8 @@ class NOCFinder:
          linkage, cut at max jump, and select covers tied to the closest.
       6) Compute a similarity-proxy score for each selected cover.
 
-    Returns:
+    Returns
+    -------
       single_nodes_covers: dict[node_label] -> list of cover community ids
       single_nodes_scores: dict[node_label] -> {cover_id: score}
     """
