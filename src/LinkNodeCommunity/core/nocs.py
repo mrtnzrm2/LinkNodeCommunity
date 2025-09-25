@@ -53,11 +53,12 @@ Notes:
 - Validation: Shapes, accepted parameters, and node_order content are checked.
 """
 
+from concurrent.futures import ThreadPoolExecutor
+
 import numpy as np
 import networkx as nx
 import pandas as pd
 import numpy.typing as npt
-from ..utils import fast_cut_tree, consecutive_differences, match
 
 # Node Overlapping Communities ----
 class NOCFinder:
@@ -66,10 +67,12 @@ class NOCFinder:
     G : nx.DiGraph | nx.Graph,
     node_partition : npt.ArrayLike,
     undirected: bool = False,
+    labels : npt.ArrayLike | None = None,
     similarity_index: str = "hellinger_similarity",
     tie_policy: str = "include_equal",
     eps: float = 0.0,
     node_order: npt.ArrayLike | None = None,
+    max_workers: int | None = None,
   ):
     """
     Assigns single/isolated nodes (partition == -1) to one or more
@@ -78,7 +81,7 @@ class NOCFinder:
     treated as NOCs (overlapping memberships).
 
     NOTE: node_partition must have -1 for single nodes.
-    
+
     NOTE: No low-level backend; may be slow for large graphs.
 
     Parameters
@@ -89,6 +92,8 @@ class NOCFinder:
         Community id per node; use -1 for singles. Must contain -1 for single nodes.
     undirected : bool, optional
         Whether upstream steps treat edges as undirected. Default is False.
+    labels : array-like | None, optional
+        Node labels for interpretation of results. Default is None.
     similarity_index : str, optional
         One of {hellinger_similarity, cosine_similarity,
         pearson_correlation, weighted_jaccard, jaccard_probability,
@@ -101,12 +106,20 @@ class NOCFinder:
         Small value to avoid division by zero in similarity calculations. Default is 1e-6.
     node_order : array-like | None, optional
         Node order for consistent indexing. If None, uses graph node order. Default is None.
+    max_workers : int | None, optional
+        Maximum threads when parallelizing single-node processing. Defaults to ``None`` for executor default.
     """
 
     if not np.any(np.asarray(node_partition) != -1):
       raise ValueError("node_partition must have -1 for single nodes.")
     
     self.G = G
+
+    if labels is not None:
+      if len(labels) != G.number_of_nodes():
+        raise ValueError("labels length must equal number of graph nodes")
+      self.labels = np.asarray(labels)
+
     self.N = G.number_of_nodes()
     self.node_partition = np.asarray(node_partition)
     self.undirected = undirected
@@ -114,6 +127,7 @@ class NOCFinder:
     self.tie_policy = tie_policy
     self.eps = float(eps)
     self.node_order = np.asarray(node_order) if node_order is not None else None
+    self.max_workers = max_workers
 
     # Validate accepted arguments up front
     accepted_indices = {
@@ -165,6 +179,7 @@ class NOCFinder:
       - single_nodes_cover_scores:
           Stores scores for single node covers.
     """
+    from ..utils import match
     # Validate partition length and matrix shapes
     if self.node_partition.shape[0] != self.N:
       raise ValueError("node_partition length must equal number of graph nodes")
@@ -183,13 +198,6 @@ class NOCFinder:
       self.nodes_sorted = np.asarray(self.node_order)
     self.node_to_index = {n: i for i, n in enumerate(self.nodes_sorted)}
 
-    # Labels in chosen order
-    if hasattr(self.G, "labels"):
-      labels_dict = nx.get_node_attributes(self.G, "labels")
-      labels = np.array([labels_dict.get(n, n) for n in self.nodes_sorted])
-    else:
-      labels = self.nodes_sorted.copy()
-
     self.node_cover_partition = self.node_partition.copy()
 
     # Edgelist with both node ids and index-mapped columns for fast lookup
@@ -206,8 +214,8 @@ class NOCFinder:
     self.edgelist = pd.DataFrame(edgelist)
 
     # Compute cover candidates and scores from both directions
-    nocs_src, nocs_scores_src = self.compute_nocs(source_sim_matrix, target_sim_matrix, labels, "source", self.similarity_index)
-    nocs_tgt, nocs_scores_tgt = self.compute_nocs(source_sim_matrix, target_sim_matrix, labels, "target", self.similarity_index)
+    nocs_src, nocs_scores_src = self.compute_nocs(source_sim_matrix, target_sim_matrix, "source", self.similarity_index)
+    nocs_tgt, nocs_scores_tgt = self.compute_nocs(source_sim_matrix, target_sim_matrix, "target", self.similarity_index)
 
     # Previously combined cover ids were computed but unused; omit now
 
@@ -237,7 +245,7 @@ class NOCFinder:
     for key in self.single_node_cover_map.keys():
       if len(self.single_node_cover_map[key]) == 1:
         not_nocs.append(key)
-      i = match([key], labels)
+      i = match([key], self.labels)
       if len(self.single_node_cover_map[key]) == 1 and self.node_cover_partition[i] == -1:
         self.node_cover_partition[i] = self.single_node_cover_map[key][0]
 
@@ -245,7 +253,19 @@ class NOCFinder:
       del self.single_node_cover_map[key]
       del self.single_nodes_cover_scores[key]
 
-  def compute_nocs(self, source_sim_matrix, target_sim_matrix, labels, direction, index):
+    # Exchange numeric keys in single_node_cover_map and single_nodes_cover_scores to their respective label from self.labels
+    if hasattr(self, "labels"):
+      label_map = {i: self.labels[i] for i in range(len(self.labels))}
+    else:
+      label_map = {i: self.nodes_sorted[i] for i in range(len(self.nodes_sorted))}
+
+    def relabel_dict_keys(d):
+      return {label_map.get(k, k): v for k, v in d.items()}
+
+    self.single_node_cover_map = relabel_dict_keys(self.single_node_cover_map)
+    self.single_nodes_cover_scores = relabel_dict_keys(self.single_nodes_cover_scores)
+
+  def compute_nocs(self, source_sim_matrix, target_sim_matrix, direction, index):
     """
     Compute per-single-node cover candidates and scores from one direction.
 
@@ -266,6 +286,7 @@ class NOCFinder:
     """
     from scipy.cluster.hierarchy import linkage
     from scipy.spatial.distance import squareform
+    from ..utils import fast_cut_tree
 
     single_nodes_covers = {}    # dictionary of single node to scores of assigned covers
     single_nodes_scores = {}    # dictionary of single node to assigned covers
@@ -288,13 +309,13 @@ class NOCFinder:
       else:
         raise ValueError("No accepted direction.")
     else: raise ValueError("No accepted index.")
-    
+
     ## Single nodes ----
     single_nodes = np.where(self.node_partition == -1)[0]
     ## Nodes with single community membership ----
     non_single_nodes_map = [(set(np.where(self.node_partition == i)[0]), i) for i in np.unique(self.node_partition) if i != -1]
 
-    for sidx in single_nodes:
+    def process_single_node(sidx: int):
       # 2) Directional neighbor set for sidx (in index space)
       if direction == "source":
         distance_neighbors = set(self.edgelist.loc[self.edgelist["source_idx"] == sidx]["target_idx"])
@@ -307,7 +328,6 @@ class NOCFinder:
       distance_sidx_to_nontrivial_communities = np.zeros((len(non_single_nodes_map)))
 
       for ii, non_single_nodes in enumerate(non_single_nodes_map):
-        # get nodes in this community that are neighbors of sidx
         neighbor_nodes = list(distance_neighbors.intersection(non_single_nodes[0]))
 
         if len(neighbor_nodes) > 0:
@@ -318,72 +338,84 @@ class NOCFinder:
       # 4) Candidates: finite average distance
       is_covers = distance_sidx_to_nontrivial_communities < max_dist
 
-      if np.sum(is_covers) > 0:
+      if not np.any(is_covers):
+        return None
 
-        candidate_pos = np.flatnonzero(is_covers)
-        dists_cand = distance_sidx_to_nontrivial_communities[is_covers]
-        number_neighbor_nontrivial_communities = dists_cand.shape[0]
-        closer_pos = int(np.argmin(dists_cand))
-        closer_community_distance = dists_cand[closer_pos]
+      candidate_pos = np.flatnonzero(is_covers)
+      dists_cand = distance_sidx_to_nontrivial_communities[is_covers]
+      number_neighbor_nontrivial_communities = dists_cand.shape[0]
+      closer_pos = int(np.argmin(dists_cand))
+      closer_community_distance = dists_cand[closer_pos]
 
-        if number_neighbor_nontrivial_communities > 1:
-          # 5) COST of pairwise |Δ distance| between candidate communities
-          COST = np.zeros((number_neighbor_nontrivial_communities, number_neighbor_nontrivial_communities))
-          for kk in np.arange(number_neighbor_nontrivial_communities):
-            for ki in np.arange(kk+1, number_neighbor_nontrivial_communities):
-              COST[kk, ki] = np.abs(dists_cand[kk] - dists_cand[ki])
-              COST[ki, kk] = COST[kk, ki]
+      if number_neighbor_nontrivial_communities > 1:
+        # 5) COST of pairwise |Δ distance| between candidate communities
+        COST = np.zeros((number_neighbor_nontrivial_communities, number_neighbor_nontrivial_communities))
+        for kk in np.arange(number_neighbor_nontrivial_communities):
+          for ki in np.arange(kk+1, number_neighbor_nontrivial_communities):
+            COST[kk, ki] = np.abs(dists_cand[kk] - dists_cand[ki])
+            COST[ki, kk] = COST[kk, ki]
 
-          COST : npt.NDArray = linkage(squareform(COST), method="complete")
-        
-          # Differences between consecutive linkage heights; cut at the largest jump
-          dD = consecutive_differences(COST[:, 2].ravel())
-          if dD.shape[0] > 1:
-            maximimum_height_step = int(np.argmax(dD))
-          else: maximimum_height_step = 0
-          cover_partition = fast_cut_tree(COST, height=COST[maximimum_height_step, 2])
-          cover_partition_closer_value = cover_partition[closer_pos]
+        # Hierarchical clustering of COST matrix
+        # Complete linkage is appropriate for |Δ distance| clustering
+        # since it tends to produce compact, spherical clusters.
+        COST : npt.NDArray = linkage(squareform(COST), method="complete")
 
+        dD = np.diff(COST[:, 2])
+        if dD.shape[0] > 1:
+          maximimum_height_step = int(np.argmax(dD)) 
         else:
-          cover_partition = np.array([0])
-          cover_partition_closer_value =  0
+          maximimum_height_step = 0
+          
+        # Cut the tree at that height to form flat clusters
+        cover_partition = fast_cut_tree(COST, height=COST[maximimum_height_step, 2])
+        cover_partition_closer_value = cover_partition[closer_pos]
+      else:
+        cover_partition = np.array([0])
+        cover_partition_closer_value =  0
 
-        # 6) Select candidate positions per tie_policy
-        if self.tie_policy == "cluster_only":
-          selected_pos = np.where(cover_partition == cover_partition_closer_value)[0]
-        elif self.tie_policy == "include_equal":
-          in_cluster = set(np.where(cover_partition == cover_partition_closer_value)[0].tolist())
-          equals_any = set(np.where(np.abs(dists_cand - closer_community_distance) <= self.eps)[0].tolist())
-          selected_pos = np.array(sorted(in_cluster.union(equals_any)))
-        elif self.tie_policy == "include_equal_same_cluster":
-          mask_same = (cover_partition == cover_partition_closer_value) & (np.abs(dists_cand - closer_community_distance) <= self.eps)
-          selected_pos = np.where(mask_same)[0]
-        elif self.tie_policy == "deterministic":
-          # Single winner: min distance; tie-break by smallest community id
-          min_mask = np.abs(dists_cand - np.min(dists_cand)) <= self.eps
-          candidate_min_pos = np.where(min_mask)[0]
-          if candidate_min_pos.size > 1:
-            ids = np.array([non_single_nodes_map[candidate_pos[p]][1] for p in candidate_min_pos])
-            candidate_min_pos = np.array([candidate_min_pos[np.argmin(ids)]])
-          selected_pos = candidate_min_pos
-        else:
-          selected_pos = np.array([closer_pos])
+      # 6) Select candidate positions per tie_policy
+      if self.tie_policy == "cluster_only":
+        selected_pos = np.where(cover_partition == cover_partition_closer_value)[0]
+      elif self.tie_policy == "include_equal":
+        in_cluster = set(np.where(cover_partition == cover_partition_closer_value)[0].tolist())
+        equals_any = set(np.where(np.abs(dists_cand - closer_community_distance) <= self.eps)[0].tolist())
+        selected_pos = np.array(sorted(in_cluster.union(equals_any)))
+      elif self.tie_policy == "include_equal_same_cluster":
+        mask_same = (cover_partition == cover_partition_closer_value) & (np.abs(dists_cand - closer_community_distance) <= self.eps)
+        selected_pos = np.where(mask_same)[0]
+      elif self.tie_policy == "deterministic":
+        # Single winner: min distance; tie-break by smallest community id
+        min_mask = np.abs(dists_cand - np.min(dists_cand)) <= self.eps
+        candidate_min_pos = np.where(min_mask)[0]
+        if candidate_min_pos.size > 1:
+          ids = np.array([non_single_nodes_map[candidate_pos[p]][1] for p in candidate_min_pos])
+          candidate_min_pos = np.array([candidate_min_pos[np.argmin(ids)]])
+        selected_pos = candidate_min_pos
+      else:
+        selected_pos = np.array([closer_pos])
 
-        # Map selected positions back to overall community indices and record
-        for pos in selected_pos:
-          overall_idx = int(candidate_pos[pos])
-          community_id = non_single_nodes_map[overall_idx][1]
-          if labels[sidx] not in single_nodes_covers.keys():
-            single_nodes_covers[labels[sidx]] = [community_id]
-            if index == "hellinger_similarity" or index == "cosine_similarity" or index == "pearson_correlation":
-              single_nodes_scores[labels[sidx]] = {community_id : 1 - np.power(distance_sidx_to_nontrivial_communities[overall_idx]/max_dist, 2)}
-            elif index == "weighted_jaccard" or index == "jaccard_probability" or index == "tanimoto_coefficient":
-              single_nodes_scores[labels[sidx]] = {community_id : 1 - distance_sidx_to_nontrivial_communities[overall_idx]}
-          else:
-            single_nodes_covers[labels[sidx]].append(community_id)
-            if index == "hellinger_similarity" or index == "cosine_similarity" or index == "pearson_correlation":
-              single_nodes_scores[labels[sidx]].update({community_id : 1 - np.power(distance_sidx_to_nontrivial_communities[overall_idx]/max_dist, 2)})
-            elif index == "weighted_jaccard" or index == "jaccard_probability" or index == "tanimoto_coefficient":
-              single_nodes_scores[labels[sidx]].update({community_id : 1 - distance_sidx_to_nontrivial_communities[overall_idx]})
+      node_label = self.labels[sidx]
+      node_covers = []
+      node_scores = {}
+
+      # Map selected positions back to overall community indices and record
+      for pos in selected_pos:
+        overall_idx = int(candidate_pos[pos])
+        community_id = non_single_nodes_map[overall_idx][1]
+        node_covers.append(community_id)
+        if index == "hellinger_similarity" or index == "cosine_similarity" or index == "pearson_correlation":
+          node_scores[community_id] = 1 - np.power(distance_sidx_to_nontrivial_communities[overall_idx]/max_dist, 2)
+        elif index == "weighted_jaccard" or index == "jaccard_probability" or index == "tanimoto_coefficient":
+          node_scores[community_id] = 1 - distance_sidx_to_nontrivial_communities[overall_idx]
+
+      return node_label, node_covers, node_scores
+
+    with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+      for result in executor.map(process_single_node, single_nodes):
+        if result is None:
+          continue
+        node_label, node_covers, node_scores = result
+        single_nodes_covers[node_label] = node_covers
+        single_nodes_scores[node_label] = node_scores
 
     return  single_nodes_covers, single_nodes_scores

@@ -4,6 +4,8 @@ import pandas as pd
 import networkx as nx
 import seaborn as sns
 
+from LinkNodeCommunity.core import nocs
+
 pd.options.mode.chained_assignment = None  # default='warn'
 
 def edgelist_from_graph(G : nx.DiGraph | nx.Graph):
@@ -84,67 +86,124 @@ def pvalue2asterisks(pvalue):
     a = "nan"
   return a
 
+def cover_map_to_partition(partition: dict, single_node_to_covers_map: dict):
+  """
+  Update the partition dictionary so that each cover (community label) includes
+  the string representation of each noc (node of cover) from the mapping.
+
+  Parameters
+  ----------
+  partition : dict
+    Dictionary mapping community labels to lists of node labels.
+  single_node_to_covers_map : dict
+    Dictionary mapping node labels to lists of covers (community labels).
+  """
+  for noc, covers in single_node_to_covers_map.items():
+    for cover in covers:
+      label = str(noc)
+      if label not in partition.setdefault(cover, []):
+        partition[cover].append(label)
+
+
+def reverse_partition(partition: npt.ArrayLike, labels: npt.ArrayLike):
+  """
+  Given a partition (community labels for each node) and corresponding labels,
+  return a dictionary mapping each community label to the list of node labels in that community.
+  Ignores nodes with label -1.
+
+  Parameters
+  ----------
+  partition : npt.ArrayLike
+    Array of community labels for each node.
+  labels : npt.ArrayLike
+    Array of node labels.
+
+  Returns
+  -------
+  dict
+    Dictionary mapping community label to list of node labels.
+  """
+  partition = np.asarray(partition)
+  labels = np.asarray(labels)
+  mask = partition != -1
+  communities = np.unique(partition[mask])
+  return {int(r): list(labels[partition == r]) for r in communities}
+
+
+def format_partition_for_omega_index(partition : npt.ArrayLike, single_node_to_covers_map : dict, labels : npt.ArrayLike| None=None):
+  '''
+  Format a partition and single-node-to-covers map for omega index calculation.
+  '''
+  if labels is None:
+    labels = np.arange(len(partition))
+  rev = reverse_partition(partition, labels)
+  cover_map_to_partition(rev, single_node_to_covers_map)
+  return rev
 
 def fast_cut_tree(H : npt.NDArray, n_clusters=None, height=None):
   '''
-  Similar to scipy.cluster.hierarchy function cut_tree, but optimized.
+  Lightweight replacement for scipy.cluster.hierarchy.cut_tree supporting a
+  single ``n_clusters`` *or* ``height`` cut.
 
-    Parameters
-    ----------
-    H : npt.NDArray
-        Hierarchical clustering linkage matrix.
-    n_clusters : int, optional
-        Number of clusters to form. If None, height must be specified.
-    height : float, optional
-        Threshold to apply when forming clusters. If None, n_clusters must be specified.
-
-    Returns
-    -------
-    partition : npt.NDArray
-        Array of cluster labels for each node in the hierarchy.
+  Parameters
+  ----------
+  H : npt.ArrayLike
+      The hierarchical clustering encoded as a linkage matrix.
+  n_clusters : int, optional
+      The number of clusters to form. Must be mutually exclusive with `height`.
+  height : float, optional
+      The height to cut the dendrogram. Must be mutually exclusive with `n_clusters`.
   '''
 
+  H = np.asarray(H)
   if H.ndim != 2 or H.shape[1] != 4:
     raise ValueError("H must be a linkage matrix with shape (n-1, 4).")
 
-  if n_clusters is None and height is None:
-    raise ValueError("n_clusters or height must be given.")
-  elif n_clusters is not None and height is None:
-    thrd = n_clusters
-    thrd_t = 0
-  elif height is not None and n_clusters is None:
-    thrd = height
-    thrd_t = 1
+  has_clusters = n_clusters is not None
+  has_height = height is not None
+  if has_clusters == has_height:
+    raise ValueError("Specify exactly one of n_clusters or height.")
+
+  n_leaves = H.shape[0] + 1
+  active_clusters = set(range(n_leaves))
+  cluster_members: dict[int, list[int]] = {}
+
+  if has_height:
+    threshold = float(height)
+    for i, (a, b, dist, _) in enumerate(H):
+      if dist >= threshold:
+        break
+      a = int(a)
+      b = int(b)
+      members_a = [a] if a < n_leaves else cluster_members.pop(a)
+      members_b = [b] if b < n_leaves else cluster_members.pop(b)
+      new_idx = n_leaves + i
+      cluster_members[new_idx] = members_a + members_b
+      active_clusters.discard(a)
+      active_clusters.discard(b)
+      active_clusters.add(new_idx)
   else:
-     pass
-    
-  N = H.shape[0]+1
-  T = {(i) : [i] for i in np.arange(N)}
+    target = int(n_clusters)
+    if target < 1 or target > n_leaves:
+      raise ValueError("n_clusters must be in [1, n_leaves].")
+    for i, (a, b, dist, _) in enumerate(H):
+      if len(active_clusters) <= target:
+        break
+      a = int(a)
+      b = int(b)
+      members_a = [a] if a < n_leaves else cluster_members.pop(a)
+      members_b = [b] if b < n_leaves else cluster_members.pop(b)
+      new_idx = n_leaves + i
+      cluster_members[new_idx] = members_a + members_b
+      active_clusters.discard(a)
+      active_clusters.discard(b)
+      active_clusters.add(new_idx)
 
-  K = N
-  i = 0
+  partition = np.zeros(n_leaves, dtype=np.int64)
+  for label, cid in enumerate(sorted(active_clusters)):
+    members = [cid] if cid < n_leaves else cluster_members[cid]
+    partition[members] = label
 
-  while True:
-    if thrd_t == 0:
-      if K <= thrd: break
-    else:
-      if H[i, 2] > thrd: break
-
-    nx, ny = int(H[i, 0]), int(H[i, 1])
-
-    T[(N+i)] = T[(nx)] + T[(ny)]
-    
-    del T[(nx)]
-    del T[(ny)]
-    
-    i += 1
-    K -= 1
-  
-  partition = np.zeros(N, dtype=np.int64)
-  for key, val in T.items():
-    members = np.array(val)
-    partition[members] = key
-  
   return partition
 
 def linear_partition(partition : npt.ArrayLike):
@@ -309,7 +368,7 @@ def get_number_link_communities_from_maxD(link_stats : pd.DataFrame):
     link_stats["D"] == np.nanmax(link_stats["D"])
   ]
   if number_link_communities.shape[0] > 1:
-    print(">>> Warning: more than one k")
+    print(">>> Warning: more than one link community level with maximum D")
   return int(number_link_communities.iloc[-1]), float(height_at_maxD.iloc[-1])
 
 def   get_number_link_communities_from_maxS(link_stats : pd.DataFrame):
@@ -330,7 +389,7 @@ def   get_number_link_communities_from_maxS(link_stats : pd.DataFrame):
     link_stats["S"] == np.nanmax(link_stats["S"])
   ]
   if number_link_communities.shape[0] > 1:
-    print(">>> Warning: more than one k")
+    print(">>> Warning: more than one link community level with maximum S")
   return int(number_link_communities.iloc[-1]), float(height_at_maxS.iloc[-1])
 
 
@@ -383,3 +442,113 @@ def match(a : npt.ArrayLike, b : npt.ArrayLike):
     """
     b_dict = {x: i for i, x in enumerate(b)}
     return np.array([b_dict.get(x, None) for x in a])
+
+
+def linkDc(df: pd.DataFrame, id, undirected=False):
+  """
+  Compute the density (Dc) of a link community specified by 'id' in an edge list DataFrame.
+
+  Parameters
+  ----------
+  df : pd.DataFrame
+    DataFrame containing edge list with columns ['source', 'target', 'id'].
+  id : int or str
+    The link community membership label to evaluate.
+  undirected : bool, optional
+    If True, treats the graph as undirected and considers only edges where source > target.
+    If False, treats the graph as directed. Default is False.
+
+  Returns
+  -------
+  float
+    The density of the link community. Returns 0 for trivial communities (single node or not enough edges).
+  """
+  # Filter edges belonging to the specified community
+  if undirected:
+    df2 = df[(df["id"] == id) & (df["source"] > df["target"])]
+  else:
+    df2 = df[df["id"] == id]
+
+  nodes = set(df2["source"]).union(df2["target"])
+  m = len(df2)
+  n = len(nodes)
+
+  if n <= 1 or m < n:
+    return 0.0
+
+  if undirected:
+    denom = n * (n - 1) / 2. - n + 1.
+    return (m - n + 1) / denom if denom > 0 else 0.0
+  else:
+    return (m - n + 1) / (n - 1) ** 2
+
+def linkcommunity_collapsed_partition(df: pd.DataFrame, undirected: bool = False):
+  """
+  Collapse trivial link communities in an edge list DataFrame by assigning their
+  membership 'id' to -1. A trivial community is one with density <= 0.
+
+  Parameters
+  ----------
+  df : pd.DataFrame
+    Edge list DataFrame with columns ['source', 'target', 'id'] representing link community membership.
+  undirected : bool, optional
+    If True, treats the graph as undirected for density calculation. Default is False.
+
+  Modifies
+  --------
+  df : pd.DataFrame
+    Updates the 'id' column in-place, setting trivial communities to -1.
+  """
+  for cid in np.unique(df["id"]):
+    if linkDc(df, cid, undirected=undirected) <= 0:
+      df.loc[df["id"] == cid, "id"] = -1
+
+def linkcommunity_linear_partition(df: pd.DataFrame, offset: int = 0):
+  """
+  Renumber non-trivial link community memberships in the 'id' column of an edge list DataFrame.
+  Non-trivial communities (id != -1) are mapped to consecutive integers from offset to C + offset - 1,
+  where C is the number of non-trivial link communities. Trivial communities (id == -1)
+  remain unchanged.
+
+  Parameters
+  ----------
+  df : pd.DataFrame
+    Edge list DataFrame with a link community membership column 'id'.
+
+  Modifies
+  --------
+  df : pd.DataFrame
+    Updates the 'id' column in-place, renumbering non-trivial communities.
+  """
+  ids = np.unique(df["id"])
+  non_trivial = ids[ids != -1]
+  mapping = {id_: i + offset for i, id_ in enumerate(non_trivial)}
+  # Keep -1 as is
+  mapping[-1] = -1 if -1 in ids else None
+  df["id"] = df["id"].map(lambda x: mapping.get(x, x)).astype(int)
+
+
+def edgelist_to_adjacency(df: pd.DataFrame, weight: str = "weight") -> np.ndarray:
+  """
+  Convert an edge list DataFrame to an adjacency matrix.
+
+  Parameters
+  ----------
+  df : pd.DataFrame
+    Edge list DataFrame with columns ['source', 'target'] and optionally a weight column.
+  weight : str, optional
+    Name of the column to use for edge weights. Default is "weight".
+
+  Returns
+  -------
+  np.ndarray
+    Adjacency matrix where entry (i, j) is the weight of the edge from i to j.
+    If no edge exists, the entry is 0.
+  """
+  sources = df["source"].astype(int).to_numpy()
+  targets = df["target"].astype(int).to_numpy()
+  weights = df[weight].to_numpy()
+  num_nodes = max(sources.max(), targets.max()) + 1
+  adj = np.zeros((num_nodes, num_nodes), dtype=weights.dtype)
+  adj[sources, targets] = weights
+  return adj

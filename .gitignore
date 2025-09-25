@@ -1,5 +1,7 @@
 # Byte-compiled / optimized / DLL files
 
+**/nocs_old.py
+
 .vscode/
 data/
 .venv/

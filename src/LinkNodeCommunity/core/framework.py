@@ -51,6 +51,7 @@ Notes:
 """
 
 # Standard libs ----
+from platform import node
 import numpy as np
 import pandas as pd
 import networkx as nx
@@ -113,25 +114,36 @@ class Clustering:
     - The full edge list from the entire graph is used to compute similarities for better statistics.
     """
     def __init__(
-        self, G: nx.DiGraph | nx.Graph, linkage="single", similarity_index="hellinger_similarity"
+        self, G: nx.DiGraph | nx.Graph, linkage="single", similarity_index="hellinger_similarity", consider_subgraph=False
     ):
       self.G = G
 
+      # Check for NaN edge weights
+      for u, v, data in self.G.edges(data=True):
+        weight = data.get("weight", 1.0)
+        if pd.isna(weight):
+          raise ValueError(f"Edge ({u}, {v}) has NaN as weight. Please clean your graph.")
+        
       if isinstance(G, nx.DiGraph):
         self.undirected = False
       else:
         self.undirected = True
 
-      # Get intersection of source and target nodes
-      sources = set(u for u, _, _ in self.G.edges(data=True))
-      targets = set(v for _, v, _ in self.G.edges(data=True))
-      intersection_nodes = sources & targets
 
-      # Create subgraph with only intersection nodes (in case of directed graph)
-      subgraph = self.G.subgraph(intersection_nodes)
+      if consider_subgraph:
+        # Get intersection of source and target nodes
+        sources = set(u for u, _, _ in self.G.edges(data=True))
+        targets = set(v for _, v, _ in self.G.edges(data=True))
+        intersection_nodes = sources & targets
 
-      self.N = subgraph.number_of_nodes()  # Nodes in intersection
-      self.M = subgraph.number_of_edges()  # Edges between intersection nodes
+        # Create subgraph with only intersection nodes (in case of directed graph)
+        subgraph = self.G.subgraph(intersection_nodes)
+
+        self.N = subgraph.number_of_nodes()  # Nodes in intersection
+        self.M = subgraph.number_of_edges()  # Edges between intersection nodes
+      else:
+        self.N = self.G.number_of_nodes()
+        self.M = self.G.number_of_edges()
 
       self.linkage = linkage
       self.similarity_index = similarity_index
@@ -152,15 +164,24 @@ class Clustering:
       Args:
         labels (dict): A dictionary mapping node IDs to labels.
       """
-      nx.set_node_attributes(self.G, labels, name="label")
+      for node, label in labels.items():
+          self.G.nodes[node]["label"] = label
 
-    def fit_linksim_matrix(self):
-      self.linksim = LinkSimilarity(self.edgelist, self.N, self.M, similarity_index=self.similarity_index, undirected=self.undirected)
+    def fit_linksim_matrix(self, use_parallel=False, flat_mode=False):
+      self.linksim = LinkSimilarity(
+        self.edgelist, self.N, self.M, similarity_index=self.similarity_index,
+        undirected=self.undirected, use_parallel=use_parallel,
+        flat_mode=flat_mode
+      )
       self.linksim.similarity_linksim_matrix()
       self.linksim_condense_matrix = self.linksim.linksim_condense_matrix
 
-    def fit_linksim_edgelist(self):
-      self.linksim = LinkSimilarity(self.edgelist, self.N, self.M, similarity_index=self.similarity_index, undirected=self.undirected)
+    def fit_linksim_edgelist(self, use_parallel=False, flat_mode=False):
+      self.linksim = LinkSimilarity(
+        self.edgelist, self.N, self.M, similarity_index=self.similarity_index,
+        undirected=self.undirected, use_parallel=use_parallel,
+        flat_mode=flat_mode
+      )
       self.linksim.similarity_linksim_edgelist()
       self.linksim_edgelist = np.array(self.linksim.linksim_edgelist)
 
@@ -255,7 +276,7 @@ class Clustering:
           }
         )
 
-    def node_community_hierarchy_matrix(self):
+    def node_community_hierarchy_matrix(self, use_parallel=False):
       if self.linkage == "single":
         linkage = 0
       else:
@@ -271,7 +292,8 @@ class Clustering:
         self.edgelist["source"].to_numpy().astype(np.int32),
         self.edgelist["target"].to_numpy().astype(np.int32),
         linkage,
-        undirected
+        undirected,
+        use_parallel=use_parallel
       )
 
       NH.fit_matrix(self.linkdist_matrix)
@@ -281,7 +303,7 @@ class Clustering:
       self.linknode_equivalence = NH.get_linknode_equivalence()
       self.linknode_equivalence = np.array(self.linknode_equivalence)
 
-    def node_community_hierarchy_edgelist(self, max_dist=1):
+    def node_community_hierarchy_edgelist(self, use_parallel=False, max_dist=1):
       if self.linkage == "single":
         linkage = 0
       else:
@@ -297,7 +319,8 @@ class Clustering:
         self.edgelist["source"].to_numpy().astype(np.int32),
         self.edgelist["target"].to_numpy().astype(np.int32),
         linkage,
-        undirected
+        undirected,
+        use_parallel=use_parallel
       )
 
       NH.fit_edgelist(self.linkdist_edgelist, max_dist)

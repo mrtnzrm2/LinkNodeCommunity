@@ -22,6 +22,8 @@ LinkSimilarity(edgelist, N, M, similarity_index="hellinger_similarity", undirect
   pearson_correlation, weighted_jaccard, jaccard_probability,
   tanimoto_coefficient}.
 - undirected (bool): Whether to treat the graph as undirected for similarity.
+- use_parallel (bool): Whether to use parallel computation.
+- flat_mode (bool): If True, maps zero feature vectors to similarity 0.
 
 Notes:
 ------
@@ -41,7 +43,7 @@ import linksim_cpp as linksim
 
 class LinkSimilarity:
   def __init__(
-    self, edgelist : pd.DataFrame, N, M, similarity_index="hellinger_similarity", undirected=True
+    self, edgelist : pd.DataFrame, N, M, similarity_index="hellinger_similarity", undirected=True, use_parallel=False, flat_mode=False
   ):
     # Parameters ----
     self.edgelist = edgelist
@@ -49,6 +51,8 @@ class LinkSimilarity:
     self.N = N # Nodes of the subgraph analyzed
     self.M = M # Edges of the subgraph analyzed
     self.undirected = undirected
+    self.use_parallel = use_parallel
+    self.flat_mode = flat_mode  # Map zero feature vectors to similarity 0 if True
 
     self.similarity_indices_map = {
       "tanimoto_coefficient" : 0,
@@ -64,7 +68,9 @@ class LinkSimilarity:
       self.edgelist.to_numpy().reshape(-1, 3),
       self.N,
       self.M,
-      self.similarity_indices_map[self.similarity_index]
+      self.similarity_indices_map[self.similarity_index],
+      self.use_parallel,
+      self.flat_mode
     )
 
     ls.fit_linksim_condense_matrix()
@@ -77,7 +83,9 @@ class LinkSimilarity:
       self.edgelist.to_numpy().reshape(-1, 3),
       self.N,
       self.M,
-      self.similarity_indices_map[self.similarity_index]
+      self.similarity_indices_map[self.similarity_index],
+      self.use_parallel,
+      self.flat_mode
     )
 
     ls.fit_linksim_edgelist()

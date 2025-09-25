@@ -9,7 +9,7 @@
  * This library computes link similarities for directed, weighted graphs using a variety of
  * node-similarity measures. It builds node similarity matrices from edge features and derives
  * link similarities either as a condensed upper‑triangular vector or as an edge‑pair list.
- * Multithreading is used to accelerate the computation.
+ * Multithreading can be toggled on when desirable to accelerate the computation.
  *
  * Main Components:
  * ----------------
@@ -28,6 +28,9 @@
  * - similarity_score (int): Node similarity metric selector:
  *     0 – Tanimoto, 1 – Cosine, 2 – Jaccard probability,
  *     3 – Hellinger, 4 – Pearson, 5 – Weighted Jaccard.
+ * - use_parallel (bool, default true): Enable multithreaded edge processing.
+ * - flat (bool, default false): Allow zero feature vectors; similarities return 0 instead of
+ *   throwing when at least one vector is all zeros.
  *
  * core Class Methods:
  * -------------------
@@ -46,10 +49,11 @@
  *
  * Usage:
  * ------
- * Construct core with (edgelist, N, M, similarity_score), then call fit_linksim_condense_matrix()
- * or fit_linksim_edgelist(), and finally query the results via the getters. The module is exposed
- * to Python through pybind11.
- */
+ * Construct core with (edgelist, N, M, similarity_score, use_parallel, flat), then call
+ * fit_linksim_condense_matrix() or fit_linksim_edgelist(), and finally query the results via the
+ * getters. Pass flat=true to map zero feature vectors to similarity 0. The module is exposed to
+ * Python through pybind11.
+*/
 
 #include <iostream>
 #include <vector>
@@ -104,13 +108,17 @@ class core {
     int number_of_nodes;
     int number_of_edges;
     int similarity_index;
+    bool use_parallel;
+    bool flat_mode;
 
     public:   
         core(
             const std::vector<std::vector<double> > edgelist,
             const int N,
             const int M,
-            const int similarity_score
+            const int similarity_score,
+            const bool enable_parallel = true,
+            const bool flat = false
         );
         ~core(){};
 
@@ -153,12 +161,16 @@ core::core(
 	const std::vector<std::vector<double>> edgelist,
 	const int N,
 	const int M,
-	const int similarity_score
+	const int similarity_score,
+	const bool enable_parallel,
+	const bool flat
 ){
     this->edgelist = edgelist;
 	number_of_nodes = N;
 	number_of_edges = M;
 	similarity_index= similarity_score;
+    use_parallel = enable_parallel;
+    flat_mode = flat;
 }
 
 std::vector<std::vector<double>> core::get_out_feature_matrix_from_edgelist() {
@@ -175,9 +187,8 @@ std::vector<std::vector<double>> core::get_out_feature_matrix_from_edgelist() {
     // Initialize S x T matrix with zeros
     std::vector<std::vector<double>> out_feature_matrix(S, std::vector<double>(T, 0.0));
 
-    // Parallelize filling the out_feature_matrix
-    int num_threads = std::thread::hardware_concurrency();
-    std::vector<std::thread> threads;
+    // Fill the out_feature_matrix; optionally parallelize when enabled
+    int num_threads = use_parallel ? std::max(1u, std::thread::hardware_concurrency()) : 1;
     int chunk_size = (edgelist.size() + num_threads - 1) / num_threads;
 
     auto fill_chunk = [&](int start, int end) {
@@ -193,13 +204,20 @@ std::vector<std::vector<double>> core::get_out_feature_matrix_from_edgelist() {
         }
     };
 
-    for (int t = 0; t < num_threads; ++t) {
-        int start = t * chunk_size;
-        int end = std::min(start + chunk_size, (int)edgelist.size());
-        threads.emplace_back(fill_chunk, start, end);
-    }
-    for (auto& thread : threads) {
-        thread.join();
+    if (use_parallel && num_threads > 1 && chunk_size > 0) {
+        std::vector<std::thread> threads;
+        threads.reserve(num_threads);
+        for (int t = 0; t < num_threads; ++t) {
+            int start = t * chunk_size;
+            int end = std::min(start + chunk_size, static_cast<int>(edgelist.size()));
+            if (start >= end) continue;
+            threads.emplace_back(fill_chunk, start, end);
+        }
+        for (auto& thread : threads) {
+            if (thread.joinable()) thread.join();
+        }
+    } else {
+        fill_chunk(0, static_cast<int>(edgelist.size()));
     }
 
     return out_feature_matrix;
@@ -219,9 +237,8 @@ std::vector<std::vector<double>> core::get_in_feature_matrix_from_edgelist() {
     // Initialize T x S matrix with zeros
     std::vector<std::vector<double>> in_feature_matrix(T, std::vector<double>(S, 0.0));
 
-    // Parallelize filling the in_feature_matrix
-    int num_threads = std::thread::hardware_concurrency();
-    std::vector<std::thread> threads;
+    // Fill the in_feature_matrix; optionally parallelize when enabled
+    int num_threads = use_parallel ? std::max(1u, std::thread::hardware_concurrency()) : 1;
     int chunk_size = (edgelist.size() + num_threads - 1) / num_threads;
 
     auto fill_chunk = [&](int start, int end) {
@@ -237,13 +254,20 @@ std::vector<std::vector<double>> core::get_in_feature_matrix_from_edgelist() {
         }
     };
 
-    for (int t = 0; t < num_threads; ++t) {
-        int start = t * chunk_size;
-        int end = std::min(start + chunk_size, (int)edgelist.size());
-        threads.emplace_back(fill_chunk, start, end);
-    }
-    for (auto& thread : threads) {
-        thread.join();
+    if (use_parallel && num_threads > 1 && chunk_size > 0) {
+        std::vector<std::thread> threads;
+        threads.reserve(num_threads);
+        for (int t = 0; t < num_threads; ++t) {
+            int start = t * chunk_size;
+            int end = std::min(start + chunk_size, static_cast<int>(edgelist.size()));
+            if (start >= end) continue;
+            threads.emplace_back(fill_chunk, start, end);
+        }
+        for (auto& thread : threads) {
+            if (thread.joinable()) thread.join();
+        }
+    } else {
+        fill_chunk(0, static_cast<int>(edgelist.size()));
     }
 
     return in_feature_matrix;
@@ -298,21 +322,23 @@ std::vector<std::vector<double>> core::calculate_nodesim_matrix(
         }
     };
 
-    // Determine the number of threads to use
-    int num_threads = std::thread::hardware_concurrency();
-    std::vector<std::thread> threads;
+    int num_threads = use_parallel ? std::max(1u, std::thread::hardware_concurrency()) : 1;
     int chunk_size = (number_of_nodes + num_threads - 1) / num_threads;
 
-    // Spawn threads
-    for (int t = 0; t < num_threads; ++t) {
-        int start = t * chunk_size;
-        int end = std::min(start + chunk_size, number_of_nodes);
-        threads.emplace_back(compute_row, start, end);
-    }
-
-    // Join threads
-    for (auto& thread : threads) {
-        thread.join();
+    if (use_parallel && num_threads > 1 && chunk_size > 0) {
+        std::vector<std::thread> threads;
+        threads.reserve(num_threads);
+        for (int t = 0; t < num_threads; ++t) {
+            int start = t * chunk_size;
+            int end = std::min(start + chunk_size, number_of_nodes);
+            if (start >= end) continue;
+            threads.emplace_back(compute_row, start, end);
+        }
+        for (auto& thread : threads) {
+            if (thread.joinable()) thread.join();
+        }
+    } else {
+        compute_row(0, number_of_nodes);
     }
 
     return node_sim_matrix;
@@ -363,19 +389,26 @@ std::vector<edge_struct> core::calculate_linksim_edgelist(
         }
     };
 
-    int num_threads = std::thread::hardware_concurrency();
+    int num_threads = use_parallel ? std::max(1u, std::thread::hardware_concurrency()) : 1;
     std::vector<std::thread> threads;
     int chunk_size = (number_of_edges + num_threads - 1) / num_threads;  // Divide edges into chunks
-    for (int t = 0; t < num_threads; ++t) {
-        int start = t * chunk_size;
-        int end = std::min(start + chunk_size, (int)sorted_edgelist.size());
-        threads.emplace_back(process_rows_step1, start, end);
-    }
 
-    for (auto& thread : threads) {
-        if (thread.joinable()) {
-            thread.join();
+    if (use_parallel && num_threads > 1 && chunk_size > 0) {
+        threads.reserve(num_threads);
+        for (int t = 0; t < num_threads; ++t) {
+            int start = t * chunk_size;
+            int end = std::min(start + chunk_size, static_cast<int>(sorted_edgelist.size()));
+            if (start >= end) continue;
+            threads.emplace_back(process_rows_step1, start, end);
         }
+
+        for (auto& thread : threads) {
+            if (thread.joinable()) {
+                thread.join();
+            }
+        }
+    } else {
+        process_rows_step1(0, static_cast<int>(sorted_edgelist.size()));
     }
 
     // Step 2: Initialize link similarity edge list
@@ -413,13 +446,19 @@ std::vector<edge_struct> core::calculate_linksim_edgelist(
 
     threads.clear();
     chunk_size = (edge_list.size() + num_threads - 1) / num_threads;
-    for (int t = 0; t < num_threads; ++t) {
-        int start = t * chunk_size;
-        int end = std::min(start + chunk_size, (int)edge_list.size());
-        threads.emplace_back(process_edges_step3, start, end);
-    }
-    for (auto& thread : threads) {
-        if (thread.joinable()) thread.join();
+    if (use_parallel && num_threads > 1 && chunk_size > 0) {
+        threads.reserve(num_threads);
+        for (int t = 0; t < num_threads; ++t) {
+            int start = t * chunk_size;
+            int end = std::min(start + chunk_size, static_cast<int>(edge_list.size()));
+            if (start >= end) continue;
+            threads.emplace_back(process_edges_step3, start, end);
+        }
+        for (auto& thread : threads) {
+            if (thread.joinable()) thread.join();
+        }
+    } else {
+        process_edges_step3(0, static_cast<int>(edge_list.size()));
     }
 
 	// Find the number of distinct elements in the first two columns (link1, link2)
@@ -475,19 +514,26 @@ std::vector<double> core::calculate_linksim_condense_matrix(
         }
     };
 
-    int num_threads = std::thread::hardware_concurrency();
+    int num_threads = use_parallel ? std::max(1u, std::thread::hardware_concurrency()) : 1;
     std::vector<std::thread> threads;
     int chunk_size = (number_of_edges + num_threads - 1) / num_threads;  // Divide edges into chunks
-    for (int t = 0; t < num_threads; ++t) {
-        int start = t * chunk_size;
-        int end = std::min(start + chunk_size, (int)sorted_edgelist.size());
-        threads.emplace_back(process_rows_step1, start, end);
-    }
 
-    for (auto& thread : threads) {
-        if (thread.joinable()) {
-            thread.join();
+    if (use_parallel && num_threads > 1 && chunk_size > 0) {
+        threads.reserve(num_threads);
+        for (int t = 0; t < num_threads; ++t) {
+            int start = t * chunk_size;
+            int end = std::min(start + chunk_size, static_cast<int>(sorted_edgelist.size()));
+            if (start >= end) continue;
+            threads.emplace_back(process_rows_step1, start, end);
         }
+
+        for (auto& thread : threads) {
+            if (thread.joinable()) {
+                thread.join();
+            }
+        }
+    } else {
+        process_rows_step1(0, static_cast<int>(sorted_edgelist.size()));
     }
 
     // Step 2: Initialize link similarity matrix
@@ -526,20 +572,24 @@ std::vector<double> core::calculate_linksim_condense_matrix(
         }
     };
 
-    // Launch threads for Step 3
     threads.clear();
     chunk_size = (edge_list.size() + num_threads - 1) / num_threads;  // Divide edges into chunks
-    for (int t = 0; t < num_threads; ++t) {
-        int start = t * chunk_size;
-        int end = std::min(start + chunk_size, (int)edge_list.size());
-        threads.emplace_back(process_edges_step3, start, end);
-    }
-
-    // Wait for all threads to complete
-    for (auto& thread : threads) {
-        if (thread.joinable()) {
-            thread.join();
+    if (use_parallel && num_threads > 1 && chunk_size > 0) {
+        threads.reserve(num_threads);
+        for (int t = 0; t < num_threads; ++t) {
+            int start = t * chunk_size;
+            int end = std::min(start + chunk_size, static_cast<int>(edge_list.size()));
+            if (start >= end) continue;
+            threads.emplace_back(process_edges_step3, start, end);
         }
+
+        for (auto& thread : threads) {
+            if (thread.joinable()) {
+                thread.join();
+            }
+        }
+    } else {
+        process_edges_step3(0, static_cast<int>(edge_list.size()));
     }
 
     return link_similarity_condense_matrix;
@@ -650,9 +700,15 @@ double core::tanimoto_coefficient_graph(
 		uv += u[ii] * v[jj]; 
 	}
 
-    if (uu <= 0 && vv <= 0 && uv <= 0) throw std::invalid_argument("One or both feature vectors have all zeros, which is not allowed.");
+    if (uu <= 0 && vv <= 0 && uv <= 0) {
+        if (flat_mode) return 0.0;
+        throw std::invalid_argument("One or both feature vectors have all zeros, which is not allowed.");
+    }
 
-	return uv / (uu + vv - uv);
+    double result = uv / (uu + vv - uv);
+    if (result < 0.0) result = 0.0;
+    if (result > 1.0) result = 1.0;
+    return result;
 }
 
 double core::cosine_similarity_graph(
@@ -673,9 +729,15 @@ double core::cosine_similarity_graph(
 		uv += u[ii] * v[jj]; 
 	}
 
-    if (uu <= 0 || vv <= 0) throw std::invalid_argument("One or both feature vectors have all zeros, which is not allowed.");
+    if (uu <= 0 || vv <= 0) {
+        if (flat_mode) return 0.0;
+        throw std::invalid_argument("One or both feature vectors have all zeros, which is not allowed.");
+    }
 
-	return uv / (sqrt(uu * vv));
+    double result = uv / (sqrt(uu * vv));
+    if (result < 0.0) result = 0.0;
+    if (result > 1.0) result = 1.0;
+    return result;
 }
 
 double core::pearson_correlation_graph(
@@ -706,9 +768,15 @@ double core::pearson_correlation_graph(
 	vv /= N;
 	uu -= pow(mu, 2);
 	vv -= pow(mv, 2);
-	if (uu <= 0 || vv <= 0) throw std::invalid_argument("One or both feature vectors have all zeros, which is not allowed.");
+    if (uu <= 0 || vv <= 0) {
+        if (flat_mode) return 0.0;
+        throw std::invalid_argument("One or both feature vectors have all zeros, which is not allowed.");
+    }
 
-	return (uv - mu * mv) / (sqrt( uu * vv));
+    double result = (uv - mu * mv) / (sqrt(uu * vv));
+    if (result < 0.0) result = 0.0;
+    if (result > 1.0) result = 1.0;
+    return result;
 }
 
 double core::weighted_jaccard_graph(
@@ -728,10 +796,16 @@ double core::weighted_jaccard_graph(
 	minimum += std::min(u[ii], v[jj]);
 	maximus += std::max(u[ii], v[jj]);
 
-	if (minimum == 0 && maximus == 0) throw std::invalid_argument("One or both feature vectors have all zeros, which is not allowed.");
+    if (minimum == 0 && maximus == 0) {
+        if (flat_mode) return 0.0;
+        throw std::invalid_argument("One or both feature vectors have all zeros, which is not allowed.");
+    }
 
 
-	return minimum / maximus;
+    double result = minimum / maximus;
+    if (result < 0.0) result = 0.0;
+    if (result > 1.0) result = 1.0;
+    return result;
 }
 
 double core::hellinger_similarity_graph(
@@ -750,7 +824,10 @@ double core::hellinger_similarity_graph(
         pv += fv[j];
     }
 
-    if (pu <= 0 || pv <= 0) throw std::invalid_argument("One or both feature vectors have all zeros, which is not allowed.");
+    if (pu <= 0 || pv <= 0) {
+        if (flat_mode) return 0.0;
+        throw std::invalid_argument("One or both feature vectors have all zeros, which is not allowed.");
+    }
 
     // Rearranged to handle iu and iv explicitly
     int k = 0;
@@ -774,7 +851,10 @@ double core::hellinger_similarity_graph(
         }
     }
 
-    if (maxp == -std::numeric_limits<double>::infinity()) throw std::invalid_argument("One or both feature vectors have all zeros, which is not allowed.");
+    if (maxp == -std::numeric_limits<double>::infinity()) {
+        if (flat_mode) return 0.0;
+        throw std::invalid_argument("One or both feature vectors have all zeros, which is not allowed.");
+    }
 
     for (int j = 0; j < N; ++j) {
         if (possible[j]) {
@@ -782,7 +862,10 @@ double core::hellinger_similarity_graph(
         }
     }
 
-    return s * exp(maxp);  // Approximation of the Bhattacharyya coefficient
+    double result = s * exp(maxp);  // Approximation of the Bhattacharyya coefficient
+    if (result < 0.0) result = 0.0;
+    if (result > 1.0) result = 1.0;
+    return result;
 }
 
 double core::jaccard_probability_graph(
@@ -824,11 +907,19 @@ PYBIND11_MODULE(linksim_cpp, m) {
     py::class_<core>(m, "core", py::module_local())
         .def(
             py::init<
-            const std::vector<std::vector<double>>,
-			const int,
-			const int,
-			const int
-          >()
+                const std::vector<std::vector<double>>,
+                const int,
+                const int,
+                const int,
+                const bool,
+                const bool
+            >(),
+            py::arg("edgelist"),
+            py::arg("N"),
+            py::arg("M"),
+            py::arg("similarity_score"),
+            py::arg("use_parallel") = true,
+            py::arg("flat") = false
         )
 		.def("fit_linksim_condense_matrix", &core::fit_linksim_condense_matrix)
         .def("get_linksim_condense_matrix", &core::get_linksim_condense_matrix)

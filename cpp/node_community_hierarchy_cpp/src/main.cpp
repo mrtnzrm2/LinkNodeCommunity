@@ -281,7 +281,7 @@ class NeighborNodes {
  * @param neighbors - NeighborNodes instance containing adjacency list and degrees.
  * @return Nodes that are part of at least one triad (3-clique).
  */
-std::vector<int> nodes_in_triads(const NeighborNodes& G) {
+std::vector<int> nodes_in_triads(const NeighborNodes& G, bool allow_parallel_execution) {
   // Helper: rank = (degree, node_id), ascending; ties broken by node_id.
   auto rank_of = [&](int x) -> std::pair<int,int> {
     auto it = G.degrees.find(x);
@@ -311,57 +311,88 @@ std::vector<int> nodes_in_triads(const NeighborNodes& G) {
     std::sort(out.begin(), out.end(), rank_less);
   }
 
-  // Parallelized version using OpenMP and thread-local sets
-int num_threads = 1;
+  // Parallel or serial execution depending on availability and flag
 #ifdef _OPENMP
-    num_threads = omp_get_max_threads();
+  int num_threads = (allow_parallel_execution ? std::max(1, omp_get_max_threads()) : 1);
+#else
+  (void)allow_parallel_execution;
+  int num_threads = 1;
 #endif
-std::vector<std::unordered_set<int>> thread_triangles(num_threads);
 
-// Collect keys for deterministic and thread-safe access
-std::vector<int> fwd_keys;
-fwd_keys.reserve(fwd.size());
-for (const auto& kv : fwd) {
-    fwd_keys.push_back(kv.first);
-}
+  std::vector<std::unordered_set<int>> thread_triangles(std::max(1, num_threads));
 
+  // Collect keys for deterministic and thread-safe access
+  std::vector<int> fwd_keys;
+  fwd_keys.reserve(fwd.size());
+  for (const auto& kv : fwd) {
+      fwd_keys.push_back(kv.first);
+  }
+
+#ifdef _OPENMP
+  if (allow_parallel_execution && num_threads > 1) {
 #pragma omp parallel
-{
-    #ifdef _OPENMP
+    {
         int tid = omp_get_thread_num();
-    #else
-        int tid = 0;
-    #endif
-    auto& local_set = thread_triangles[tid];
+        auto& local_set = thread_triangles[tid];
 
-    #pragma omp for schedule(static)
-    for (size_t idx = 0; idx < fwd_keys.size(); ++idx) {
-        int u = fwd_keys[idx];
-        const auto& Nu = fwd.at(u);
-        for (int v : Nu) {
-            const auto it = fwd.find(v);
-            if (it == fwd.end()) continue;
-            const auto& Nv = it->second;
+#pragma omp for schedule(static)
+        for (size_t idx = 0; idx < fwd_keys.size(); ++idx) {
+            int u = fwd_keys[idx];
+            const auto& Nu = fwd.at(u);
+            for (int v : Nu) {
+                const auto it = fwd.find(v);
+                if (it == fwd.end()) continue;
+                const auto& Nv = it->second;
 
-            std::size_t i = 0, j = 0;
-            while (i < Nu.size() && j < Nv.size()) {
-                int a = Nu[i];
-                int b = Nv[j];
-                if (a == v) { ++i; continue; }
-                if (b == u) { ++j; continue; }
-                if (a == b) {
-                    int w = a;
-                    local_set.insert(u);
-                    local_set.insert(v);
-                    local_set.insert(w);
-                    ++i; ++j;
+                std::size_t i = 0, j = 0;
+                while (i < Nu.size() && j < Nv.size()) {
+                    int a = Nu[i];
+                    int b = Nv[j];
+                    if (a == v) { ++i; continue; }
+                    if (b == u) { ++j; continue; }
+                    if (a == b) {
+                        int w = a;
+                        local_set.insert(u);
+                        local_set.insert(v);
+                        local_set.insert(w);
+                        ++i; ++j;
+                    }
+                    else if (rank_less(a, b)) {++i;}
+                    else {++j;}
                 }
-                else if (rank_less(a, b)) {++i;}
-                else {++j;}
             }
         }
     }
-}
+  } else
+#endif
+  {
+      auto& local_set = thread_triangles[0];
+      for (int u : fwd_keys) {
+          const auto& Nu = fwd.at(u);
+          for (int v : Nu) {
+              const auto it = fwd.find(v);
+              if (it == fwd.end()) continue;
+              const auto& Nv = it->second;
+
+              std::size_t i = 0, j = 0;
+              while (i < Nu.size() && j < Nv.size()) {
+                  int a = Nu[i];
+                  int b = Nv[j];
+                  if (a == v) { ++i; continue; }
+                  if (b == u) { ++j; continue; }
+                  if (a == b) {
+                      int w = a;
+                      local_set.insert(u);
+                      local_set.insert(v);
+                      local_set.insert(w);
+                      ++i; ++j;
+                  }
+                  else if (rank_less(a, b)) {++i;}
+                  else {++j;}
+              }
+          }
+      }
+  }
   // Merge thread-local sets
   std::unordered_set<int> in_triangle;
   for (const auto& s : thread_triangles) {
@@ -384,6 +415,8 @@ class core {
     // Graph type: 0 = directed (default/tested), 1 = undirected (experimental/slower)
     int undirected;
 
+    bool use_parallel;
+
     // Results
     std::vector<std::vector<double> > node_hierarchy; // Stores node merge events (dendrogram)
     std::vector<std::vector<int> > linknode_equivalence;       // Tracks equivalence classes at each step
@@ -396,7 +429,8 @@ class core {
       std::vector<int> source_nodes,
       std::vector<int> target_nodes,
       const int linkage,
-      const int undirected
+      const int undirected,
+      const bool enable_parallel = true
     ) {
       number_of_nodes = N;
       number_of_edges = M;
@@ -404,6 +438,7 @@ class core {
       this->target_nodes = target_nodes;
       this->linkage = linkage;
       this->undirected = undirected;
+      this->use_parallel = enable_parallel;
       this->node_hierarchy = std::vector<std::vector<double>>(number_of_nodes - 1, std::vector<double>(4, 0.));
     }
     ~core(){};
@@ -519,7 +554,7 @@ void core::fit_edgelist_undirected(std::vector<std::vector<double>> &distance_ed
         cluster_nodes_map[step+1] = merged_lcn;
 
         // --- Prepare node lists in triads ---
-        intersection_nodes = nodes_in_triads(merged_lcn);
+        intersection_nodes = nodes_in_triads(merged_lcn, use_parallel);
 
         // --- Merge node communities if intersection is non-trivial ---
         merge_node_communities(
@@ -649,7 +684,7 @@ void core::fit_matrix_undirected(std::vector<double> &condensed_distance_matrix)
         cluster_nodes_map[step+1] = merged_lcn;
 
         // --- Prepare node lists in triads ---
-        intersection_nodes = nodes_in_triads(merged_lcn);
+        intersection_nodes = nodes_in_triads(merged_lcn, use_parallel);
 
         // --- Merge node communities if intersection is non-trivial ---
         merge_node_communities(
@@ -1001,8 +1036,16 @@ PYBIND11_MODULE(node_community_hierarchy_cpp, m) {
             std::vector<int>,
             std::vector<int>,
             const int,
-            const int
-          >()
+            const int,
+            const bool
+          >(),
+          py::arg("N"),
+          py::arg("M"),
+          py::arg("source_nodes"),
+          py::arg("target_nodes"),
+          py::arg("linkage"),
+          py::arg("undirected"),
+          py::arg("use_parallel") = true
         )
         .def("fit_matrix", &core::fit_matrix)
         .def("fit_edgelist", &core::fit_edgelist)
