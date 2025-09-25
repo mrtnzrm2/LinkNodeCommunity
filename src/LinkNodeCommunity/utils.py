@@ -69,12 +69,6 @@ def generate_cmap_from_partition(partition : npt.ArrayLike, trivial="-1", cmap="
   cm = {u: to_hex(c) for u, c in zip(unique_labels, cm)}
   return cm
 
-def consecutive_differences(d : npt.ArrayLike) -> npt.ArrayLike:
-  """
-  Compute difference between consecutive elements of a 1D array.
-  """
-  return np.array([d[i+1] - d[i] for i in np.arange(d.shape[0]-1)])
-
 
 def pvalue2asterisks(pvalue):
   if  not np.isnan(pvalue): 
