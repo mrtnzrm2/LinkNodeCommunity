@@ -1,3 +1,41 @@
+"""
+src/LinkNodeCommunity/HSF.py
+
+Module: linknode
+Author: Jorge S. Martinez Armas
+
+Overview:
+---------
+Provides helpers to construct deterministic hierarchical scale-free (HSF)
+graphs from a seed adjacency matrix. Core workflow builds labeled edgelists
+across replicas, positions nodes with polar rotations, connects replica nodes
+back to a central hub, and derives adjacency matrices and community memberships
+for downstream analysis and visualization.
+
+Primary Class (HSF):
+--------------------
+HSF(matrix_seed, pos_seed, central_node, Replicas, L,
+    linear_separation_factor=1, exponential_separation_factor=2.5)
+- matrix_seed (np.ndarray): Base adjacency matrix used as the seed motif.
+- pos_seed (dict[str, np.ndarray]): Initial coordinates for seed nodes; updated
+  in place as replicas are generated.
+- central_node (str): Label of the hub node anchoring new replica edges.
+- Replicas (int): Number of replicas spawned per iteration.
+- L (int): Number of hierarchical levels to generate.
+- linear_separation_factor (float): Scales per-level radial distances linearly.
+- exponential_separation_factor (float): Exponent controlling radial growth
+  per level.
+  
+Notes:
+------
+- fit() builds the hierarchical edgelist by cloning and labeling replicas and
+  attaching them to the central node.
+- fit_matrix() reindexes labels to integers, updates stored positions, and
+  constructs a symmetric adjacency matrix for analysis.
+- Helper methods expose hierarchy-aware membership vectors and 2D layout
+  utilities for consistent plotting.
+"""
+
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
