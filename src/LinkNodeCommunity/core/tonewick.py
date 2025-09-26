@@ -101,7 +101,14 @@ class LinkageToNewick:
             return True
         else: return False
 
-    def zdict2pre_newick(self, tree : dict, root :str, key_pred : str, pre_newick : dict, branch_length=True) -> None:
+    def zdict2pre_newick(
+            self, 
+            tree : dict, 
+            root :str, 
+            key_pred : str, 
+            pre_newick : dict, 
+            branch_length=True
+        ) -> None:
         """Convert nested tree dict into a child-distance map for Newick rendering.
 
         Produces a mapping in `pre_newick`: parent_node -> {child_node: distance}.

@@ -222,17 +222,9 @@ std::vector<std::vector<double>> core::get_out_feature_matrix_from_edgelist() {
     int S = max_source + 1;
     int T = max_target + 1;
 
-    std::vector<std::vector<double>> out_feature_matrix;
+    int max_dim = std::max(S, T);
+    std::vector<std::vector<double>> out_feature_matrix(max_dim, std::vector<double>(max_dim, 0.0));
 
-    if (!undirected) {
-         // Initialize S x T matrix with zeros if directed graph
-        out_feature_matrix = std::vector<std::vector<double>>(S, std::vector<double>(T, 0.0));
-    } else {
-        int max_dim = std::max(S, T);
-        // Initialize max_dim x max_dim matrix with zeros if undirected graph
-        out_feature_matrix = std::vector<std::vector<double>>(max_dim, std::vector<double>(max_dim, 0.0));
-    }
-   
     // Fill the out_feature_matrix; optionally parallelize when enabled
     int num_threads = use_parallel ? std::max(1u, std::thread::hardware_concurrency()) : 1;
     int chunk_size = (edgelist.size() + num_threads - 1) / num_threads;
@@ -285,16 +277,8 @@ std::vector<std::vector<double>> core::get_in_feature_matrix_from_edgelist() {
     int S = max_source + 1;
     int T = max_target + 1;
 
-    std::vector<std::vector<double>> in_feature_matrix;
-
-    if (!undirected) {
-         // Initialize T x S matrix with zeros if directed graph
-        in_feature_matrix = std::vector<std::vector<double>>(T, std::vector<double>(S, 0.0));
-    } else {
-        int max_dim = std::max(S, T);
-        // Initialize max_dim x max_dim matrix with zeros if undirected graph
-        in_feature_matrix = std::vector<std::vector<double>>(max_dim, std::vector<double>(max_dim, 0.0));
-    }
+    int max_dim = std::max(S, T);
+    std::vector<std::vector<double>> in_feature_matrix(max_dim, std::vector<double>(max_dim, 0.0));
 
     // Fill the in_feature_matrix; optionally parallelize when enabled
     int num_threads = use_parallel ? std::max(1u, std::thread::hardware_concurrency()) : 1;

@@ -166,7 +166,7 @@ class Clustering:
       for node, label in labels.items():
           self.G.nodes[node]["label"] = label
 
-    def fit(self, use_parallel=False, flat_mode=False, method="matrix"):
+    def fit(self, use_parallel=False, flat_mode=False, method="matrix", max_dist=1.0):
       """
       Fit the clustering model by computing link similarities and distances.
 
@@ -187,9 +187,13 @@ class Clustering:
       if method == "matrix":
         self.fit_linksim_matrix(use_parallel=use_parallel, flat_mode=flat_mode)
         self.fit_linkdist_matrix()
+        self.link_stats = self.process_features_matrix()
+        self.node_community_hierarchy_matrix(use_parallel=use_parallel)
       elif method == "edgelist":
         self.fit_linksim_edgelist(use_parallel=use_parallel, flat_mode=flat_mode)
         self.fit_linkdist_edgelist()
+        self.link_stats = self.process_features_edgelist(max_dist=max_dist)
+        self.node_community_hierarchy_edgelist(use_parallel=use_parallel, max_dist=max_dist)
       else:
         raise ValueError("Unsupported method. Use 'matrix' or 'edgelist'.")
 
