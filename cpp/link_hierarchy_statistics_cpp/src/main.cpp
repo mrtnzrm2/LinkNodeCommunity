@@ -90,6 +90,8 @@ double Dc(int &m, int &n, bool &undirected) {
     dc = (m - n + 1.) / denom;
   }
   else {
+    if (n == 2 && m == 1) return 0; // Special case: two nodes, one edge
+    assert(n >= 3 && "Dc (undirected): n must be >= 3");
     double denom = ((n * (n - 1.) / 2.) - n + 1.);
     if (denom == 0.0) {
       throw std::runtime_error("Dc denominator zero (undirected); returning 0.");
@@ -250,7 +252,6 @@ void core::fit_edgelist(std::vector<std::vector<double>> &distance_edgelist, con
 
     // --- Prepare Clustering ---
     std::vector<edge_struct> edgelist = vecvec_to_edgelist(distance_edgelist);
-    // std::cout << "Debugging point 2" << std::endl;
 
     // Allocate clustering results
     int* merge = new int[2 * (number_of_edges - 1)];
@@ -271,6 +272,7 @@ void core::fit_edgelist(std::vector<std::vector<double>> &distance_edgelist, con
     tree_excess_sum = 0;
     for (int i = 0; i < number_of_edges; ++i) {
         LinkCommunityStats lcn;
+        
         lcn.node_members.insert(source_nodes[i]);
         lcn.node_members.insert(target_nodes[i]);
         if (source_nodes[i] != target_nodes[i]) {

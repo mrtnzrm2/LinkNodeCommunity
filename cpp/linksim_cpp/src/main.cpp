@@ -21,13 +21,14 @@
  *
  * core Class Parameters:
  * ----------------------
- * - edgelist (std::vector<std::vector<double>>): Each edge is [source, target, feature].
- *   Indices are 0‑based; the number of source and target nodes may differ.
  * - N (int): Number of nodes considered (size of node similarity matrices).
  * - M (int): Number of edges considered; used for condensed indexing (1..M).
+ * - edgelist (std::vector<std::vector<double>>): Each edge is [source, target, feature].
+ *   Indices are 0‑based; the number of source and target nodes may differ.
  * - similarity_score (int): Node similarity metric selector:
  *     0 – Tanimoto, 1 – Cosine, 2 – Jaccard probability,
  *     3 – Hellinger, 4 – Pearson, 5 – Weighted Jaccard.
+ * - undirected (bool, default false): Treat the graph as undirected (symmetric node similarities).
  * - use_parallel (bool, default true): Enable multithreaded edge processing.
  * - flat (bool, default false): Allow zero feature vectors; similarities return 0 instead of
  *   throwing when at least one vector is all zeros.
@@ -108,15 +109,17 @@ class core {
     int number_of_nodes;
     int number_of_edges;
     int similarity_index;
+    bool undirected;
     bool use_parallel;
     bool flat_mode;
 
     public:   
         core(
-            const std::vector<std::vector<double> > edgelist,
             const int N,
             const int M,
+            const std::vector<std::vector<double> > edgelist,
             const int similarity_score,
+            const bool undirected = false,
             const bool enable_parallel = true,
             const bool flat = false
         );
@@ -158,19 +161,54 @@ class core {
 };
 
 core::core(
-	const std::vector<std::vector<double>> edgelist,
 	const int N,
 	const int M,
+	const std::vector<std::vector<double>> edgelist,
 	const int similarity_score,
+    const bool undirected,
 	const bool enable_parallel,
 	const bool flat
 ){
-    this->edgelist = edgelist;
 	number_of_nodes = N;
 	number_of_edges = M;
-	similarity_index= similarity_score;
+    this->edgelist = edgelist;
+	similarity_index = similarity_score;
+    this->undirected = undirected;
     use_parallel = enable_parallel;
     flat_mode = flat;
+}
+
+void core::fit_linksim_condense_matrix() {
+    // Step 1: Compute feature matrices
+    std::vector<std::vector<double>> out_feature_matrix = get_out_feature_matrix_from_edgelist();
+    std::vector<std::vector<double>> in_feature_matrix = get_in_feature_matrix_from_edgelist();
+
+    // Step 2: Compute node similarity matrices
+    source_matrix = calculate_nodesim_matrix(out_feature_matrix);
+    target_matrix = calculate_nodesim_matrix(in_feature_matrix);
+
+    // Step 3: Compute link similarity condensed matrix
+    std::vector<std::vector<double>> sorted_edgelist = compute_sorted_edgelist();
+    linksim_condense_matrix = calculate_linksim_condense_matrix(sorted_edgelist);
+}
+
+void core::fit_linksim_edgelist() {
+    // Step 1: Compute feature matrices
+    // Out-feature matrix (size S x T)
+    std::vector<std::vector<double>> out_feature_matrix = get_out_feature_matrix_from_edgelist();
+    // In-feature matrix (size T x S)
+    std::vector<std::vector<double>> in_feature_matrix = get_in_feature_matrix_from_edgelist();
+
+    // Step 2: Compute node similarity matrices
+    // Source node similarity matrix (size N x N)
+	source_matrix = calculate_nodesim_matrix(out_feature_matrix);
+    // Target node similarity matrix (size N x N)
+	target_matrix = calculate_nodesim_matrix(in_feature_matrix);
+
+    // Step 3: Compute link similarity edge list
+    // sorted edgelist (size M x 4)
+    std::vector<std::vector<double>> sorted_edgelist = compute_sorted_edgelist();
+	linksim_edgelist = calculate_linksim_edgelist(sorted_edgelist);
 }
 
 std::vector<std::vector<double>> core::get_out_feature_matrix_from_edgelist() {
@@ -184,9 +222,17 @@ std::vector<std::vector<double>> core::get_out_feature_matrix_from_edgelist() {
     int S = max_source + 1;
     int T = max_target + 1;
 
-    // Initialize S x T matrix with zeros
-    std::vector<std::vector<double>> out_feature_matrix(S, std::vector<double>(T, 0.0));
+    std::vector<std::vector<double>> out_feature_matrix;
 
+    if (!undirected) {
+         // Initialize S x T matrix with zeros if directed graph
+        out_feature_matrix = std::vector<std::vector<double>>(S, std::vector<double>(T, 0.0));
+    } else {
+        int max_dim = std::max(S, T);
+        // Initialize max_dim x max_dim matrix with zeros if undirected graph
+        out_feature_matrix = std::vector<std::vector<double>>(max_dim, std::vector<double>(max_dim, 0.0));
+    }
+   
     // Fill the out_feature_matrix; optionally parallelize when enabled
     int num_threads = use_parallel ? std::max(1u, std::thread::hardware_concurrency()) : 1;
     int chunk_size = (edgelist.size() + num_threads - 1) / num_threads;
@@ -199,7 +245,12 @@ std::vector<std::vector<double>> core::get_out_feature_matrix_from_edgelist() {
             int target = static_cast<int>(edge[1]);
             double feature = edge[2];
             if (source >= 0 && source < S && target >= 0 && target < T) {
-                out_feature_matrix[source][target] = feature;
+                if (!undirected)
+                    out_feature_matrix[source][target] = feature;
+                else {
+                    out_feature_matrix[source][target] = feature;
+                    out_feature_matrix[target][source] = feature;
+                }
             }
         }
     };
@@ -234,8 +285,16 @@ std::vector<std::vector<double>> core::get_in_feature_matrix_from_edgelist() {
     int S = max_source + 1;
     int T = max_target + 1;
 
-    // Initialize T x S matrix with zeros
-    std::vector<std::vector<double>> in_feature_matrix(T, std::vector<double>(S, 0.0));
+    std::vector<std::vector<double>> in_feature_matrix;
+
+    if (!undirected) {
+         // Initialize T x S matrix with zeros if directed graph
+        in_feature_matrix = std::vector<std::vector<double>>(T, std::vector<double>(S, 0.0));
+    } else {
+        int max_dim = std::max(S, T);
+        // Initialize max_dim x max_dim matrix with zeros if undirected graph
+        in_feature_matrix = std::vector<std::vector<double>>(max_dim, std::vector<double>(max_dim, 0.0));
+    }
 
     // Fill the in_feature_matrix; optionally parallelize when enabled
     int num_threads = use_parallel ? std::max(1u, std::thread::hardware_concurrency()) : 1;
@@ -249,7 +308,12 @@ std::vector<std::vector<double>> core::get_in_feature_matrix_from_edgelist() {
             int target = static_cast<int>(edge[1]);
             double feature = edge[2];
             if (source >= 0 && source < S && target >= 0 && target < T) {
-                in_feature_matrix[target][source] = feature;
+                if (!undirected)
+                    in_feature_matrix[target][source] = feature;
+                else {
+                    in_feature_matrix[source][target] = feature;
+                    in_feature_matrix[target][source] = feature;
+                }
             }
         }
     };
@@ -304,6 +368,7 @@ std::vector<std::vector<double>> core::compute_sorted_edgelist() {
         if (sorted_edgelist[i].size() < 2) continue; // skip malformed edges
         sorted_edgelist[i].push_back(static_cast<double>(i + 1));
     }
+    
     return sorted_edgelist;
 }
 
@@ -380,11 +445,21 @@ std::vector<edge_struct> core::calculate_linksim_edgelist(
                 std::lock_guard<std::mutex> lock(out_neighbors_mutex);
                 out_neighbors[source].neighbors.push_back(target);
                 out_neighbors[source].edge_indices.push_back(edge_index);
+
+                if (undirected) {
+                    out_neighbors[target].neighbors.push_back(source);
+                    out_neighbors[target].edge_indices.push_back(edge_index);
+                }
             }
             {
                 std::lock_guard<std::mutex> lock(in_neighbors_mutex);
                 in_neighbors[target].neighbors.push_back(source);
                 in_neighbors[target].edge_indices.push_back(edge_index);
+
+                if (undirected) {
+                    in_neighbors[source].neighbors.push_back(target);
+                    in_neighbors[source].edge_indices.push_back(edge_index);
+                }
             }
         }
     };
@@ -432,6 +507,7 @@ std::vector<edge_struct> core::calculate_linksim_edgelist(
                 std::lock_guard<std::mutex> lock(edgelist_mutex);
                 link_similarity_edgelist.emplace_back(row_id, col_id, sim);
             }
+
             // In-neighbors (same column)
             for (size_t k = 0; k < in_neighbors[target].neighbors.size(); ++k) {
                 int neighbor = in_neighbors[target].neighbors[k];
@@ -505,11 +581,21 @@ std::vector<double> core::calculate_linksim_condense_matrix(
                 std::lock_guard<std::mutex> lock(out_neighbors_mutex);
                 out_neighbors[source].neighbors.push_back(target);
                 out_neighbors[source].edge_indices.push_back(edge_index);
+
+                if (undirected) {
+                    out_neighbors[target].neighbors.push_back(source);
+                    out_neighbors[target].edge_indices.push_back(edge_index);
+                }
             }
             {
-                std::lock_guard<std::mutex> lock(in_neighbors_mutex);
+                 std::lock_guard<std::mutex> lock(in_neighbors_mutex);
                 in_neighbors[target].neighbors.push_back(source);
                 in_neighbors[target].edge_indices.push_back(edge_index);
+
+                if (undirected) {
+                    in_neighbors[source].neighbors.push_back(target);
+                    in_neighbors[source].edge_indices.push_back(edge_index);
+                }
             }
         }
     };
@@ -593,44 +679,6 @@ std::vector<double> core::calculate_linksim_condense_matrix(
     }
 
     return link_similarity_condense_matrix;
-}
-
-void core::fit_linksim_condense_matrix() {
-    // Step 1: Compute feature matrices
-    // Out-feature matrix (size S x T)
-    std::vector<std::vector<double>> out_feature_matrix = get_out_feature_matrix_from_edgelist();
-    // In-feature matrix (size T x S)
-    std::vector<std::vector<double>> in_feature_matrix = get_in_feature_matrix_from_edgelist();
-
-    // Step 2: Compute node similarity matrices
-    // Source node similarity matrix (size N x N)
-	source_matrix = calculate_nodesim_matrix(out_feature_matrix);
-    // Target node similarity matrix (size N x N)
-	target_matrix = calculate_nodesim_matrix(in_feature_matrix);
-
-    // Step 3: Compute link similarity condensed matrix
-    // sorted edgelist (size M x 4)
-    std::vector<std::vector<double>> sorted_edgelist = compute_sorted_edgelist();
-	linksim_condense_matrix = calculate_linksim_condense_matrix(sorted_edgelist);
-}
-
-void core::fit_linksim_edgelist() {
-    // Step 1: Compute feature matrices
-    // Out-feature matrix (size S x T)
-    std::vector<std::vector<double>> out_feature_matrix = get_out_feature_matrix_from_edgelist();
-    // In-feature matrix (size T x S)
-    std::vector<std::vector<double>> in_feature_matrix = get_in_feature_matrix_from_edgelist();
-
-    // Step 2: Compute node similarity matrices
-    // Source node similarity matrix (size N x N)
-	source_matrix = calculate_nodesim_matrix(out_feature_matrix);
-    // Target node similarity matrix (size N x N)
-	target_matrix = calculate_nodesim_matrix(in_feature_matrix);
-
-    // Step 3: Compute link similarity edge list
-    // sorted edgelist (size M x 4)
-    std::vector<std::vector<double>> sorted_edgelist = compute_sorted_edgelist();
-	linksim_edgelist = calculate_linksim_edgelist(sorted_edgelist);
 }
 
 std::vector<double> core::get_linksim_condense_matrix() {
@@ -907,17 +955,19 @@ PYBIND11_MODULE(linksim_cpp, m) {
     py::class_<core>(m, "core", py::module_local())
         .def(
             py::init<
+                const int,
+                const int,
                 const std::vector<std::vector<double>>,
                 const int,
-                const int,
-                const int,
+                const bool,
                 const bool,
                 const bool
             >(),
-            py::arg("edgelist"),
             py::arg("N"),
             py::arg("M"),
+            py::arg("edgelist"),
             py::arg("similarity_score"),
+            py::arg("undirected") = false,
             py::arg("use_parallel") = true,
             py::arg("flat") = false
         )

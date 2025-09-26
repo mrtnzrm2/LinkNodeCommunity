@@ -129,7 +129,6 @@ class Clustering:
       else:
         self.undirected = True
 
-
       if consider_subgraph:
         # Get intersection of source and target nodes
         sources = set(u for u, _, _ in self.G.edges(data=True))
@@ -155,7 +154,7 @@ class Clustering:
 
       # Get edge list with source, target, and weight as a pandas DataFrame
       # from the whole network to have better estimates of similarities
-      self.edgelist = edgelist_from_graph(self.G)
+      self.edgelist = edgelist_from_graph(self.G, sort=True)
 
     def add_labels(self, labels: dict):
       """
@@ -166,6 +165,33 @@ class Clustering:
       """
       for node, label in labels.items():
           self.G.nodes[node]["label"] = label
+
+    def fit(self, use_parallel=False, flat_mode=False, method="matrix"):
+      """
+      Fit the clustering model by computing link similarities and distances.
+
+      Parameters
+      ----------
+      use_parallel : bool, optional
+        Whether to use parallel computation for similarity calculations. Default is False.
+      flat_mode : bool, optional
+        If True, maps zero feature vectors to similarity 0. Default is False.
+      method : str, optional
+        Method to compute similarities: "matrix" for condensed matrix, "edgelist" for edge list. Default is "matrix".
+
+      Raises
+      ------
+      ValueError
+        If an unsupported method is provided.
+      """
+      if method == "matrix":
+        self.fit_linksim_matrix(use_parallel=use_parallel, flat_mode=flat_mode)
+        self.fit_linkdist_matrix()
+      elif method == "edgelist":
+        self.fit_linksim_edgelist(use_parallel=use_parallel, flat_mode=flat_mode)
+        self.fit_linkdist_edgelist()
+      else:
+        raise ValueError("Unsupported method. Use 'matrix' or 'edgelist'.")
 
     def fit_linksim_matrix(self, use_parallel=False, flat_mode=False):
       self.linksim = LinkSimilarity(
@@ -184,6 +210,19 @@ class Clustering:
       )
       self.linksim.similarity_linksim_edgelist()
       self.linksim_edgelist = np.array(self.linksim.linksim_edgelist)
+    
+    def fit_linkdist_matrix(self):
+      if self.linksim_condense_matrix is None:
+        raise ValueError("linksim_condense_matrix is not set. Run fit_linksim_matrix() first.")
+      
+      self.linkdist_matrix = 1 - self.linksim_condense_matrix
+    
+    def fit_linkdist_edgelist(self):
+      if self.linksim_edgelist is None:
+        raise ValueError("linksim_edgelist is not set. Run fit_linksim_edgelist() first.")
+      
+      self.linkdist_edgelist = np.array(self.linksim_edgelist)
+      self.linkdist_edgelist[:, 2] = 1 - self.linkdist_edgelist[:, 2]
 
     def delete_linksim_matrix(self):
       self.linksim_matrix = None
@@ -205,11 +244,21 @@ class Clustering:
       return np.array(utils_cpp.mst_edges_to_linkage(self.M, self.linkdist_edgelist, max_dist))
 
     def compute_features_matrix(self, linkage : int):
+      if self.edgelist.shape[0] > 1:
+        sources = self.edgelist["source"].to_numpy()
+        targets = self.edgelist["target"].to_numpy()
+        lex_order = np.lexsort((targets, sources))
+        if not np.array_equal(lex_order, np.arange(lex_order.size)):
+          raise AssertionError(
+            "edgelist is not sorted by 'source' and then 'target'. Sort it before computing features."
+          )
+
+
       features = link_stats.core(
         self.N,
         self.M,
-        self.edgelist["source"].to_numpy()[:self.M],
-        self.edgelist["target"].to_numpy()[:self.M],
+        self.edgelist["source"].to_numpy().astype(np.int32)[:self.M],
+        self.edgelist["target"].to_numpy().astype(np.int32)[:self.M],
         linkage,
         self.undirected
       )
@@ -225,6 +274,29 @@ class Clustering:
       return result
 
     def compute_features_edgelist(self, linkage : int, max_dist=1):
+      if self.linkdist_edgelist is None:
+        raise ValueError("linkdist_edgelist is not set. Run fit_linksim_edgelist() and build the distance column first.")
+
+      if self.linkdist_edgelist.ndim != 2 or self.linkdist_edgelist.shape[1] != 3:
+        raise ValueError("linkdist_edgelist must be a (n_edges, 3) array [edge_i, edge_j, distance].")
+
+      if self.linksim_edgelist is not None:
+        link_indices = self.linkdist_edgelist[:, :2]
+        expected_indices = self.linksim_edgelist[:, :2]
+        if not np.array_equal(link_indices, expected_indices):
+          raise AssertionError(
+            "linkdist_edgelist first two columns differ from linksim_edgelist. Did you modify edge indices when converting to distances?"
+          )
+
+      if self.edgelist.shape[0] > 1:
+        sources = self.edgelist["source"].to_numpy()
+        targets = self.edgelist["target"].to_numpy()
+        lex_order = np.lexsort((targets, sources))
+        if not np.array_equal(lex_order, np.arange(lex_order.size)):
+          raise AssertionError(
+            "edgelist is not sorted by 'source' and then 'target'. Sort it before computing features."
+          )
+
       features = link_stats.core(
         self.N,
         self.M,
@@ -282,6 +354,15 @@ class Clustering:
       else:
         raise ValueError("Link community model has not been tested with the input linkage.")
 
+      if self.edgelist.shape[0] > 1:
+        sources = self.edgelist["source"].to_numpy()
+        targets = self.edgelist["target"].to_numpy()
+        lex_order = np.lexsort((targets, sources))
+        if not np.array_equal(lex_order, np.arange(lex_order.size)):
+          raise AssertionError(
+            "edgelist is not sorted by 'source' and then 'target'. Sort it before computing features."
+          )
+
       if isinstance(self.undirected, bool):
         if self.undirected: undirected = 1
         else: undirected = 0
@@ -308,6 +389,23 @@ class Clustering:
         linkage = 0
       else:
         raise ValueError("Link community model has not been tested with the input linkage.")
+      
+      if self.linksim_edgelist is not None:
+        link_indices = self.linkdist_edgelist[:, :2]
+        expected_indices = self.linksim_edgelist[:, :2]
+        if not np.array_equal(link_indices, expected_indices):
+          raise AssertionError(
+            "linkdist_edgelist first two columns differ from linksim_edgelist. Did you modify edge indices when converting to distances?"
+          )
+      
+      if self.edgelist.shape[0] > 1:
+        sources = self.edgelist["source"].to_numpy()
+        targets = self.edgelist["target"].to_numpy()
+        lex_order = np.lexsort((targets, sources))
+        if not np.array_equal(lex_order, np.arange(lex_order.size)):
+          raise AssertionError(
+            "edgelist is not sorted by 'source' and then 'target'. Sort it before computing features."
+          )
 
       if isinstance(self.undirected, bool):
         if self.undirected: undirected = 1

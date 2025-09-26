@@ -14,9 +14,25 @@ def graph_network_covers(
       node_partition : npt.ArrayLike,
       single_node_cover_map : dict,
       single_nodes_cover_scores : dict,
-      labels : npt.ArrayLike,
-      ang=0, palette="hls", figsize=(12,12), scale=1.5, arrowsize=20, 
-      color_order=None, font_size=12, stroke_linewidth=2, hide_labels=False,
+      labels : npt.ArrayLike | None = None,
+      ang=0,
+      scale=1.5,
+      palette="hls",
+      pie_radius=0.045,
+      pie_alpha=0.97,
+      single_node_color="#888888",
+      wedgewidth : float | None = None,
+      edge_color="#888888",
+      alpha_line=1,
+      edge_linewidth=1,
+      connectionstyle="arc3,rad=-0.12",
+      arrowstyle="<|-",
+      arrowsize=20, 
+      draw_arrows: bool | None = None,
+      font_size=12,
+      stroke_linewidth=2,
+      color_order=None,
+      hide_labels=False,
       ax: Axes | None = None, **kwargs
     ):
     """
@@ -36,26 +52,38 @@ def graph_network_covers(
         Maps single nodes to their cover nodes.
     single_nodes_cover_scores : dict
         Stores scores for single node covers.
-    labels : npt.ArrayLike
-        Node labels for visualization.
+   labels : npt.ArrayLike | None, optional
+        Labels for nodes. If None, uses default integer labels. Default is None.
     ang : float, optional
         Angle for pie chart slices. Default is 0.
-    palette : str, optional
-        Colormap name for node colors. Default is "hls".
-    figsize : tuple, optional
-        Figure size for the plot. Default is (12, 12).
     scale : float, optional
         Scale factor for node sizes. Default is 1.5.
+    palette : str, optional
+        Colormap name for node colors. Default is "hls".
+    pie_radius : float, optional
+        Radius of the pie charts. Default is 0.045.
+    pie_alpha : float, optional
+        Transparency level of the pie charts. Default is 0.97.
+    wedgewidth : float | None, optional
+        Width of the wedges in the pie charts. Default is None.
+    edge_color : str, optional
+        Color of the edges in the plot. Default is "#000000".
+    alpha_line : float, optional
+        Transparency level of the edges. Default is 0.25.
+    connectionstyle : str, optional
+        Style for connections between nodes. Default is "arc3,rad=-0.12".
+    arrowstyle : str, optional
+        Style for arrows in the plot. Default is "<|-".
     arrowsize : float, optional
         Size of arrowheads in the plot. Default is 20.
-    color_order : np.ndarray | None, optional
-        Custom color order for nodes. Default is None.
-    undirected : bool, optional
-        Whether the graph is undirected. Default is False.
+    draw_arrows : bool | None, optional
+        If None, arrowheads are drawn when the graph is directed; set True or False to override.
     font_size : int, optional
         Font size for node labels. Default is 12.
     stroke_linewidth : int, optional
         Line width for text stroke effect. Default is 2.
+    color_order : np.ndarray | None, optional
+        Custom color order for nodes. Default is None.
     hide_labels : bool, optional
         Whether to show labels on nodes. Default is False.
     ax : matplotlib.axes.Axes | None, optional
@@ -65,19 +93,27 @@ def graph_network_covers(
     """
     import matplotlib.patheffects as path_effects
 
+    from src.LinkNodeCommunity.utils import hex_to_rgb
+
+    if labels is None:
+        labels = np.arange(G.number_of_nodes())
+    else:
+        assert len(labels) == G.number_of_nodes(), f"labels must have {G.number_of_nodes()} elements, got {len(labels)}"
+        labels = np.asarray(labels)
+
     N = G.number_of_nodes()
 
     unique_clusters_id = np.unique(node_cover_partition)
     has_noise = -1 in unique_clusters_id.astype(int)
-    keff = len(unique_clusters_id)
+    number_non_single_communities = len(unique_clusters_id)
 
     # Generate color palette
-    cmap = sns.color_palette(palette, keff)
+    cmap = sns.color_palette(palette, number_non_single_communities)
     if has_noise:
         # First color is white for noise/outliers
-        cmap_heatmap = np.vstack([[1., 1., 1.], cmap])
+        cmap_heatmap = np.vstack([hex_to_rgb(single_node_color), cmap])
     else:
-        cmap_heatmap = np.vstack([[1., 1., 1.], cmap])
+        cmap_heatmap = np.vstack([hex_to_rgb(single_node_color), cmap])
 
     # Reorder colors if color_order is provided
     if isinstance(color_order, np.ndarray):
@@ -87,12 +123,12 @@ def graph_network_covers(
     # Assign memberships to nodes for pie chart representation
     if has_noise:
         nodes_memberships = {
-            k: {"id": [0] * keff, "size": [0] * keff}
+            k: {"id": [0] * number_non_single_communities, "size": [0] * number_non_single_communities}
             for k in range(N)
         }
     else:
         nodes_memberships = {
-            k: {"id": [0] * (keff + 1), "size": [0] * (keff + 1)}
+            k: {"id": [0] * (number_non_single_communities + 1), "size": [0] * (number_non_single_communities + 1)}
             for k in range(N)
         }
 
@@ -140,48 +176,58 @@ def graph_network_covers(
             i = np.where(labels == key)[0][0]
             pos[i] += kwargs["label_offsets"][key]
 
-    plt.figure(figsize=figsize)
-
-    if ax is not None:
-        plt.sca(ax)
-    else:
+    if ax is None:
         ax = plt.gca()
 
     # Draw edges with improved aesthetics
+    draw_arrows_flag = draw_arrows
+    if draw_arrows_flag is None:
+        draw_arrows_flag = kwargs.get("arrows")
+    if draw_arrows_flag is None:
+        draw_arrows_flag = G.is_directed()
+
     if not kwargs.get("hide_edges", False):
-        nx.draw_networkx_edges(
-            G, pos=pos,
-            edge_color="#888888",
-            alpha=0.25, width=2.5, arrowsize=arrowsize,
-            connectionstyle="arc3,rad=-0.12",
-            node_size=1800, arrowstyle="<|-",
+        edge_kwargs = dict(
+            pos=pos,
+            edge_color=edge_color,
+            alpha=alpha_line,
+            width=edge_linewidth,
+            node_size=1800,
+            arrows=draw_arrows_flag,
             ax=ax
         )
+        if draw_arrows_flag:
+            edge_kwargs.update({
+                "arrowsize": arrowsize,
+                "connectionstyle": connectionstyle,
+                "arrowstyle": arrowstyle
+            })
+        nx.draw_networkx_edges(G, **edge_kwargs)
 
     # Draw pie-chart nodes with subtle shadow and border, using ax if provided
     for node in G.nodes():
         if node_partition[int(node)] == -1:
             wedgecolor = "#222222"
-            wedgewidth = 4
+            wedgewidth = 4 if wedgewidth is None else wedgewidth
         else:
             wedgecolor = "#bbbbbb"
-            wedgewidth = 2
+            wedgewidth = 2 if wedgewidth is None else wedgewidth
         sizes = [s for s in nodes_memberships[int(node)]["size"] if s != 0]
         colors = [cmap_heatmap[i] for i, id in enumerate(nodes_memberships[int(node)]["id"]) if id != 0]
         wedges, _ = ax.pie(
             sizes,
             center=pos[int(node)],
             colors=colors,
-            radius=0.045,
+            radius=pie_radius,
             wedgeprops={
                 "linewidth": wedgewidth,
                 "edgecolor": wedgecolor,
-                "alpha": 0.97,
+                "alpha": pie_alpha,
                 "antialiased": True
             }
         )
         for w in wedges:
-            w.set_alpha(0.97)
+            w.set_alpha(pie_alpha)
             w.set_path_effects([
                 path_effects.SimpleLineShadow(offset=(1, -1), alpha=0.15),
                 path_effects.Normal()
@@ -211,9 +257,9 @@ def graph_network_covers(
     # Adjust plot limits and layout for better framing
     array_pos = np.array([list(pos[v]) for v in pos.keys()])
     pad = 0.08 * np.ptp(array_pos, axis=0).max()
-    ax.set_xlim(np.min(array_pos[:, 0]) - pad, np.max(array_pos[:, 0]) + pad)
-    ax.set_ylim(np.min(array_pos[:, 1]) - pad, np.max(array_pos[:, 1]) + pad)
-    ax.axis("off")
+    _ = ax.set_xlim(np.min(array_pos[:, 0]) - pad, np.max(array_pos[:, 0]) + pad)
+    _ = ax.set_ylim(np.min(array_pos[:, 1]) - pad, np.max(array_pos[:, 1]) + pad)
+    _ = ax.axis("off")
     plt.gcf().tight_layout()
 
 
@@ -223,12 +269,13 @@ def linkcommunity_matrix_map(
     Z: npt.NDArray,
     K: int,
     R: int,
-    labels: npt.ArrayLike,
-    colors: npt.ArrayLike,
     palette="hls",
+    labels: npt.ArrayLike | None = None,
+    colors: npt.ArrayLike | None = None,
     remove_labels=False,
     linewidth=1.5,
     font_color=None,
+    cbar_position=[1.01, 0.15, 0.02, 0.7],      # [left, bottom, width, height]
     undirected=False,
     ax: Axes | None = None,
     **kwargs
@@ -250,12 +297,12 @@ def linkcommunity_matrix_map(
         Number of link communities.
     R : int
         Number of node communities.
-    labels : array-like
-        Node labels.
-    colors : array-like
-        Colors for node labels.
     palette : str, optional
         Seaborn color palette for link communities. Default is "hls".
+    labels : array-like or None, optional
+        Labels for nodes. If None, uses default integer labels. Default is None.
+    colors : array-like or None, optional
+        Colors for node labels. If None, defaults to black. Default is None.
     remove_labels : bool, optional
         If True, hides axis labels. Default is False.
     linewidth : float, optional
@@ -289,9 +336,11 @@ def linkcommunity_matrix_map(
         edgelist["id"] = fast_cut_tree(H, n_clusters=K)
     else:
         edgelist["id"] = np.tile(fast_cut_tree(H, n_clusters=K), 2)
-
-    edgelist["source_label"] = labels[edgelist["source"].astype(int)]
-    edgelist["target_label"] = labels[edgelist["target"].astype(int)]
+    
+    if labels is not None:
+        assert len(labels) == G.number_of_nodes(), f"labels must have {G.number_of_nodes()} elements, got {len(labels)}"
+        edgelist["source_label"] = labels[edgelist["source"].astype(int)]
+        edgelist["target_label"] = labels[edgelist["target"].astype(int)]
 
     linkcommunity_collapsed_partition(edgelist, undirected)
     linkcommunity_linear_partition(edgelist, offset=1)
@@ -317,8 +366,13 @@ def linkcommunity_matrix_map(
     A[A == 0] = np.nan
     A[A > 0] = A[A > 0] - 1
 
-    labels_copy = labels.copy()[den_order]
-    colors_copy = np.array(colors)[den_order]
+    if labels is not None:
+        labels_copy = labels.copy()[den_order]
+
+    if colors is None:
+        colors_copy = np.array(["#000000"] * G.number_of_nodes())
+    else:
+        colors_copy = np.array(colors)[den_order]
 
     # Create figure and axes
 
@@ -332,7 +386,7 @@ def linkcommunity_matrix_map(
     else:
         fig = ax.figure
 
-    cbar_ax = fig.add_axes([1.01, 0.15, 0.02, 0.7])  # [left, bottom, width, height]
+    cbar_ax = fig.add_axes(cbar_position)
 
     # Prepare color palette for link communities
     if -1 in A:
@@ -402,6 +456,10 @@ def linkcommunity_matrix_map(
             xticklabels=False,
             yticklabels=False,
             ax=ax,
+            linecolor="gray",
+            linewidths=0.5,
+            cbar_ax=cbar_ax,
+            cbar_kws={"label": "Link Community Membership"},
             square=True,
         )
 
@@ -419,3 +477,140 @@ def linkcommunity_matrix_map(
             colors="black",
             zorder=10,
         )
+
+
+def link_statistics_graph(
+    link_stats: pd.DataFrame,
+    x="height",
+    y="S",
+    xlabel=None,
+    ylabel=None,
+    testxoffset=0.1,
+    textyoffset=0.1,
+    color="tab:blue",
+    ax : Axes | None = None,
+):
+    own_axes = ax is None
+    if own_axes:
+        fig, ax = plt.subplots()
+
+    sns.lineplot(data=link_stats, x=x, y=y, color=color, ax=ax)
+
+    ax.set_xlabel(xlabel if xlabel else x)
+    ax.set_ylabel(ylabel if ylabel else y)
+    ax.set_title(f'{y} vs {x}')
+    ax.minorticks_on()
+    sns.despine(ax=ax)
+
+    # Highlight max y value
+    max_idx = link_stats[y].idxmax()
+    max_x = link_stats.loc[max_idx, x]
+    max_y = link_stats.loc[max_idx, y]
+    ax.axvline(max_x, color='gray', linestyle='--', lw=1)
+    ax.text(
+        max_x + testxoffset, max_y - textyoffset,
+        f'Max {y}\n{x}={max_x:.3f}',
+        color='gray',
+        ha='left', va='bottom',
+        fontsize=9,
+        bbox=dict(facecolor='white', edgecolor='none', alpha=0.7)
+    )
+
+    if own_axes:
+        ax.figure.tight_layout()
+        plt.show()
+
+def dendrogram(
+    Z: npt.NDArray,
+    R: int,
+    labels: npt.ArrayLike | None = None,
+    ylabel: str = "Height",
+    palette: str = "hls",
+    leaf_font_size: int = 20,
+    remove_labels: bool = False,
+    ax: Axes | None = None,
+    **kwargs
+):
+    """
+    Plot a hierarchical clustering dendrogram with colored branches for each cluster.
+
+    Branches above the height corresponding to the required number of communities (R)
+    are plotted in gray. Leaf labels are colored according to cluster membership.
+
+    Parameters
+    ----------
+    Z : np.ndarray
+        Linkage matrix from hierarchical clustering.
+    R : int
+        Number of clusters to cut the dendrogram at.
+    labels : array-like or None, optional
+        Labels for the leaves (nodes). If None, uses default integer labels.
+    ylabel : str, optional
+        Label for the y-axis. Default is "Height".
+    palette : str, optional
+        Seaborn color palette for cluster colors. Default is "hls".
+    leaf_font_size : int, optional
+        Font size for leaf labels. Default is 20.
+    remove_labels : bool, optional
+        If True, hides leaf labels. Default is False.
+    ax : matplotlib.axes.Axes or None, optional
+        Axes to plot on. If None, uses current axes.
+    **kwargs
+        Additional keyword arguments for scipy dendrogram.
+    """
+    from src.LinkNodeCommunity.utils import fast_cut_tree, linear_partition, collapsed_partition
+    from scipy.cluster.hierarchy import dendrogram as scipy_dendrogram
+    from matplotlib.colors import to_hex
+
+    sns.set_style("ticks")
+
+    N = Z.shape[0] + 1
+
+    if ax is None:
+        ax = plt.gca()
+    if labels is None:
+        labels = np.arange(Z.shape[0] + 1).astype(str)
+    else:
+        assert len(labels) == N, f"labels must have {N} elements, got {len(labels)}"
+
+    # Compute partition and assign cluster colors
+    partition = fast_cut_tree(Z, n_clusters=R)
+    new_partition = collapsed_partition(partition)
+    new_partition = linear_partition(partition)
+    unique_clusters_id = np.unique(new_partition)
+    cmap = sns.color_palette(palette, len(unique_clusters_id))
+    gray_col = "#808080"
+
+    # Assign colors to leaves based on cluster membership
+    D_leaf_colors = {}
+    for i, _ in enumerate(labels):
+        if new_partition[i] != -1:
+            D_leaf_colors[i] = to_hex(cmap[new_partition[i]])
+        else:
+            D_leaf_colors[i] = gray_col
+
+    # Assign colors to branches: gray if above threshold, else cluster color
+    link_cols = {}
+    for i, i12 in enumerate(Z[:, :2].astype(int)):
+        c1, c2 = (link_cols[x] if x > len(Z) else D_leaf_colors[x] for x in i12)
+        link_cols[i + 1 + len(Z)] = c1 if c1 == c2 else gray_col
+
+    dendro_kwargs = dict(
+        Z=Z,
+        color_threshold=Z[N - R, 2],
+        link_color_func=lambda k: link_cols[k],
+        leaf_rotation=90,
+        ax=ax,
+        **kwargs
+    )
+    if not remove_labels:
+        dendro_kwargs["labels"] = labels
+        dendro_kwargs["leaf_font_size"] = leaf_font_size
+        scipy_dendrogram(**dendro_kwargs)
+        ax.tick_params(axis="x", labelrotation=90, labelsize=leaf_font_size)
+    else:
+        dendro_kwargs["no_labels"] = True
+        scipy_dendrogram(**dendro_kwargs)
+
+    ax.set_ylabel(ylabel, fontsize=16, weight="bold")
+    sns.despine(ax=ax, trim=True, offset=10)

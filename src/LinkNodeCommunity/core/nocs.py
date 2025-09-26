@@ -119,6 +119,8 @@ class NOCFinder:
       if len(labels) != G.number_of_nodes():
         raise ValueError("labels length must equal number of graph nodes")
       self.labels = np.asarray(labels)
+    else:
+      self.labels = np.array(np.sort(list(G.nodes())))
 
     self.N = G.number_of_nodes()
     self.node_partition = np.asarray(node_partition)

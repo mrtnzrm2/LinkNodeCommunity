@@ -65,10 +65,11 @@ class LinkSimilarity:
   
   def similarity_linksim_matrix(self):
     ls = linksim.core(
-      self.edgelist.to_numpy().reshape(-1, 3),
       self.N,
       self.M,
+      self.edgelist.to_numpy().reshape(-1, 3),
       self.similarity_indices_map[self.similarity_index],
+      self.undirected,
       self.use_parallel,
       self.flat_mode
     )
@@ -80,10 +81,11 @@ class LinkSimilarity:
 
   def similarity_linksim_edgelist(self):
     ls = linksim.core(
-      self.edgelist.to_numpy().reshape(-1, 3),
       self.N,
       self.M,
+      self.edgelist.to_numpy().reshape(-1, 3),
       self.similarity_indices_map[self.similarity_index],
+      self.undirected,
       self.use_parallel,
       self.flat_mode
     )

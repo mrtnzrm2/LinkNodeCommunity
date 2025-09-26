@@ -8,15 +8,47 @@ from LinkNodeCommunity.core import nocs
 
 pd.options.mode.chained_assignment = None  # default='warn'
 
-def edgelist_from_graph(G : nx.DiGraph | nx.Graph):
+
+def hex_to_rgb(hex_value: str):
+  """
+  Convert a hex color string to an RGB tuple.
+
+  Parameters
+  ----------
+  hex_value : str
+      The hex color string (e.g., "#RRGGBB").
+  Returns
+  -------
+  tuple
+      A tuple representing the RGB color (R, G, B).
+      Each component is a float in the range [0, 1].
+  """
+  return tuple(int(hex_value.lstrip("#")[i:i+2], 16)/255.0 for i in (0, 2, 4))
+
+def edgelist_from_graph(G: nx.DiGraph | nx.Graph, sort: bool = False):
   """
   Convert a NetworkX graph to an edge list DataFrame with columns ['source', 'target', 'weight'].
+  Optionally sort the DataFrame by 'source' (first) and 'target' (second).
+
+  Parameters
+  ----------
+  G : nx.DiGraph or nx.Graph
+    The input NetworkX graph.
+  sort : bool, optional
+    If True, sort the DataFrame by 'source' and then 'target'. Default is False.
+
+  Returns
+  -------
+  pd.DataFrame
+    Edge list DataFrame with columns ['source', 'target', 'weight'].
   """
   edgelist = [
       {"source": u, "target": v, "weight": data.get("weight", 1.0)}
       for u, v, data in G.edges(data=True)
     ]
   edgelist = pd.DataFrame(edgelist)
+  if sort:
+    edgelist = edgelist.sort_values(["source", "target"]).reset_index(drop=True)
   return edgelist
 
 def generate_cmap_from_partition(partition : npt.ArrayLike, trivial="-1", cmap="hls", seed=None, numeric=True):
@@ -208,7 +240,7 @@ def fast_cut_tree(H : npt.NDArray, n_clusters=None, height=None):
 
 def linear_partition(partition : npt.ArrayLike):
   ''' 
-  Renumber the communities linearly. From 0 to number of communities - 1.
+  Renumber the communities linearly. From 0 to number of communities - 1, except entries that are -1 (which remain -1).
 
   Parameters
   ----------
@@ -218,13 +250,14 @@ def linear_partition(partition : npt.ArrayLike):
   Returns
   -------
   npt.NDArray
-      Renumbered partition with labels from 0 to number of communities - 1.
+      Renumbered partition with labels from 0 to number of communities - 1. Entries with -1 remain -1.
   '''
   
   par = np.asarray(partition).copy()
-  unique_labels = np.unique(par)
+  mask = par != -1
+  unique_labels = np.unique(par[mask])
   label_map = {label: i for i, label in enumerate(unique_labels)}
-  new_partition = np.array([label_map[x] for x in par])
+  new_partition = np.array([label_map[x] if x != -1 else -1 for x in par])
   return new_partition
 
 def collapsed_partition(partition : npt.ArrayLike):
@@ -368,7 +401,7 @@ def get_number_link_communities_from_maxD(link_stats : pd.DataFrame):
     link_stats["D"] == np.nanmax(link_stats["D"])
   ]
   if number_link_communities.shape[0] > 1:
-    print(">>> Warning: more than one link community level with maximum D")
+    print("Warning: more than one link community level with maximum D")
   return int(number_link_communities.iloc[-1]), float(height_at_maxD.iloc[-1])
 
 def   get_number_link_communities_from_maxS(link_stats : pd.DataFrame):
@@ -389,7 +422,7 @@ def   get_number_link_communities_from_maxS(link_stats : pd.DataFrame):
     link_stats["S"] == np.nanmax(link_stats["S"])
   ]
   if number_link_communities.shape[0] > 1:
-    print(">>> Warning: more than one link community level with maximum S")
+    print("Warning: more than one link community level with maximum S")
   return int(number_link_communities.iloc[-1]), float(height_at_maxS.iloc[-1])
 
 
@@ -526,6 +559,59 @@ def linkcommunity_linear_partition(df: pd.DataFrame, offset: int = 0):
   # Keep -1 as is
   mapping[-1] = -1 if -1 in ids else None
   df["id"] = df["id"].map(lambda x: mapping.get(x, x)).astype(int)
+
+
+def adjacency_to_edgelist(A: np.ndarray) -> pd.DataFrame:
+  """
+  Converts an adjacency matrix to an edge list DataFrame.
+
+  Parameters
+  ----------
+  A : np.ndarray
+    A 2D numpy array representing the adjacency matrix of a graph,
+    where A[i, j] indicates the weight of the edge from node i to node j.
+
+  Returns
+  -------
+  pd.DataFrame
+    A DataFrame with columns:
+      - 'source': Source node indices.
+      - 'target': Target node indices.
+      - 'weight': Edge weights corresponding to each (source, target) pair.
+
+  Notes
+  -----
+  - The resulting edge list includes all possible edges, including those with zero weight.
+  - The function assumes that the adjacency matrix is square (n x n) for n nodes.
+
+  Examples
+  --------
+  >>> import numpy as np
+  >>> import pandas as pd
+  >>> A = np.array([[0, 1], [2, 0]])
+  >>> adjacencty_to_edgelist(A)
+     source  target  weight
+  0       0       0       0
+  1       0       1       1
+  2       1       0       2
+  3       1       1       0
+  """
+  src = np.repeat(
+    np.arange(A.shape[0]),
+    A.shape[1]
+  )
+  tgt = np.tile(
+    np.arange(A.shape[1]),
+    A.shape[0]
+  )
+  df = pd.DataFrame(
+    {
+      "source" : src,
+      "target" : tgt,
+      "weight" : A.reshape(-1)
+    }
+  )
+  return df
 
 
 def edgelist_to_adjacency(df: pd.DataFrame, weight: str = "weight") -> np.ndarray:
