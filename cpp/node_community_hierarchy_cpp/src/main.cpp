@@ -38,6 +38,7 @@
  * - target_nodes (std::vector<int>): Target index for each edge (size M).
  * - linkage (int): Linkage method for the link hierarchy (single recommended).
  * - undirected (int/bool): 0 for directed (default), 1 for undirected (experimental).
+ * - edge_complete (bool): Set false when the supplied source/target edges need filtering to the edge-complete subgraph.
  * - verbose (int, optional): Verbosity level (0 silent, 1 milestones, 2 step announcements).
  *
  * core Class Methods:
@@ -58,8 +59,9 @@
  * - Node‑merge criteria are applied incrementally at each link‑merge step and are
  *   the key to uncovering meaningful node communities.
  * - The undirected mode uses NeighborNodes and a triangle‑based intersection routine
- *   to find nodes participating in triads; the directed mode uses intersections of
- *   source/target sets induced by merged link communities.
+  *   to find nodes participating in triads; the directed mode uses intersections of
+  *   source/target sets induced by merged link communities.
+ * - When edge_complete is false, the class filters and sorts source/target inputs before processing.
  * - Inputs are validated; indices are expected to be 0‑based for nodes and 1..M for
  *   link identifiers in the fastcluster outputs.
  *
@@ -81,6 +83,7 @@
 #include <algorithm>
 #include <unordered_set>
 #include <iterator>
+#include <utility>
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -419,8 +422,14 @@ class core {
     bool use_parallel;
 
     int verbose;
+    bool edge_complete;
 
     void workflow(int level, const std::string &message, const bool &newline=false);
+
+    std::pair<std::vector<int>, std::vector<int>> filter_and_sort_edges(
+        const std::vector<int>& source,
+        const std::vector<int>& target
+    ) const;
 
     // Results
     std::vector<std::vector<double> > node_hierarchy; // Stores node merge events (dendrogram)
@@ -436,7 +445,8 @@ class core {
       const int linkage,
       const int undirected,
       const bool enable_parallel = true,
-      const int verbose_level = 0
+      const int verbose_level = 0,
+      const bool edge_complete = true
     ) {
       number_of_nodes = N;
       number_of_edges = M;
@@ -445,7 +455,9 @@ class core {
       this->linkage = linkage;
       this->undirected = undirected;
       this->use_parallel = enable_parallel;
+      this->edge_complete = edge_complete;
       this->node_hierarchy = std::vector<std::vector<double>>(number_of_nodes - 1, std::vector<double>(4, 0.));
+      
       if (verbose_level < 0 || verbose_level > 2) {
         std::cerr << "Warning: Verbose level " << verbose_level << " out of range [0,2]. Clamping to nearest bound.\n";
         this->verbose = (verbose_level < 0) ? 0 : 2;
@@ -455,7 +467,8 @@ class core {
       if (this->verbose >= 1) {
         std::cout << "[link2node] Initialized with N=" << number_of_nodes
                   << ", M=" << number_of_edges
-                  << ", verbose=" << this->verbose << std::endl;
+                  << ", verbose=" << this->verbose
+                  << ", edge_complete=" << (this->edge_complete ? 1 : 0) << std::endl;
       }
     }
     ~core(){};
@@ -484,6 +497,52 @@ void core::workflow(int level, const std::string &message, const bool &newline) 
     else
         std::cout << "            " << message << std::endl;
   }
+}
+
+std::pair<std::vector<int>, std::vector<int>> core::filter_and_sort_edges(
+    const std::vector<int>& source,
+    const std::vector<int>& target
+) const {
+  if (source.size() != target.size()) {
+    throw std::invalid_argument("Source and target vectors must have the same size.");
+  }
+
+  std::vector<std::pair<int, int>> filtered_edges;
+  filtered_edges.reserve(source.size());
+
+  for (size_t i = 0; i < source.size(); ++i) {
+    const int s = source[i];
+    const int t = target[i];
+
+    if (s < 0 || t < 0) {
+      throw std::out_of_range("Source/target indices must be non-negative.");
+    }
+
+    if (s < number_of_nodes && t < number_of_nodes) {
+      filtered_edges.emplace_back(s, t);
+    }
+  }
+
+  std::sort(
+    filtered_edges.begin(),
+    filtered_edges.end(),
+    [](const std::pair<int, int>& lhs, const std::pair<int, int>& rhs) {
+      if (lhs.first != rhs.first) return lhs.first < rhs.first;
+      return lhs.second < rhs.second;
+    }
+  );
+
+  std::vector<int> sorted_source;
+  std::vector<int> sorted_target;
+  sorted_source.reserve(filtered_edges.size());
+  sorted_target.reserve(filtered_edges.size());
+
+  for (const auto& edge : filtered_edges) {
+    sorted_source.push_back(edge.first);
+    sorted_target.push_back(edge.second);
+  }
+
+  return {std::move(sorted_source), std::move(sorted_target)};
 }
 
 std::vector<std::vector<double> > core::get_node_hierarchy() {
@@ -545,9 +604,29 @@ void core::fit_edgelist_undirected(std::vector<std::vector<double>> &distance_ed
     if (source_nodes.size() != target_nodes.size()) {
         throw std::invalid_argument("Source and target vectors must have the same size.");
     }
-    for (size_t i = 0; i < source_nodes.size(); ++i) {
-        if (source_nodes[i] < 0 || source_nodes[i] >= number_of_nodes ||
-            target_nodes[i] < 0 || target_nodes[i] >= number_of_nodes) {
+
+    std::vector<int> processed_source_nodes;
+    std::vector<int> processed_target_nodes;
+    if (!edge_complete) {
+        if (verbose >= 2) {
+            workflow(2, "fit_edgelist_undirected Step 1a: filtering and sorting edges");
+        }
+        auto filtered_edges = filter_and_sort_edges(source_nodes, target_nodes);
+        processed_source_nodes = std::move(filtered_edges.first);
+        processed_target_nodes = std::move(filtered_edges.second);
+    }
+
+    const std::vector<int>& current_source_nodes = edge_complete ? source_nodes : processed_source_nodes;
+    const std::vector<int>& current_target_nodes = edge_complete ? target_nodes : processed_target_nodes;
+
+    if (current_source_nodes.size() != static_cast<size_t>(number_of_edges) ||
+        current_target_nodes.size() != static_cast<size_t>(number_of_edges)) {
+        throw std::invalid_argument("Processed source/target vectors must match number_of_edges.");
+    }
+
+    for (size_t i = 0; i < current_source_nodes.size(); ++i) {
+        if (current_source_nodes[i] < 0 || current_source_nodes[i] >= number_of_nodes ||
+            current_target_nodes[i] < 0 || current_target_nodes[i] >= number_of_nodes) {
             throw std::out_of_range("Source/target indices out of bounds.");
         }
     }
@@ -582,7 +661,7 @@ void core::fit_edgelist_undirected(std::vector<std::vector<double>> &distance_ed
     }
     // --- Map initial link communities to their neighbors ---
     for (int i = 0; i < number_of_edges; ++i) {
-        NeighborNodes lcn(source_nodes[i], target_nodes[i]);
+        NeighborNodes lcn(current_source_nodes[i], current_target_nodes[i]);
         cluster_nodes_map[-i - 1] = lcn;
     }
 
@@ -697,9 +776,29 @@ void core::fit_matrix_undirected(std::vector<double> &condensed_distance_matrix)
     if (source_nodes.size() != target_nodes.size()) {
         throw std::invalid_argument("Source and target vectors must have the same size.");
     }
-    for (size_t i = 0; i < source_nodes.size(); ++i) {
-        if (source_nodes[i] < 0 || source_nodes[i] >= number_of_nodes ||
-            target_nodes[i] < 0 || target_nodes[i] >= number_of_nodes) {
+
+    std::vector<int> processed_source_nodes;
+    std::vector<int> processed_target_nodes;
+    if (!edge_complete) {
+        if (verbose >= 2) {
+            workflow(2, "fit_matrix_undirected Step 1a: filtering and sorting edges");
+        }
+        auto filtered_edges = filter_and_sort_edges(source_nodes, target_nodes);
+        processed_source_nodes = std::move(filtered_edges.first);
+        processed_target_nodes = std::move(filtered_edges.second);
+    }
+
+    const std::vector<int>& current_source_nodes = edge_complete ? source_nodes : processed_source_nodes;
+    const std::vector<int>& current_target_nodes = edge_complete ? target_nodes : processed_target_nodes;
+
+    if (current_source_nodes.size() != static_cast<size_t>(number_of_edges) ||
+        current_target_nodes.size() != static_cast<size_t>(number_of_edges)) {
+        throw std::invalid_argument("Processed source/target vectors must match number_of_edges.");
+    }
+
+    for (size_t i = 0; i < current_source_nodes.size(); ++i) {
+        if (current_source_nodes[i] < 0 || current_source_nodes[i] >= number_of_nodes ||
+            current_target_nodes[i] < 0 || current_target_nodes[i] >= number_of_nodes) {
             throw std::out_of_range("Source/target indices out of bounds.");
         }
     }
@@ -741,7 +840,7 @@ void core::fit_matrix_undirected(std::vector<double> &condensed_distance_matrix)
     }
     // --- Map initial link communities to their neighbors ---
     for (int i = 0; i < number_of_edges; ++i) {
-        NeighborNodes lcn(source_nodes[i], target_nodes[i]);
+        NeighborNodes lcn(current_source_nodes[i], current_target_nodes[i]);
         cluster_nodes_map[-i - 1] = lcn;
     }
 
@@ -858,9 +957,29 @@ void core::fit_edgelist_directed(std::vector<std::vector<double>> &distance_edge
     if (source_nodes.size() != target_nodes.size()) {
         throw std::invalid_argument("Source and target vectors must have the same size.");
     }
-    for (size_t i = 0; i < source_nodes.size(); ++i) {
-        if (source_nodes[i] < 0 || source_nodes[i] >= number_of_nodes ||
-            target_nodes[i] < 0 || target_nodes[i] >= number_of_nodes) {
+
+    std::vector<int> processed_source_nodes;
+    std::vector<int> processed_target_nodes;
+    if (!edge_complete) {
+        if (verbose >= 2) {
+            workflow(2, "fit_edgelist_directed Step 1a: filtering and sorting edges");
+        }
+        auto filtered_edges = filter_and_sort_edges(source_nodes, target_nodes);
+        processed_source_nodes = std::move(filtered_edges.first);
+        processed_target_nodes = std::move(filtered_edges.second);
+    }
+
+    const std::vector<int>& current_source_nodes = edge_complete ? source_nodes : processed_source_nodes;
+    const std::vector<int>& current_target_nodes = edge_complete ? target_nodes : processed_target_nodes;
+
+    if (current_source_nodes.size() != static_cast<size_t>(number_of_edges) ||
+        current_target_nodes.size() != static_cast<size_t>(number_of_edges)) {
+        throw std::invalid_argument("Processed source/target vectors must match number_of_edges.");
+    }
+
+    for (size_t i = 0; i < current_source_nodes.size(); ++i) {
+        if (current_source_nodes[i] < 0 || current_source_nodes[i] >= number_of_nodes ||
+            current_target_nodes[i] < 0 || current_target_nodes[i] >= number_of_nodes) {
             throw std::out_of_range("Source/target indices out of bounds.");
         }
     }
@@ -896,8 +1015,8 @@ void core::fit_edgelist_directed(std::vector<std::vector<double>> &distance_edge
     // --- Map initial link communities to their source/target nodes ---
     for (int i = 0; i < number_of_edges; ++i) {
         LinkCommunityNodes lcn;
-        lcn.source.push_back(source_nodes[i]);
-        lcn.target.push_back(target_nodes[i]);
+        lcn.source.push_back(current_source_nodes[i]);
+        lcn.target.push_back(current_target_nodes[i]);
         cluster_nodes_map[-i - 1] = lcn;
     }
 
@@ -1028,9 +1147,29 @@ void core::fit_matrix_directed(std::vector<double> &condensed_distance_matrix) {
     if (source_nodes.size() != target_nodes.size()) {
         throw std::invalid_argument("Source and target vectors must have the same size.");
     }
-    for (size_t i = 0; i < source_nodes.size(); ++i) {
-        if (source_nodes[i] < 0 || source_nodes[i] >= number_of_nodes ||
-            target_nodes[i] < 0 || target_nodes[i] >= number_of_nodes) {
+
+    std::vector<int> processed_source_nodes;
+    std::vector<int> processed_target_nodes;
+    if (!edge_complete) {
+        if (verbose >= 2) {
+            workflow(2, "fit_matrix_directed Step 1a: filtering and sorting edges");
+        }
+        auto filtered_edges = filter_and_sort_edges(source_nodes, target_nodes);
+        processed_source_nodes = std::move(filtered_edges.first);
+        processed_target_nodes = std::move(filtered_edges.second);
+    }
+
+    const std::vector<int>& current_source_nodes = edge_complete ? source_nodes : processed_source_nodes;
+    const std::vector<int>& current_target_nodes = edge_complete ? target_nodes : processed_target_nodes;
+
+    if (current_source_nodes.size() != static_cast<size_t>(number_of_edges) ||
+        current_target_nodes.size() != static_cast<size_t>(number_of_edges)) {
+        throw std::invalid_argument("Processed source/target vectors must match number_of_edges.");
+    }
+
+    for (size_t i = 0; i < current_source_nodes.size(); ++i) {
+        if (current_source_nodes[i] < 0 || current_source_nodes[i] >= number_of_nodes ||
+            current_target_nodes[i] < 0 || current_target_nodes[i] >= number_of_nodes) {
             throw std::out_of_range("Source/target indices out of bounds.");
         }
     }
@@ -1073,8 +1212,8 @@ void core::fit_matrix_directed(std::vector<double> &condensed_distance_matrix) {
     // --- Map initial link communities to their source/target nodes ---
     for (int i = 0; i < number_of_edges; ++i) {
         LinkCommunityNodes lcn;
-        lcn.source.push_back(source_nodes[i]);
-        lcn.target.push_back(target_nodes[i]);
+        lcn.source.push_back(current_source_nodes[i]);
+        lcn.target.push_back(current_target_nodes[i]);
         cluster_nodes_map[-i - 1] = lcn;
     }
 
@@ -1190,7 +1329,8 @@ PYBIND11_MODULE(node_community_hierarchy_cpp, m) {
             const int,
             const int,
             const bool,
-            const int
+            const int,
+            const bool
           >(),
           py::arg("N"),
           py::arg("M"),
@@ -1199,7 +1339,8 @@ PYBIND11_MODULE(node_community_hierarchy_cpp, m) {
           py::arg("linkage"),
           py::arg("undirected"),
           py::arg("use_parallel") = true,
-          py::arg("verbose") = 0
+          py::arg("verbose") = 0,
+          py::arg("edge_complete") = true
         )
         .def("fit_matrix", &core::fit_matrix)
         .def("fit_edgelist", &core::fit_edgelist)

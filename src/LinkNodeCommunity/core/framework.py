@@ -18,7 +18,7 @@ Key Components:
 Notes:
 ------
 - Directed graphs can restrict statistics to the edge-complete subgraph via
-  `consider_subgraph=True`.
+  `edge_complete=True`.
 - Relies on the `link_hierarchy_statistics_cpp`, `node_community_hierarchy_cpp`,
   and `utils_cpp` extensions for performance-critical operations.
 """
@@ -31,9 +31,14 @@ import networkx as nx
 #  Framework libs ----
 from .similarity import LinkSimilarity, ACCEPTED_SIMILARITY_INDICES
 from .tonewick import LinkageToNewick
-from ..utils import edgelist_from_graph, linknode_equivalence_partition
+from ..utils import (
+  edgelist_from_graph,
+  linknode_equivalence_partition,
+  cut_tree_with_validation,
+  linear_partition
+)
 
-# C++ libs ----
+# C++ backends ----
 import link_hierarchy_statistics_cpp as linkstats
 import node_community_hierarchy_cpp as link2node
 import utils_cpp
@@ -47,6 +52,8 @@ class Clustering:
     ----------
     G : nx.Graph | nx.DiGraph
         Input graph. Edge weights default to 1.0 when absent.
+    labels : dict | None, optional
+        Mapping of node IDs to their labels. If None, labels are inferred from the graph.
     linkage : str, optional
         Hierarchical linkage criterion to use ({"single", "average"}). Default is "single".
     similarity_index : str, optional
@@ -54,17 +61,25 @@ class Clustering:
               "bhattacharyya_coefficient", "cosine_similarity", "pearson_correlation",
               "weighted_jaccard", "jaccard_probability", "tanimoto_coefficient"}.
                   Default is "bhattacharyya_coefficient".
-    consider_subgraph : bool, optional
-        When True, restricts statistics (N, M) to nodes that appear as both sources and targets while computing similarities on the full graph. Default is False.
-    
+    edge_complete : bool, optional
+        When True, restricts statistics (N, M) to nodes that appear as both sources and targets while computing similarities on the full graph. Default is True.
+
     Attributes
     ----------
     G : nx.Graph | nx.DiGraph
         The input graph.
+    edge_complete_subgraph : nx.Graph | nx.DiGraph | None
+        The subgraph induced by nodes that appear as both sources and targets when `edge_complete=True`.
     undirected : bool
         True when the graph is undirected.
     N, M : int
-        Node and edge counts used in the similarity pipeline (respecting `consider_subgraph`).
+        Node and edge counts used in the similarity pipeline (respecting `edge_complete`).
+    node_mapping : dict
+        Mapping from original node IDs to their indices in the processed graph.
+    inv_node_mapping : dict
+        Inverse mapping from processed graph indices back to original node IDs.
+    Z : np.ndarray | None
+        Linkage matrix of the node hierarchy after processing.
     linkage : str
         The linkage criterion passed at construction time.
     similarity_index : str
@@ -81,45 +96,124 @@ class Clustering:
         Condensed link-link distance matrix when computed.
     linkdist_edgelist : pandas.DataFrame | None
         Link distance edge list when computed.
-    
+    linkstats : np.ndarray | None
+        Link hierarchy statistics after processing features.
+    number_link_communities : int | None
+        Number of link communities after node hierarchy processing.
+    number_node_communities : int | None
+        Number of node communities after processing.
+    height_at_maximum : float | None
+        Height at which the maximum link similarity occurs.
     """
     def __init__(
-        self, G: nx.DiGraph | nx.Graph, similarity_index="bhattacharyya_coefficient", consider_subgraph=False
+        self,
+        G: nx.DiGraph | nx.Graph,
+        labels: dict | None = None,
+        similarity_index="bhattacharyya_coefficient",
+        edge_complete=True
     ):
       
+      # Validate inputs
+      if not isinstance(G, (nx.Graph, nx.DiGraph)):
+        raise TypeError("G must be an instance of nx.Graph or nx.DiGraph.")
+
+      # Validate similarity index
       if similarity_index not in ACCEPTED_SIMILARITY_INDICES:
         raise ValueError(
           f"Similarity index '{similarity_index}' is not supported.\nAccepted indices are: {ACCEPTED_SIMILARITY_INDICES}"
         )
-
-      self.G = G
-
+      
       # Check for NaN edge weights
-      for u, v, data in self.G.edges(data=True):
+      for u, v, data in G.edges(data=True):
         weight = data.get("weight", 1.0)
         if pd.isna(weight):
           raise ValueError(f"Edge ({u}, {v}) has NaN as weight. Please clean your graph.")
+      
+      # Check for self-loops
+      if any(u == v for u, v in G.edges()):
+        raise ValueError("Input graph contains self-loops. Please remove self-loops before proceeding.")
+      
+      # If labels is not None, nodes in G must not be strings
+      if labels is not None and all(isinstance(node, str) for node in G.nodes()):
+        raise ValueError("If labels are provided, node IDs in the graph must not be strings. Use integer node IDs when supplying labels.")
+
+      # Validate labels length and uniqueness
+      if labels is not None:
+        if len(labels) != len(G.nodes):
+          raise ValueError(f"Number of labels ({len(labels)}) does not match number of nodes in the graph ({len(G.nodes)}).")
+        if len(set(labels.values())) != len(labels):
+          raise ValueError("All labels must be unique.")
+
+      # Relabel nodes to integers if they are strings, preserving original labels
+      if all(isinstance(node, str) for node in G.nodes()):
+        G_copy = self.relabel_nodes_to_integers(G.copy())
+        print("Node labels converted to integers (sorted by label); originals saved in each node's 'label' attribute.")
+      else:
+        G_copy = G.copy()
         
+      # Determine if the graph is directed or undirected
       if isinstance(G, nx.DiGraph):
         self.undirected = False
       else:
         self.undirected = True
+      
+      # Ensure node indices are integers
+      if not all(isinstance(node, int) for node in G_copy.nodes()):
+        mapping = {node: idx for idx, node in enumerate(sorted(G_copy.nodes()))}
+        G_copy = nx.relabel_nodes(G_copy, mapping)
 
-      if consider_subgraph:
+      # Trivial node mapping and inverse mapping: map node indices from 0 to len(G_copy)-1
+      self.node_mapping = {node: idx for idx, node in enumerate(sorted(G_copy.nodes()))}
+      self.inv_node_mapping = {idx: node for node, idx in self.node_mapping.items()}
+
+      self.edge_complete = edge_complete
+      # If edge_complete is True, restrict N, M to nodes that appear as both sources and targets
+      if self.edge_complete:
         # Get intersection of source and target nodes
-        sources = set(u for u, _, _ in self.G.edges(data=True))
-        targets = set(v for _, v, _ in self.G.edges(data=True))
+        sources = set(u for u, _, _ in G_copy.edges(data=True))
+        targets = set(v for _, v, _ in G_copy.edges(data=True))
         intersection_nodes = sources & targets
 
-        # Create subgraph with only intersection nodes (in case of directed graph)
-        subgraph = self.G.subgraph(intersection_nodes)
+        # Remap intersection_nodes to range [0, len(intersection_nodes)-1]
+        intersection_nodes_sorted = sorted(intersection_nodes)
+        intersection_mapping = {node: idx for idx, node in enumerate(intersection_nodes_sorted)}
 
-        self.N = subgraph.number_of_nodes()  # Nodes in intersection
-        self.M = subgraph.number_of_edges()  # Edges between intersection nodes
+        # Remap the rest of the nodes to range [self.N, len(G_copy)-1]
+        rest_nodes = sorted(set(G_copy.nodes()) - intersection_nodes)
+        rest_mapping = {node: idx + len(intersection_nodes_sorted) for idx, node in enumerate(rest_nodes)}
+
+        # Combine mappings
+        self.node_mapping = {**intersection_mapping, **rest_mapping}
+
+        # Relabel G_copy using node_mapping
+        G_remapped = nx.relabel_nodes(G_copy, self.node_mapping)
+        self.G = G_remapped
+
+        # Extract edge_complete_subgraph from range [0, len(intersection_nodes)-1]
+        edge_complete_indices = list(range(len(intersection_nodes_sorted)))
+        self.edge_complete_subgraph = self.G.subgraph(edge_complete_indices)
+
+        self.N = self.edge_complete_subgraph.number_of_nodes()  # Nodes in intersection
+        self.M = self.edge_complete_subgraph.number_of_edges()  # Edges between intersection nodes
+
       else:
+        self.G = G_copy
         self.N = self.G.number_of_nodes()
         self.M = self.G.number_of_edges()
+      
+      # Add labels to self.G and self.edge_complete_subgraph if labels are provided
+      if labels is not None:
+        # Invert node_mapping: mapped_node -> original_node
+        self.inv_node_mapping = {v: k for k, v in self.node_mapping.items()}
 
+        # Build mapping: mapped_node -> label
+        mapped_labels = {mapped_node: labels[original_node] for mapped_node, original_node in self.inv_node_mapping.items()}
+
+        self.add_labels(self.G, mapped_labels)
+        if self.edge_complete:
+          edge_complete_labels = {node: mapped_labels[node] for node in self.edge_complete_subgraph.nodes()}
+          self.add_labels(self.edge_complete_subgraph, edge_complete_labels)
+        
       self.similarity_index = similarity_index
 
       self.linksim_condense_matrix = None
@@ -131,15 +225,50 @@ class Clustering:
       # from the whole network to have better estimates of similarities
       self.edgelist = edgelist_from_graph(self.G, sort=True)
 
-    def add_labels(self, labels: dict):
+    def relabel_nodes_to_integers(self, G : nx.Graph | nx.DiGraph) -> nx.Graph | nx.DiGraph:
       """
-      Add labels to nodes in self.G.
+      Relabels the nodes of a graph from strings to integers in sorted order,
+      and assigns the original string as a 'label' attribute to each node.
 
-      Args:
+      Parameters
+      ----------
+      G : nx.Graph or nx.DiGraph
+        The input graph with string node labels.
+
+      Returns
+      -------
+      nx.Graph or nx.DiGraph
+        The relabeled graph with integer nodes and 'label' attributes.
+      """
+      sorted_labels = sorted(G.nodes())
+      mapping = {label: idx for idx, label in enumerate(sorted_labels)}
+      G_int = nx.relabel_nodes(G, mapping)
+      for idx, label in enumerate(sorted_labels):
+        G_int.nodes[idx]["label"] = label
+      return G_int
+
+    def add_labels(self, G : nx.Graph | nx.DiGraph, labels: dict):
+      """
+      Add labels to nodes in the given graph.
+
+      Parameters
+      ----------
+        G (nx.Graph | nx.DiGraph): The input graph.
         labels (dict): A dictionary mapping node IDs to labels.
       """
+      # Check if all nodes in G are present in labels
+      if len(G.nodes) != len(labels):
+        raise ValueError(f"Number of nodes in graph ({len(G.nodes)}) does not match number of labels ({len(labels)}).")
+
+      # Check if all labels are unique
+      if len(set(labels.values())) != len(labels):
+          raise ValueError("All labels must be unique.")
+      
+      if set(G.nodes) != set(labels.keys()):
+        raise ValueError("Labels keys must exactly match the set of nodes in the graph.")
+
       for node, label in labels.items():
-          self.G.nodes[node]["label"] = label
+          G.nodes[node]["label"] = label
 
     def fit(
         self,
@@ -182,8 +311,12 @@ class Clustering:
 
     def fit_linksim_matrix(self, use_parallel=False, flat_mode=False, verbose=0):
       self.linksim = LinkSimilarity(
-        self.edgelist, self.N, self.M, similarity_index=self.similarity_index,
-        undirected=self.undirected, use_parallel=use_parallel,
+        self.N,
+        self.M,
+        self.edgelist,                            # Edge List from the full graph
+        similarity_index=self.similarity_index,
+        undirected=self.undirected,
+        use_parallel=use_parallel,
         flat_mode=flat_mode
       )
       self.linksim.similarity_linksim_matrix(verbose=verbose)
@@ -191,8 +324,12 @@ class Clustering:
 
     def fit_linksim_edgelist(self, use_parallel=False, flat_mode=False, verbose=0):
       self.linksim = LinkSimilarity(
-        self.edgelist, self.N, self.M, similarity_index=self.similarity_index,
-        undirected=self.undirected, use_parallel=use_parallel,
+        self.N,
+        self.M,
+        self.edgelist,                            # Edge List from the full graph
+        similarity_index=self.similarity_index,
+        undirected=self.undirected,
+        use_parallel=use_parallel,
         flat_mode=flat_mode
       )
       self.linksim.similarity_linksim_edgelist(verbose=verbose)
@@ -243,12 +380,13 @@ class Clustering:
       features = linkstats.core(
         self.N,
         self.M,
-        self.edgelist["source"].to_numpy().astype(np.int32)[:self.M],
-        self.edgelist["target"].to_numpy().astype(np.int32)[:self.M],
+        self.edgelist["source"].to_numpy().astype(np.int32),
+        self.edgelist["target"].to_numpy().astype(np.int32),
         linkage,
         self.undirected,
         verbose=verbose,
-        force=force
+        force=force,
+        edge_complete=self.edge_complete
       )
       features.fit_matrix(self.linkdist_matrix)
       result = np.array(
@@ -288,12 +426,13 @@ class Clustering:
       features = linkstats.core(
         self.N,
         self.M,
-        self.edgelist["source"].to_numpy().astype(np.int32)[:self.M],
-        self.edgelist["target"].to_numpy().astype(np.int32)[:self.M],
+        self.edgelist["source"].to_numpy().astype(np.int32),
+        self.edgelist["target"].to_numpy().astype(np.int32),
         linkage,
         self.undirected,
         verbose=verbose,
-        force=force
+        force=force,
+        edge_complete=self.edge_complete
       )
       features.fit_edgelist(self.linkdist_edgelist, max_dist)
       result = np.array(
@@ -358,7 +497,8 @@ class Clustering:
         linkage,
         undirected,
         use_parallel=use_parallel,
-        verbose=verbose
+        verbose=verbose,
+        edge_complete=self.edge_complete
       )
 
       NH.fit_matrix(self.linkdist_matrix)
@@ -402,7 +542,8 @@ class Clustering:
         linkage,
         undirected,
         use_parallel=use_parallel,
-        verbose=verbose
+        verbose=verbose,
+        edge_complete=self.edge_complete
       )
 
       NH.fit_edgelist(self.linkdist_edgelist, max_dist)
@@ -422,7 +563,7 @@ class Clustering:
     
     def equivalence_partition(self, score : str = "S"):
       """
-      Derive node partitions from the link-node equivalence using a specified score.
+      Computes the optimal node partition from the link-node equivalence using the specified score.
 
       Parameters
       ----------
@@ -432,17 +573,56 @@ class Clustering:
 
       Returns
       -------
-      tuple
-          - number_link_communities (int or np.ndarray): Number of link communities at maximum score.
-          - number_node_communities (int or np.ndarray): Corresponding number of node communities.
-          - height_at_maximum (float or np.ndarray): Height at which the maximum score occurs.
+      dict
+        Dictionary mapping node labels (or integer IDs) to their community membership.
+
+      Populates
+      ---------
+      number_link_communities : int | npt.ArrayLike
+        The optimal number of link communities determined by the partitioning.
+      number_node_communities : int | npt.ArrayLike
+        The optimal number of node communities determined by the partitioning.
+      height_at_maximum : float | npt.ArrayLike
+        The height in the dendrogram at which the optimal partition occurs.
       """
+
       if not hasattr(self, 'linknode_equivalence'):
         raise ValueError("Link-node equivalence not computed. Run node_community_hierarchy_matrix() or node_community_hierarchy_edgelist() first.")
       if not hasattr(self, 'linkstats'):
         raise ValueError("Linkage statistics not computed. Run process_features_matrix() or process_features_edgelist() first.")
       if score not in {"D", "S"}:
         raise ValueError("Score must be one of {'D', 'S'}.")
+      
+      self.number_link_communities, self.number_node_communities, \
+          self.height_at_maximum = linknode_equivalence_partition(
+                  score, self.linkstats, self.linknode_equivalence
+                        )
      
-      return linknode_equivalence_partition(score, self.linkstats, self.linknode_equivalence)
-    
+      # Get community membership vector
+      memberships = linear_partition(
+        cut_tree_with_validation(
+          self.Z, n_clusters=self.number_node_communities
+            )
+              )
+
+      # Prepare dictionary mapping node label or integer to membership
+      if self.edge_complete:
+        node_list = sorted(self.edge_complete_subgraph.nodes())
+      else:
+        node_list = sorted(self.G.nodes())
+
+      # Map back to original node IDs if relabeling was done
+      if hasattr(self, 'inv_node_mapping'):
+        node_list = [self.inv_node_mapping[node] for node in node_list]
+
+      membership_dict = {}
+      for idx, node in enumerate(node_list):
+          if self.edge_complete:
+            label = self.edge_complete_subgraph.nodes[node].get("label", node)
+          else:
+            label = self.G.nodes[node].get("label", node)
+          membership_dict[label] = memberships[idx]
+
+      return membership_dict
+
+       

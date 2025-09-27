@@ -262,7 +262,7 @@ def fast_cut_tree(H : npt.NDArray, n_clusters=None, height=None):
 
 def linear_partition(partition : npt.ArrayLike):
   ''' 
-  Renumber the communities linearly. From 0 to number of communities - 1, except entries that are -1 (which remain -1).
+  Renumber non-singleton communities consecutively from 0. Singleton communities (entries with -1) remain unchanged.
 
   Parameters
   ----------
@@ -392,17 +392,17 @@ def is_valid_linkage_matrix(Z: npt.ArrayLike) -> bool:
     return True
 
 
-def cut_tree_with_validation(Z : npt.NDArray, number_communities : int = None, height : float = None):
+def cut_tree_with_validation(Z : npt.NDArray, n_clusters : int = None, height : float = None):
   if not is_valid_linkage_matrix(Z):
     raise ValueError("Z is not a valid linkage matrix.")
-  if number_communities is None and height is None:
-    raise ValueError("Either number_communities or height must be provided.")
-  if number_communities is not None and height is not None:
-    raise ValueError("Only one of number_communities or height should be provided.")
-  if height is not None and number_communities is None:
+  if n_clusters is None and height is None:
+    raise ValueError("Either n_clusters or height must be provided.")
+  if n_clusters is not None and height is not None:
+    raise ValueError("Only one of n_clusters or height should be provided.")
+  if height is not None and n_clusters is None:
     return fast_cut_tree(Z, height=height)
   else:
-    return fast_cut_tree(Z, n_clusters=number_communities)
+    return fast_cut_tree(Z, n_clusters=n_clusters)
   
 
 def get_number_link_communities_from_maxD(link_stats : pd.DataFrame):

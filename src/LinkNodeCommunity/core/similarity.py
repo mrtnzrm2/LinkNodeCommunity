@@ -41,7 +41,7 @@ ACCEPTED_SIMILARITY_INDICES = [
 
 class LinkSimilarity:
   def __init__(
-    self, edgelist : pd.DataFrame, N, M, similarity_index="bhattacharyya_coefficient", undirected=True, use_parallel=False, flat_mode=False
+    self,  N, M, edgelist : pd.DataFrame, similarity_index="bhattacharyya_coefficient", undirected=True, use_parallel=False, flat_mode=False
   ):
     # Parameters ----
     self.edgelist = edgelist

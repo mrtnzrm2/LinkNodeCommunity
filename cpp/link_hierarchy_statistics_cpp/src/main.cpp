@@ -32,6 +32,8 @@
  * - target_nodes (std::vector<int>): List of target node indices for each edge.
  * - linkage (int): Linkage method for hierarchical clustering (single linkage recommended).
  * - undirected (bool): Whether the graph is undirected.
+ * - edge_complete (bool): Indicates if the provided edges already correspond to the edge-complete graph.
+ *   When false, inputs are filtered to retain nodes present as both sources and targets (< N).
  * - verbose (int, optional): Verbosity level (0 no output, 1 workflow milestones, 2 step annoucements).
  * - force (bool, optional): Ignore recoverable runtime errors to let workflows finish when possible.
  *   False (0, default) halts on errors, True (1) attempts to continue.
@@ -54,6 +56,7 @@
  * Implementation Notes:
  * ---------------------
  * - The library is robust to malformed input and out-of-bounds indices.
+ * - When edge_complete is false, the class preprocesses source/target inputs to operate on the induced subgraph.
  * - Self-loops are not supported and will halt execution.
  * - Statistics are updated incrementally for merged clusters only, improving performance.
  * - The linkage matrix must follow the R/fastcluster convention (negative for singletons, positive for compounds).
@@ -74,6 +77,7 @@
 #include <unordered_map>
 #include <stdexcept>
 #include <cstddef>
+#include <utility>
 #include "../../libs/hclust-cpp/fastcluster.h"
 
 #include <pybind11/stl.h>
@@ -170,6 +174,7 @@ class core {
     bool undirected;
     int verbose;
     bool force;
+    bool edge_complete;
 
     std::vector<int> source_nodes;
     std::vector<int> target_nodes;
@@ -179,6 +184,11 @@ class core {
     std::vector<double> Height;   // Merge heights
     std::vector<double> D;        // Link community density
     std::vector<double> S;        // Excess-link entropy
+
+    std::pair<std::vector<int>, std::vector<int>> filter_and_sort_edges(
+        const std::vector<int>& source,
+        const std::vector<int>& target
+    ) const;
 
   public:
     // Constructor: initializes graph and clustering parameters
@@ -190,7 +200,8 @@ class core {
       const int linkage,
       const bool undirected,
       const int verbose = 0,
-      const bool force = false
+      const bool force = false,
+      const bool edge_complete = true
     );
     ~core(){};
 
@@ -222,7 +233,8 @@ core::core(
   const int linkage,
   const bool undirected,
   const int verbose,
-  const bool force
+  const bool force,
+  const bool edge_complete
 ) {
   number_of_nodes = N;
   number_of_edges = M;
@@ -231,6 +243,7 @@ core::core(
   this->linkage = linkage;
   this->undirected = undirected;
   this->force = force;
+  this->edge_complete = edge_complete;
 
   if (verbose < 0 || verbose > 2) {
     std::cerr << "Warning: Verbose level " << verbose << " out of range [0,2]. Clamping to nearest bound.\n";
@@ -247,14 +260,60 @@ core::core(
     std::cout << "[linkstat] Initialized with N=" << number_of_nodes
               << ", M=" << number_of_edges
               << ", verbose=" << this->verbose
-              << ", force=" << (this->force ? 1 : 0) << "\n";
+              << ", force=" << (this->force ? 1 : 0)
+              << ", edge_complete=" << (this->edge_complete ? 1 : 0) << "\n";
   }
+}
+
+std::pair<std::vector<int>, std::vector<int>> core::filter_and_sort_edges(
+    const std::vector<int>& source,
+    const std::vector<int>& target
+) const {
+  if (source.size() != target.size()) {
+    throw std::invalid_argument("Source and target vectors must have the same size.");
+  }
+
+  std::vector<std::pair<int, int>> filtered_edges;
+  filtered_edges.reserve(source.size());
+
+  for (size_t i = 0; i < source.size(); ++i) {
+    const int s = source[i];
+    const int t = target[i];
+
+    if (s < 0 || t < 0) {
+      throw std::out_of_range("Source/target indices must be non-negative.");
+    }
+
+    if (s < number_of_nodes && t < number_of_nodes) {
+      filtered_edges.emplace_back(s, t);
+    }
+  }
+
+  std::stable_sort(
+    filtered_edges.begin(),
+    filtered_edges.end(),
+    [](const std::pair<int, int>& lhs, const std::pair<int, int>& rhs) {
+      if (lhs.first != rhs.first) return lhs.first < rhs.first;
+      return lhs.second < rhs.second;
+    }
+  );
+
+  std::vector<int> sorted_source;
+  std::vector<int> sorted_target;
+  sorted_source.reserve(filtered_edges.size());
+  sorted_target.reserve(filtered_edges.size());
+
+  for (const auto& edge : filtered_edges) {
+    sorted_source.push_back(edge.first);
+    sorted_target.push_back(edge.second);
+  }
+
+  return {std::move(sorted_source), std::move(sorted_target)};
 }
 
 // Optimized fit method for ph class -- enhanced logic, variable naming, and documentation.
 // This implementation incrementally computes link community statistics using the linkage matrix produced by hierarchical clustering.
 // The code avoids recomputing statistics for all communities at every step, updating only the merged clusters, and maintains robust error checking.
-
 void core::fit_edgelist(std::vector<std::vector<double>> &distance_edgelist, const double &max_dist) {
     try {
         // --- Variable Declarations ---
@@ -278,9 +337,29 @@ void core::fit_edgelist(std::vector<std::vector<double>> &distance_edgelist, con
         if (source_nodes.size() != target_nodes.size()) {
             throw std::invalid_argument("Source and target vectors must have the same size.");
         }
-        for (size_t i = 0; i < source_nodes.size(); ++i) {
-            if (source_nodes[i] < 0 || source_nodes[i] >= number_of_nodes ||
-                target_nodes[i] < 0 || target_nodes[i] >= number_of_nodes) {
+
+        std::vector<int> processed_source_nodes;
+        std::vector<int> processed_target_nodes;
+        if (!edge_complete) {
+            if (verbose >= 2) {
+                std::cout << "[linkstat] fit_edgelist Step 1a: filtering and sorting edge list" << std::endl;
+            }
+            auto filtered_edges = filter_and_sort_edges(source_nodes, target_nodes);
+            processed_source_nodes = std::move(filtered_edges.first);
+            processed_target_nodes = std::move(filtered_edges.second);
+        }
+
+        const std::vector<int>& current_source_nodes = edge_complete ? source_nodes : processed_source_nodes;
+        const std::vector<int>& current_target_nodes = edge_complete ? target_nodes : processed_target_nodes;
+
+        if (current_source_nodes.size() != static_cast<size_t>(number_of_edges) ||
+            current_target_nodes.size() != static_cast<size_t>(number_of_edges)) {
+            throw std::invalid_argument("Processed source/target vectors must match number_of_edges.");
+        }
+
+        for (size_t i = 0; i < current_source_nodes.size(); ++i) {
+            if (current_source_nodes[i] < 0 || current_source_nodes[i] >= number_of_nodes ||
+                current_target_nodes[i] < 0 || current_target_nodes[i] >= number_of_nodes) {
                 throw std::out_of_range("Source/target indices out of bounds.");
             }
         }
@@ -320,9 +399,9 @@ void core::fit_edgelist(std::vector<std::vector<double>> &distance_edgelist, con
         for (int i = 0; i < number_of_edges; ++i) {
             LinkCommunityStats lcn;
 
-            lcn.node_members.insert(source_nodes[i]);
-            lcn.node_members.insert(target_nodes[i]);
-            if (source_nodes[i] != target_nodes[i]) {
+            lcn.node_members.insert(current_source_nodes[i]);
+            lcn.node_members.insert(current_target_nodes[i]);
+            if (current_source_nodes[i] != current_target_nodes[i]) {
                 lcn.n = 2;
             } else {
                 // Self-loops are not allowed, halt execution
@@ -456,12 +535,33 @@ void core::fit_matrix(std::vector<double>& condensed_distance_matrix) {
         if (source_nodes.size() != target_nodes.size()) {
             throw std::invalid_argument("Source and target vectors must have the same size.");
         }
+
+        std::vector<int> processed_source_nodes;
+        std::vector<int> processed_target_nodes;
+        if (!edge_complete) {
+            if (verbose >= 2) {
+                std::cout << "[linkstat] fit_matrix Step 1a: filtering and sorting edge list" << std::endl;
+            }
+            auto filtered_edges = filter_and_sort_edges(source_nodes, target_nodes);
+            processed_source_nodes = std::move(filtered_edges.first);
+            processed_target_nodes = std::move(filtered_edges.second);
+        }
+
+        const std::vector<int>& current_source_nodes = edge_complete ? source_nodes : processed_source_nodes;
+        const std::vector<int>& current_target_nodes = edge_complete ? target_nodes : processed_target_nodes;
+
+        if (current_source_nodes.size() != static_cast<size_t>(number_of_edges) ||
+            current_target_nodes.size() != static_cast<size_t>(number_of_edges)) {
+            throw std::invalid_argument("Processed source/target vectors must match number_of_edges.");
+        }
+
         if (condensed_distance_matrix.size() != size_condensed_matrix) {
             throw std::invalid_argument("Distance vector must be a condensed upper triangle matrix.");
         }
-        for (size_t i = 0; i < source_nodes.size(); ++i) {
-            if (source_nodes[i] < 0 || source_nodes[i] >= number_of_nodes ||
-                target_nodes[i] < 0 || target_nodes[i] >= number_of_nodes) {
+
+        for (size_t i = 0; i < current_source_nodes.size(); ++i) {
+            if (current_source_nodes[i] < 0 || current_source_nodes[i] >= number_of_nodes ||
+                current_target_nodes[i] < 0 || current_target_nodes[i] >= number_of_nodes) {
                 throw std::out_of_range("Source/target indices out of bounds.");
             }
         }
@@ -501,9 +601,9 @@ void core::fit_matrix(std::vector<double>& condensed_distance_matrix) {
         tree_excess_sum = 0;
         for (int i = 0; i < number_of_edges; ++i) {
             LinkCommunityStats lcn;
-            lcn.node_members.insert(source_nodes[i]);
-            lcn.node_members.insert(target_nodes[i]);
-            if (source_nodes[i] != target_nodes[i]) {
+            lcn.node_members.insert(current_source_nodes[i]);
+            lcn.node_members.insert(current_target_nodes[i]);
+            if (current_source_nodes[i] != current_target_nodes[i]) {
                 lcn.n = 2;
             } else {
                 // Self-loops are not allowed, halt execution
@@ -635,6 +735,7 @@ PYBIND11_MODULE(link_hierarchy_statistics_cpp, m) {
             const int,
             const bool,
             const int,
+            const bool,
             const bool
           >(),
           py::arg("N"),
@@ -644,7 +745,8 @@ PYBIND11_MODULE(link_hierarchy_statistics_cpp, m) {
           py::arg("linkage"),
           py::arg("undirected"),
           py::arg("verbose") = 0,
-          py::arg("force") = false
+          py::arg("force") = false,
+          py::arg("edge_complete") = true
         )
 
         .def("fit_matrix", &core::fit_matrix)
