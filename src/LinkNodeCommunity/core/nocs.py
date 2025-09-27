@@ -1,56 +1,23 @@
 """
-Module: linknode
+Path: src/LinkNodeCommunity/core/nocs.py
+
+Module: LinkNodeCommunity.core.nocs
 Author: Jorge S. Martinez Armas
 
 Overview:
 ---------
-NOCFinder assigns isolated/single nodes (partition == -1) to one or more
-non‑trivial communities based on distances derived from node–node similarity
-matrices. For directed graphs it considers two perspectives (source/outgoing
-and target/incoming) and merges evidence from both. When a single node is
-assigned to multiple communities, it is considered a NOC (Node with Overlapping
-Community membership).
+Implements the Node Overlap Community (NOC) refinement that assigns singleton
+nodes to communities using node-node similarity distances.
 
-Parameters (NOCFinder):
------------------------
-NOCFinder(G, node_partition, undirected=False,
-          similarity_index="hellinger_similarity",
-          tie_policy="include_equal", eps=0.0, node_order=None)
-
-- G (nx.Graph | nx.DiGraph): Input graph. Nodes may be any hashables.
-- node_partition (array-like, len N): Community id per node; use -1 for singles.
-- undirected (bool): Whether upstream steps treat edges as undirected.
-- similarity_index (str): One of {hellinger_similarity, cosine_similarity,
-  pearson_correlation, weighted_jaccard, jaccard_probability,
-  tanimoto_coefficient}. Controls similarity→distance transform.
-- tie_policy (str): One of {cluster_only, include_equal, include_equal_same_cluster,
-  deterministic}. Governs how multiple close communities are selected.
-- eps (float): Tolerance for equality comparisons in tie handling.
-- node_order (array-like | None): Explicit node order aligning G, partition,
-  and similarity matrices. Defaults to sorted G nodes if None.
-
-
-
-Goals:
-------
-- Fill community memberships for nodes with partition == -1.
-- Allow overlapping assignments via configurable tie policies.
-- Provide a similarity‑proxy score per assigned cover.
-- Support directed/undirected graphs and several similarity indices.
+Key Components:
+---------------
+- NOCFinder: reconciles similarity matrices, tie policies, and overlap scoring
+  to produce node cover assignments.
 
 Notes:
 ------
-- Ordering/alignment: Builds or validates a node order and maps node ids to
-  contiguous indices so that partition and similarity matrices align.
-- Distance transforms: Similarities are converted to distances differently for
-  correlation/cosine/hellinger (sqrt(2(1-s))) vs. Jaccard/Tanimoto (1-s).
-- Outputs: node_cover_partition (hard assignments where unique),
-  single_node_cover_map (overlaps), single_nodes_cover_scores (scores).
-- This class may be slow for large graphs, as it relies on Python for-loops
-  and does not use a low-level backend.
-- Tie handling: If multiple candidate communities are close, a COST matrix of
-  |Δ distance| is hierarchically clustered and a tie policy selects covers.
-- Validation: Shapes, accepted parameters, and node_order content are checked.
+- Works with directed and undirected graphs and several similarity indices.
+- Runs purely in Python, so large graphs may incur longer runtimes.
 """
 
 from concurrent.futures import ThreadPoolExecutor
@@ -68,51 +35,48 @@ class NOCFinder:
     node_partition : npt.ArrayLike,
     undirected: bool = False,
     labels : npt.ArrayLike | None = None,
-    similarity_index: str = "hellinger_similarity",
+    similarity_index: str = "bhattacharyya_coefficient",
     tie_policy: str = "include_equal",
     eps: float = 0.0,
     node_order: npt.ArrayLike | None = None,
     max_workers: int | None = None,
   ):
     """
-    Assigns single/isolated nodes (partition == -1) to one or more
-    non-trivial communities using distances derived from node-node
-    similarity matrices. Nodes assigned to multiple communities are
-    treated as NOCs (overlapping memberships).
-
-    NOTE: node_partition must have -1 for single nodes.
-
-    NOTE: No low-level backend; may be slow for large graphs.
+    Assigns single or isolated nodes (partition == -1) to one or more
+    non-trivial communities using node-node similarity distances. Nodes
+    assigned to multiple communities are treated as overlapping nodes (NOCs).
 
     Parameters
     ----------
     G : nx.DiGraph | nx.Graph
-        Input graph. Nodes may be any hashables.
-    node_partition : array-like, len N
-        Community id per node; use -1 for singles. Must contain -1 for single nodes.
+        Input graph. Nodes may be any hashable objects.
+    node_partition : array-like of shape (N,)
+        Community id per node; use -1 for singleton nodes that need reassignment.
     undirected : bool, optional
-        Whether upstream steps treat edges as undirected. Default is False.
+        Whether upstream steps treated edges as undirected. Default is False.
     labels : array-like | None, optional
-        Node labels for interpretation of results. Default is None.
+        Node labels used for reporting and plotting. Defaults to sorted graph nodes.
     similarity_index : str, optional
-        One of {hellinger_similarity, cosine_similarity,
-        pearson_correlation, weighted_jaccard, jaccard_probability,
-        tanimoto_coefficient}. Controls similarity→distance transform.
-        Default is "hellinger_similarity".
+        One of {bhattacharyya_coefficient, cosine_similarity, pearson_correlation,
+        weighted_jaccard, jaccard_probability, tanimoto_coefficient}. Controls the
+        similarity-to-distance transform. Default is "bhattacharyya_coefficient".
     tie_policy : str, optional
         One of {cluster_only, include_equal, include_equal_same_cluster, deterministic}.
-        Controls tie-breaking behavior. Default is "include_equal".
+        Determines how ties between candidate covers are resolved. Default is "include_equal".
     eps : float, optional
-        Small value to avoid division by zero in similarity calculations. Default is 1e-6.
+        Numerical tolerance used when comparing similarity-derived distances. Default is 0.0.
     node_order : array-like | None, optional
-        Node order for consistent indexing. If None, uses graph node order. Default is None.
+        Explicit node order ensuring partitions and similarity matrices align. If None, uses sorted graph nodes.
     max_workers : int | None, optional
-        Maximum threads when parallelizing single-node processing. Defaults to ``None`` for executor default.
+        Maximum threads when parallelising single-node processing. Default is None (executor default).
     """
 
-    if not np.any(np.asarray(node_partition) != -1):
-      raise ValueError("node_partition must have -1 for single nodes.")
-    
+    if not np.any(np.asarray(node_partition) == -1):
+      raise ValueError("node_partition must at least contain one -1 value.")
+
+    if np.all(np.asarray(node_partition) != -1):
+      raise ValueError("node_partition must contain at least one value that is not -1.")
+
     self.G = G
 
     if labels is not None:
@@ -133,7 +97,7 @@ class NOCFinder:
 
     # Validate accepted arguments up front
     accepted_indices = {
-      "hellinger_similarity",
+      "bhattacharyya_coefficient",
       "cosine_similarity",
       "pearson_correlation",
       "weighted_jaccard",
@@ -294,7 +258,7 @@ class NOCFinder:
     single_nodes_scores = {}    # dictionary of single node to assigned covers
 
     # 1) Distance transform per accepted index family
-    if index == "hellinger_similarity" or index == "cosine_similarity" or index == "pearson_correlation":
+    if index == "bhattacharyya_coefficient" or index == "cosine_similarity" or index == "pearson_correlation":
       max_dist = np.sqrt(2)
       if direction == "source":
         distance_matrix = np.sqrt(2 * (1 - source_sim_matrix))
@@ -405,7 +369,7 @@ class NOCFinder:
         overall_idx = int(candidate_pos[pos])
         community_id = non_single_nodes_map[overall_idx][1]
         node_covers.append(community_id)
-        if index == "hellinger_similarity" or index == "cosine_similarity" or index == "pearson_correlation":
+        if index == "bhattacharyya_coefficient" or index == "cosine_similarity" or index == "pearson_correlation":
           node_scores[community_id] = 1 - np.power(distance_sidx_to_nontrivial_communities[overall_idx]/max_dist, 2)
         elif index == "weighted_jaccard" or index == "jaccard_probability" or index == "tanimoto_coefficient":
           node_scores[community_id] = 1 - distance_sidx_to_nontrivial_communities[overall_idx]

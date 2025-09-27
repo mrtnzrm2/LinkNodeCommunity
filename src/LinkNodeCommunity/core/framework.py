@@ -1,121 +1,97 @@
 """
-src/linknode/core/framework.py
+Path: src/LinkNodeCommunity/core/framework.py
 
-Module: linknode
+Module: LinkNodeCommunity.core.framework
 Author: Jorge S. Martinez Armas
 
 Overview:
 ---------
-Clustering provides a lightweight framework around link-based similarity and
-hierarchical community construction. It prepares an edge list from the input
-graph, computes link–link similarity (via a C++ backend), derives distance
-representations, and exposes helpers to obtain link and node hierarchies and
-basic linkage features. For directed graphs, it restricts N and M to the
-intersection of nodes that appear as both sources and targets while still using
-the full network’s edges to estimate similarities.
+Coordinates the LinkNodeCommunity clustering workflow. Builds graph edgelists,
+executes link similarity routines, and exposes helpers to derive link and node
+hierarchies alongside diagnostic statistics.
 
-Parameters (Clustering):
-------------------------
-Clustering(G, linkage="single", similarity_index="hellinger_similarity")
-
-- G (nx.Graph | nx.DiGraph): Input graph. Edge weight is taken from the
-  "weight" attribute when present, otherwise defaults to 1.0.
-- linkage (str): Hierarchical linkage used downstream. Supported values are
-  {single, average}; other values raise a ValueError in downstream steps.
-- similarity_index (str): One of {hellinger_similarity, cosine_similarity,
-  pearson_correlation, weighted_jaccard, jaccard_probability,
-  tanimoto_coefficient}. Passed to LinkSimilarity to control how link
-  similarities are computed before distance transforms.
-
-Goals:
-------
-- Prepare an edge list DataFrame from the graph with source, target, weight.
-- Compute LinkSim outputs (condensed matrix or edgelist) via C++ backends.
-- Build link and node hierarchies from distance data.
-- Compute summary features (K, height, D, S) for link hierarchies.
+Key Components:
+---------------
+- Clustering: orchestrates similarity computation, distance conversion, and
+  hierarchy summaries.
 
 Notes:
 ------
-- Directed handling: N and M are taken from the subgraph induced by nodes that
-  are both sources and targets; similarity estimation uses the full edge list
-  for better statistics. The `undirected` flag is inferred from the graph type.
-- Distance data: Attributes `dist_mat` and `dist_edgelist` are expected to be
-  populated (from LinkSim outputs) before calling hierarchy/feature routines.
-- Linkage support: Only "single" is implemented in feature and
-  node-hierarchy routines; other options raise a ValueError.
-- Backends: Uses C++ modules `link_hierarchy_statistics_cpp`,
-  `node_community_hierarchy_cpp`, and `utils_cpp` for performance-critical
-  operations. Link similarity is provided by `LinkSimilarity`.
-- Outputs: Sets `linksim_condense_matrix` or `linksim_edgelist`, and after
-  node hierarchy routines, `Z` (linkage array) and `linknode_equivalence` (component map).
+- Directed graphs can restrict statistics to the edge-complete subgraph via
+  `consider_subgraph=True`.
+- Relies on the `link_hierarchy_statistics_cpp`, `node_community_hierarchy_cpp`,
+  and `utils_cpp` extensions for performance-critical operations.
 """
 
 # Standard libs ----
-from platform import node
 import numpy as np
 import pandas as pd
 import networkx as nx
 
 #  Framework libs ----
-from .similarity import LinkSimilarity
+from .similarity import LinkSimilarity, ACCEPTED_SIMILARITY_INDICES
 from .tonewick import LinkageToNewick
-from ..utils import edgelist_from_graph
+from ..utils import edgelist_from_graph, linknode_equivalence_partition
 
 # C++ libs ----
-import link_hierarchy_statistics_cpp as link_stats
-import node_community_hierarchy_cpp as node_builder
+import link_hierarchy_statistics_cpp as linkstats
+import node_community_hierarchy_cpp as link2node
 import utils_cpp
 
 
 class Clustering:
     """
-    Clustering framework for analyzing node and edge similarities in (di)graphs.
-
+    Clustering framework for analysing node and edge similarities in (di)graphs.
+    
     Parameters
     ----------
-    G : nx.Graph or nx.DiGraph
-      Input graph. Edge weights are taken from the "weight" attribute if present, otherwise default to 1.0.
+    G : nx.Graph | nx.DiGraph
+        Input graph. Edge weights default to 1.0 when absent.
     linkage : str, optional
-      Hierarchical linkage criterion to use for clustering. Supported: {"single", "average"}. Default is "single".
+        Hierarchical linkage criterion to use ({"single", "average"}). Default is "single".
     similarity_index : str, optional
-      Similarity index for measuring edge similarity. Supported: {"hellinger_similarity", "cosine_similarity", "pearson_correlation", "weighted_jaccard", "jaccard_probability", "tanimoto_coefficient"}. Default is "hellinger_similarity".
-
+        Similarity index used by `LinkSimilarity`. Supported values include {
+              "bhattacharyya_coefficient", "cosine_similarity", "pearson_correlation",
+              "weighted_jaccard", "jaccard_probability", "tanimoto_coefficient"}.
+                  Default is "bhattacharyya_coefficient".
+    consider_subgraph : bool, optional
+        When True, restricts statistics (N, M) to nodes that appear as both sources and targets while computing similarities on the full graph. Default is False.
+    
     Attributes
     ----------
-    G : nx.Graph or nx.DiGraph
-      The input graph.
+    G : nx.Graph | nx.DiGraph
+        The input graph.
     undirected : bool
-      True if the graph is undirected, False if directed.
-    N : int
-      Number of nodes in the intersection of source and target nodes (for directed graphs).
-    M : int
-      Number of edges between intersection nodes (for directed graphs).
+        True when the graph is undirected.
+    N, M : int
+        Node and edge counts used in the similarity pipeline (respecting `consider_subgraph`).
     linkage : str
-      The linkage criterion for clustering.
+        The linkage criterion passed at construction time.
     similarity_index : str
-      The similarity index for edge similarity.
-    linksim_condense_matrix : array-like or None
-    linksim : LinkSimilarity or None
-      Instance of LinkSimilarity used for computing link similarities.
-      (set by fit_linksim_matrix() or fit_linksim_edgelist())
-      Condensed matrix of link similarities (computed by fit_linksim_matrix()).
-    linksim_edgelist : array-like or None
-      Edge list of link similarities (computed by fit_linksim_edgelist()).
-    linkdist_matrix : array-like or None
-      Condensed distance matrix (computed by fit_linkdist_matrix()).
-    linkdist_edgelist : array-like or None
-      Edge list of link distances (computed by fit_linkdist_edgelist()).
+        The configured similarity index.
     edgelist : pandas.DataFrame
-      DataFrame containing source, target, and weight for each edge in the graph.
-
-    Notes
-    -----
-    - For directed graphs, only nodes that are both sources and targets are considered for clustering (intersection nodes).
-    - The full edge list from the entire graph is used to compute similarities for better statistics.
+        Sorted edge list with columns [source, target, weight].
+    linksim : LinkSimilarity | None
+        Populated after calling `fit_linksim_matrix` or `fit_linksim_edgelist`.
+    linksim_condense_matrix : np.ndarray | None
+        Condensed link-link similarity matrix when computed.
+    linksim_edgelist : pandas.DataFrame | None
+        Link similarity edge list when computed.
+    linkdist_matrix : np.ndarray | None
+        Condensed link-link distance matrix when computed.
+    linkdist_edgelist : pandas.DataFrame | None
+        Link distance edge list when computed.
+    
     """
     def __init__(
-        self, G: nx.DiGraph | nx.Graph, linkage="single", similarity_index="hellinger_similarity", consider_subgraph=False
+        self, G: nx.DiGraph | nx.Graph, similarity_index="bhattacharyya_coefficient", consider_subgraph=False
     ):
+      
+      if similarity_index not in ACCEPTED_SIMILARITY_INDICES:
+        raise ValueError(
+          f"Similarity index '{similarity_index}' is not supported.\nAccepted indices are: {ACCEPTED_SIMILARITY_INDICES}"
+        )
+
       self.G = G
 
       # Check for NaN edge weights
@@ -144,7 +120,6 @@ class Clustering:
         self.N = self.G.number_of_nodes()
         self.M = self.G.number_of_edges()
 
-      self.linkage = linkage
       self.similarity_index = similarity_index
 
       self.linksim_condense_matrix = None
@@ -166,7 +141,15 @@ class Clustering:
       for node, label in labels.items():
           self.G.nodes[node]["label"] = label
 
-    def fit(self, use_parallel=False, flat_mode=False, method="matrix", max_dist=1.0):
+    def fit(
+        self,
+        use_parallel=False, 
+        flat_mode=False, 
+        method="matrix", 
+        max_dist=1.0, 
+        verbose=0,
+        force=False
+      ):
       """
       Fit the clustering model by computing link similarities and distances.
 
@@ -185,34 +168,34 @@ class Clustering:
         If an unsupported method is provided.
       """
       if method == "matrix":
-        self.fit_linksim_matrix(use_parallel=use_parallel, flat_mode=flat_mode)
+        self.fit_linksim_matrix(use_parallel=use_parallel, flat_mode=flat_mode, verbose=verbose)
         self.fit_linkdist_matrix()
-        self.link_stats = self.process_features_matrix()
-        self.node_community_hierarchy_matrix(use_parallel=use_parallel)
+        self.linkstats = self.process_features_matrix(verbose=verbose, force=force)
+        self.node_community_hierarchy_matrix(use_parallel=use_parallel, verbose=verbose)
       elif method == "edgelist":
-        self.fit_linksim_edgelist(use_parallel=use_parallel, flat_mode=flat_mode)
+        self.fit_linksim_edgelist(use_parallel=use_parallel, flat_mode=flat_mode, verbose=verbose)
         self.fit_linkdist_edgelist()
-        self.link_stats = self.process_features_edgelist(max_dist=max_dist)
-        self.node_community_hierarchy_edgelist(use_parallel=use_parallel, max_dist=max_dist)
+        self.linkstats = self.process_features_edgelist(max_dist=max_dist, verbose=verbose, force=force)
+        self.node_community_hierarchy_edgelist(use_parallel=use_parallel, max_dist=max_dist, verbose=verbose)
       else:
         raise ValueError("Unsupported method. Use 'matrix' or 'edgelist'.")
 
-    def fit_linksim_matrix(self, use_parallel=False, flat_mode=False):
+    def fit_linksim_matrix(self, use_parallel=False, flat_mode=False, verbose=0):
       self.linksim = LinkSimilarity(
         self.edgelist, self.N, self.M, similarity_index=self.similarity_index,
         undirected=self.undirected, use_parallel=use_parallel,
         flat_mode=flat_mode
       )
-      self.linksim.similarity_linksim_matrix()
+      self.linksim.similarity_linksim_matrix(verbose=verbose)
       self.linksim_condense_matrix = self.linksim.linksim_condense_matrix
 
-    def fit_linksim_edgelist(self, use_parallel=False, flat_mode=False):
+    def fit_linksim_edgelist(self, use_parallel=False, flat_mode=False, verbose=0):
       self.linksim = LinkSimilarity(
         self.edgelist, self.N, self.M, similarity_index=self.similarity_index,
         undirected=self.undirected, use_parallel=use_parallel,
         flat_mode=flat_mode
       )
-      self.linksim.similarity_linksim_edgelist()
+      self.linksim.similarity_linksim_edgelist(verbose=verbose)
       self.linksim_edgelist = np.array(self.linksim.linksim_edgelist)
     
     def fit_linkdist_matrix(self):
@@ -242,12 +225,12 @@ class Clustering:
 
     def get_hierarchy_matrix(self):
       from scipy.cluster.hierarchy import linkage
-      return linkage(self.linkdist_matrix, self.linkage)
+      return linkage(self.linkdist_matrix, method="single")
 
     def get_hierarchy_edgelist(self, max_dist : float = 1):
       return np.array(utils_cpp.mst_edges_to_linkage(self.M, self.linkdist_edgelist, max_dist))
 
-    def compute_features_matrix(self, linkage : int):
+    def compute_features_matrix(self, linkage : int, verbose=0, force=False):
       if self.edgelist.shape[0] > 1:
         sources = self.edgelist["source"].to_numpy()
         targets = self.edgelist["target"].to_numpy()
@@ -257,14 +240,15 @@ class Clustering:
             "edgelist is not sorted by 'source' and then 'target'. Sort it before computing features."
           )
 
-
-      features = link_stats.core(
+      features = linkstats.core(
         self.N,
         self.M,
         self.edgelist["source"].to_numpy().astype(np.int32)[:self.M],
         self.edgelist["target"].to_numpy().astype(np.int32)[:self.M],
         linkage,
-        self.undirected
+        self.undirected,
+        verbose=verbose,
+        force=force
       )
       features.fit_matrix(self.linkdist_matrix)
       result = np.array(
@@ -277,7 +261,7 @@ class Clustering:
       )
       return result
 
-    def compute_features_edgelist(self, linkage : int, max_dist=1):
+    def compute_features_edgelist(self, linkage : int, max_dist=1, verbose=0, force=False):
       if self.linkdist_edgelist is None:
         raise ValueError("linkdist_edgelist is not set. Run fit_linksim_edgelist() and build the distance column first.")
 
@@ -301,13 +285,15 @@ class Clustering:
             "edgelist is not sorted by 'source' and then 'target'. Sort it before computing features."
           )
 
-      features = link_stats.core(
+      features = linkstats.core(
         self.N,
         self.M,
         self.edgelist["source"].to_numpy().astype(np.int32)[:self.M],
         self.edgelist["target"].to_numpy().astype(np.int32)[:self.M],
         linkage,
-        self.undirected
+        self.undirected,
+        verbose=verbose,
+        force=force
       )
       features.fit_edgelist(self.linkdist_edgelist, max_dist)
       result = np.array(
@@ -320,13 +306,10 @@ class Clustering:
       )
       return result
 
-    def process_features_matrix(self):
-      if self.linkage == "single":
-        linkage = 0
-      else:
-        raise ValueError("Link community model has not been tested with the input linkage.")
-
-      features = self.compute_features_matrix(linkage)
+    def process_features_matrix(self, verbose=0, force=False):
+      linkage = 0  # Single linkage
+                   # Only single linkage supported deliberately
+      features = self.compute_features_matrix(linkage, verbose=verbose, force=force)
       return pd.DataFrame(
           {
             "K" : features[0, :],
@@ -336,13 +319,10 @@ class Clustering:
           }
         )
 
-    def process_features_edgelist(self, max_dist=1):
-      if self.linkage == "single":
-        linkage = 0
-      else:
-        raise ValueError("Link community model has not been tested with the input linkage.")
-
-      features = self.compute_features_edgelist(linkage, max_dist=max_dist)
+    def process_features_edgelist(self, max_dist=1, verbose=0, force=False):
+      linkage = 0  # Single linkage
+                   # Only single linkage supported deliberately
+      features = self.compute_features_edgelist(linkage, max_dist=max_dist, verbose=verbose, force=force)
       return pd.DataFrame(
           {
             "K" : features[0, :],
@@ -352,12 +332,11 @@ class Clustering:
           }
         )
 
-    def node_community_hierarchy_matrix(self, use_parallel=False):
-      if self.linkage == "single":
-        linkage = 0
-      else:
-        raise ValueError("Link community model has not been tested with the input linkage.")
-
+    def node_community_hierarchy_matrix(self, use_parallel=False, verbose=0):
+      linkage = 0  # Single linkage
+                   # Only single linkage supported deliberately
+      if self.linkdist_matrix is None:
+        raise ValueError("linkdist_matrix is not set. Run fit_linksim_matrix() and build the distance column first.")
       if self.edgelist.shape[0] > 1:
         sources = self.edgelist["source"].to_numpy()
         targets = self.edgelist["target"].to_numpy()
@@ -371,14 +350,15 @@ class Clustering:
         if self.undirected: undirected = 1
         else: undirected = 0
 
-      NH = node_builder.core(
+      NH = link2node.core(
         self.N,
         self.M,
         self.edgelist["source"].to_numpy().astype(np.int32),
         self.edgelist["target"].to_numpy().astype(np.int32),
         linkage,
         undirected,
-        use_parallel=use_parallel
+        use_parallel=use_parallel,
+        verbose=verbose
       )
 
       NH.fit_matrix(self.linkdist_matrix)
@@ -388,12 +368,11 @@ class Clustering:
       self.linknode_equivalence = NH.get_linknode_equivalence()
       self.linknode_equivalence = np.array(self.linknode_equivalence)
 
-    def node_community_hierarchy_edgelist(self, use_parallel=False, max_dist=1):
-      if self.linkage == "single":
-        linkage = 0
-      else:
-        raise ValueError("Link community model has not been tested with the input linkage.")
-      
+    def node_community_hierarchy_edgelist(self, use_parallel=False, max_dist=1, verbose=0):
+      linkage = 0  # Single linkage
+                   # Only single linkage supported deliberately
+      if self.linkdist_edgelist is None:
+        raise ValueError("linkdist_edgelist is not set. Run fit_linksim_edgelist() and build the distance column first.")
       if self.linksim_edgelist is not None:
         link_indices = self.linkdist_edgelist[:, :2]
         expected_indices = self.linksim_edgelist[:, :2]
@@ -415,14 +394,15 @@ class Clustering:
         if self.undirected: undirected = 1
         else: undirected = 0
 
-      NH = node_builder.core(
+      NH = link2node.core(
         self.N,
         self.M,
         self.edgelist["source"].to_numpy().astype(np.int32),
         self.edgelist["target"].to_numpy().astype(np.int32),
         linkage,
         undirected,
-        use_parallel=use_parallel
+        use_parallel=use_parallel,
+        verbose=verbose
       )
 
       NH.fit_edgelist(self.linkdist_edgelist, max_dist)
@@ -439,4 +419,30 @@ class Clustering:
       TN = LinkageToNewick(self.Z, labels=labels, branch_length=branch_length)
       TN.fit()
       self.newick = TN.newick
+    
+    def equivalence_partition(self, score : str = "S"):
+      """
+      Derive node partitions from the link-node equivalence using a specified score.
+
+      Parameters
+      ----------
+      score : str
+        The score to use for partitioning. Supported values are "D" (dissimilarity)
+        and "S" (similarity). Default is "S".
+
+      Returns
+      -------
+      tuple
+          - number_link_communities (int or np.ndarray): Number of link communities at maximum score.
+          - number_node_communities (int or np.ndarray): Corresponding number of node communities.
+          - height_at_maximum (float or np.ndarray): Height at which the maximum score occurs.
+      """
+      if not hasattr(self, 'linknode_equivalence'):
+        raise ValueError("Link-node equivalence not computed. Run node_community_hierarchy_matrix() or node_community_hierarchy_edgelist() first.")
+      if not hasattr(self, 'linkstats'):
+        raise ValueError("Linkage statistics not computed. Run process_features_matrix() or process_features_edgelist() first.")
+      if score not in {"D", "S"}:
+        raise ValueError("Score must be one of {'D', 'S'}.")
+     
+      return linknode_equivalence_partition(score, self.linkstats, self.linknode_equivalence)
     

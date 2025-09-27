@@ -1,33 +1,23 @@
 """
-Module: linknode
+Path: src/LinkNodeCommunity/core/tonewick.py
+
+Module: LinkNodeCommunity.core.tonewick
 Author: Jorge S. Martinez Armas
 
 Overview:
 ---------
-Converts a SciPy-style linkage matrix `Z` into a Newick string. Builds
-an intermediate nested-dict tree that records community splits and
-heights, supporting downstream processing beyond Newick export.
+Converts SciPy linkage matrices into Newick strings while exposing the
+intermediate tree representation used by LinkNodeCommunity visualisations.
 
-Parameters (LinkageToNewick):
------------------------------
-LinkageToNewick(Z, labels=None, branch_length=True)
-
-- Z (ndarray, shape (n-1, >=4)): Linkage matrix with child indices and
-  heights in column 2; validated for structural consistency and monotonic
-  heights.
-- labels (array-like | None): Leaf labels; defaults to range(n).
-- branch_length (bool): Use parent.height − child.height for branch lengths
-  (or unit lengths if False).
-
-Goals:
-------
-- Provide deterministic Newick output from `Z`.
-- Expose a reusable tree dictionary for other methods.
+Key Components:
+---------------
+- LinkageToNewick: validates linkage input, builds a nested tree dictionary, and
+  renders deterministic Newick output.
 
 Notes:
 ------
-- Children are sorted when rendering to ensure stable output order.
-- Validates that heights are non-decreasing to avoid negative branches.
+- Supports optional branch-length scaling and preserves child ordering for
+  stable outputs.
 """
 
 import numpy as np
@@ -41,7 +31,7 @@ class LinkageToNewick:
 
         if labels is None:
             # Default labels are 0..N-1 as strings
-            self.labels = list(range(self.N))
+            self.labels = np.arange(self.N).astype(str)
         elif len(labels) == self.N:
             self.labels = labels
         else:

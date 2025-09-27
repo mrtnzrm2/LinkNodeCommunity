@@ -1,37 +1,26 @@
 """
-src/linknode/core/similarity.py
+Path: src/LinkNodeCommunity/core/similarity.py
 
-Module: linknode
+Module: LinkNodeCommunity.core.similarity
 Author: Jorge S. Martinez Armas
 
 Overview:
 ---------
-LinkSimilarity wraps C++ backends to compute pairwise link similarities from
-an input edge list. It supports two output modes: a condensed matrix and an
-edge-list representation, and also exposes per-endpoint (source/target)
-similarity matrices.
+Wrapper around the C++ link similarity engines. Produces condensed matrices or
+edge-list outputs and the per-endpoint similarity matrices required downstream.
 
-Parameters (LinkSimilarity):
-----------------------------
-LinkSimilarity(edgelist, N, M, similarity_index="hellinger_similarity", undirected=True)
-
-- edgelist (pd.DataFrame): Edge list with columns [source, target, weight].
-- N (int): Number of nodes in the analyzed subgraph.
-- M (int): Number of edges in the analyzed subgraph.
-- similarity_index (str): One of {hellinger_similarity, cosine_similarity,
-  pearson_correlation, weighted_jaccard, jaccard_probability,
-  tanimoto_coefficient}.
-- undirected (bool): Whether to treat the graph as undirected for similarity.
-- use_parallel (bool): Whether to use parallel computation.
-- flat_mode (bool): If True, maps zero feature vectors to similarity 0.
+Key Components:
+---------------
+- LinkSimilarity: manages similarity configuration, execution, and cached
+  outputs.
 
 Notes:
 ------
-- Backends: Uses C++ module `linksim_cpp` via `linksim.core` for performance.
-- API: Call `similarity_linksim_matrix()` or `similarity_linksim_edgelist()`
-  to populate attributes.
-- Outputs: Sets `linksim_condense_matrix` or `linksim_edgelist`, and always
-  `source_sim_matrix` and `target_sim_matrix`.
+- Supports similarity indices {bhattacharyya_coefficient, cosine_similarity,
+  pearson_correlation, weighted_jaccard, jaccard_probability,
+  tanimoto_coefficient}.
+- Optional parallel execution (`use_parallel`) and zero-vector handling
+  (`flat_mode`) control numerical edge cases.
 """
 
 import numpy as np
@@ -41,9 +30,18 @@ import networkx as nx
 # cpp libs ----
 import linksim_cpp as linksim
 
+ACCEPTED_SIMILARITY_INDICES = [
+    "tanimoto_coefficient",
+    "cosine_similarity",
+    "jaccard_probability",
+    "bhattacharyya_coefficient",
+    "pearson_correlation",
+    "weighted_jaccard"
+]
+
 class LinkSimilarity:
   def __init__(
-    self, edgelist : pd.DataFrame, N, M, similarity_index="hellinger_similarity", undirected=True, use_parallel=False, flat_mode=False
+    self, edgelist : pd.DataFrame, N, M, similarity_index="bhattacharyya_coefficient", undirected=True, use_parallel=False, flat_mode=False
   ):
     # Parameters ----
     self.edgelist = edgelist
@@ -58,12 +56,12 @@ class LinkSimilarity:
       "tanimoto_coefficient" : 0,
       "cosine_similarity" : 1,
       "jaccard_probability" : 2,
-      "hellinger_similarity" : 3,
+      "bhattacharyya_coefficient" : 3,
       "pearson_correlation" : 4,
       "weighted_jaccard" : 5
     }
   
-  def similarity_linksim_matrix(self):
+  def similarity_linksim_matrix(self, verbose=0):
     ls = linksim.core(
       self.N,
       self.M,
@@ -71,7 +69,8 @@ class LinkSimilarity:
       self.similarity_indices_map[self.similarity_index],
       self.undirected,
       self.use_parallel,
-      self.flat_mode
+      self.flat_mode,
+      verbose
     )
 
     ls.fit_linksim_condense_matrix()
@@ -79,7 +78,7 @@ class LinkSimilarity:
     self.source_sim_matrix = np.array(ls.get_source_matrix())
     self.target_sim_matrix = np.array(ls.get_target_matrix())
 
-  def similarity_linksim_edgelist(self):
+  def similarity_linksim_edgelist(self, verbose=0):
     ls = linksim.core(
       self.N,
       self.M,
@@ -87,7 +86,8 @@ class LinkSimilarity:
       self.similarity_indices_map[self.similarity_index],
       self.undirected,
       self.use_parallel,
-      self.flat_mode
+      self.flat_mode,
+      verbose
     )
 
     ls.fit_linksim_edgelist()

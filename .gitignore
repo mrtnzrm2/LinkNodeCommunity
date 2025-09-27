@@ -32,3 +32,7 @@ cpp/**/cmake-build-*/
 *.ninja
 .ninja_*
 .DS_Store
+
+**.pdf
+
+**/WikiVote.ipynb

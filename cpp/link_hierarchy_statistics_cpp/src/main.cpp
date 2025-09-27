@@ -32,6 +32,9 @@
  * - target_nodes (std::vector<int>): List of target node indices for each edge.
  * - linkage (int): Linkage method for hierarchical clustering (single linkage recommended).
  * - undirected (bool): Whether the graph is undirected.
+ * - verbose (int, optional): Verbosity level (0 no output, 1 workflow milestones, 2 step annoucements).
+ * - force (bool, optional): Ignore recoverable runtime errors to let workflows finish when possible.
+ *   False (0, default) halts on errors, True (1) attempts to continue.
  *
  * core Class Methods:
  * -------------------
@@ -70,7 +73,6 @@
 #include <set>
 #include <unordered_map>
 #include <stdexcept>
-#include <cassert>
 #include <cstddef>
 #include "../../libs/hclust-cpp/fastcluster.h"
 
@@ -82,7 +84,9 @@ namespace py = pybind11;
 double Dc(int &m, int &n, bool &undirected) {
   double dc;
   if (!undirected) {
-    assert(n >= 2 && "Dc (directed): n must be >= 2");
+    if (n < 2) {
+      throw std::invalid_argument("Dc (directed) requires n >= 2");
+    }
     double denom = pow(n - 1., 2.);
     if (denom == 0.0) {
       throw std::runtime_error("Dc denominator zero (directed); returning 0.");
@@ -91,7 +95,9 @@ double Dc(int &m, int &n, bool &undirected) {
   }
   else {
     if (n == 2 && m == 1) return 0; // Special case: two nodes, one edge
-    assert(n >= 3 && "Dc (undirected): n must be >= 3");
+    if (n < 3) {
+      throw std::invalid_argument("Dc (undirected) requires n >= 3");
+    }
     double denom = ((n * (n - 1.) / 2.) - n + 1.);
     if (denom == 0.0) {
       throw std::runtime_error("Dc denominator zero (undirected); returning 0.");
@@ -162,6 +168,8 @@ class core {
     int number_of_edges;
     int linkage;
     bool undirected;
+    int verbose;
+    bool force;
 
     std::vector<int> source_nodes;
     std::vector<int> target_nodes;
@@ -180,7 +188,9 @@ class core {
       std::vector<int> source_nodes,
       std::vector<int> target_nodes,
       const int linkage,
-      const bool undirected
+      const bool undirected,
+      const int verbose = 0,
+      const bool force = false
     );
     ~core(){};
 
@@ -210,7 +220,9 @@ core::core(
   std::vector<int> source_nodes,
   std::vector<int> target_nodes,
   const int linkage,
-  const bool undirected
+  const bool undirected,
+  const int verbose,
+  const bool force
 ) {
   number_of_nodes = N;
   number_of_edges = M;
@@ -218,9 +230,24 @@ core::core(
   this->target_nodes = target_nodes;
   this->linkage = linkage;
   this->undirected = undirected;
+  this->force = force;
+
+  if (verbose < 0 || verbose > 2) {
+    std::cerr << "Warning: Verbose level " << verbose << " out of range [0,2]. Clamping to nearest bound.\n";
+    this->verbose = std::max(0, std::min(verbose, 2));
+  } else {
+    this->verbose = verbose;
+  }
 
   if (this->linkage != HCLUST_METHOD_SINGLE) {
     std::cerr << "Warning: Non-single linkage selected (" << this->linkage << "). For link community analysis, single linkage is recommended. Other methods may produce artifactual results.\n";
+  }
+
+  if (this->verbose >= 1) {
+    std::cout << "[linkstat] Initialized with N=" << number_of_nodes
+              << ", M=" << number_of_edges
+              << ", verbose=" << this->verbose
+              << ", force=" << (this->force ? 1 : 0) << "\n";
   }
 }
 
@@ -229,134 +256,176 @@ core::core(
 // The code avoids recomputing statistics for all communities at every step, updating only the merged clusters, and maintains robust error checking.
 
 void core::fit_edgelist(std::vector<std::vector<double>> &distance_edgelist, const double &max_dist) {
-    // --- Variable Declarations ---
-    // Statistics and loop variables
-    int prev_tree_excess, tree_excess_sum;
+    try {
+        // --- Variable Declarations ---
+        // Statistics and loop variables
+        int prev_tree_excess, tree_excess_sum;
 
-    // linkage matrix, cluster mapping
-    std::vector<std::vector<double>> linkage_matrix;
+        // linkage matrix, cluster mapping
+        std::vector<std::vector<double>> linkage_matrix;
 
-    // Object mapping link communities to their statistics
-    std::unordered_map<int, LinkCommunityStats> cluster_map;
+        // Object mapping link communities to their statistics
+        std::unordered_map<int, LinkCommunityStats> cluster_map;
 
-    // --- Input Validation ---
-    if (source_nodes.size() != target_nodes.size()) {
-        throw std::invalid_argument("Source and target vectors must have the same size.");
-    }
-    for (size_t i = 0; i < source_nodes.size(); ++i) {
-        if (source_nodes[i] < 0 || source_nodes[i] >= number_of_nodes ||
-            target_nodes[i] < 0 || target_nodes[i] >= number_of_nodes) {
-            throw std::out_of_range("Source/target indices out of bounds.");
+        if (verbose >= 1) {
+            std::cout << "[linkstat] Starting fit_edgelist workflow" << std::endl;
         }
-    }
-
-    // --- Prepare Clustering ---
-    std::vector<edge_struct> edgelist = vecvec_to_edgelist(distance_edgelist);
-
-    // Allocate clustering results
-    int* merge = new int[2 * (number_of_edges - 1)];
-    double* height = new double[number_of_edges - 1];
-
-    // --- Run Clustering ---
-    hclust_fast_edgelist(number_of_edges, edgelist, max_dist, merge, height);
-    linkage_matrix = make_linkage_matrix(merge, height, number_of_edges);
-
-    // --- Prepare Output Vectors ---
-    expand_vector(K, number_of_edges - 1);
-    expand_vector(Height, number_of_edges - 1);
-    expand_vector(D, number_of_edges - 1);
-    expand_vector(S, number_of_edges - 1);
-
-    // --- Initialize Link Community Map ---
-    // Each initial edge (singleton cluster) is mapped to its nodes and statistics
-    tree_excess_sum = 0;
-    for (int i = 0; i < number_of_edges; ++i) {
-        LinkCommunityStats lcn;
-        
-        lcn.node_members.insert(source_nodes[i]);
-        lcn.node_members.insert(target_nodes[i]);
-        if (source_nodes[i] != target_nodes[i]) {
-            lcn.n = 2;
-        } else {
-            // Self-loops are not allowed, halt execution
-            throw std::invalid_argument("Self-loops detected. Self-loops are not allowed in this implementation.");
+        if (verbose >= 2) {
+            std::cout << "[linkstat] fit_edgelist Step 1: validating inputs" << std::endl;
         }
-        lcn.m = 1;
-        lcn.dc = Dc(lcn.m, lcn.n, undirected);
-        lcn.sc = Sc(lcn.m, lcn.n, number_of_edges, number_of_nodes);
-        lcn.mtree = lcn.m - lcn.n + 1;
-        cluster_map[-i - 1] = lcn;
 
-        tree_excess_sum += lcn.mtree;
-    }
-    prev_tree_excess = tree_excess_sum;
+        // --- Input Validation ---
+        if (source_nodes.size() != target_nodes.size()) {
+            throw std::invalid_argument("Source and target vectors must have the same size.");
+        }
+        for (size_t i = 0; i < source_nodes.size(); ++i) {
+            if (source_nodes[i] < 0 || source_nodes[i] >= number_of_nodes ||
+                target_nodes[i] < 0 || target_nodes[i] >= number_of_nodes) {
+                throw std::out_of_range("Source/target indices out of bounds.");
+            }
+        }
 
-    
-    double running_density = 0, running_entropy = 0;
+        if (verbose >= 2) {
+            std::cout << "[linkstat] fit_edgelist Step 2: preparing clustering data" << std::endl;
+        }
+        // --- Prepare Clustering ---
+        std::vector<edge_struct> edgelist = vecvec_to_edgelist(distance_edgelist);
 
-    // --- Main Incremental Hierarchy Loop ---
-    for (size_t i = 0; i < linkage_matrix.size(); i++) {
-        // 1. Determine number of clusters at this step
-        int num_link_communities = number_of_edges - static_cast<int>(i) - 1;
+        // Allocate clustering results
+        std::vector<int> merge(2 * (number_of_edges - 1));
+        std::vector<double> height(number_of_edges - 1);
 
-        // 2. Retrieve indices of clusters being merged (R convention)
-        int idx1 = static_cast<int>(linkage_matrix[i][0]);
-        int idx2 = static_cast<int>(linkage_matrix[i][1]);
-        double merge_height = linkage_matrix[i][2]; // Height of current merge
+        if (verbose >= 2) {
+            std::cout << "[linkstat] fit_edgelist Step 3: running hierarchical clustering" << std::endl;
+        }
+        // --- Run Clustering ---
+        hclust_fast_edgelist(number_of_edges, edgelist, max_dist, merge.data(), height.data());
+        linkage_matrix = make_linkage_matrix(merge.data(), height.data(), number_of_edges);
 
-        K[i] = num_link_communities;
-        Height[i] = merge_height;
+        if (verbose >= 2) {
+            std::cout << "[linkstat] fit_edgelist Step 4: preparing output buffers" << std::endl;
+        }
+        // --- Prepare Output Vectors ---
+        expand_vector(K, number_of_edges - 1);
+        expand_vector(Height, number_of_edges - 1);
+        expand_vector(D, number_of_edges - 1);
+        expand_vector(S, number_of_edges - 1);
 
-        // 3. Merge cluster properties
-        LinkCommunityStats merged_lcn;
-        // Validate indices exist in map to avoid accidental default insertion
-        const auto &c1 = cluster_map.at(idx1);
-        const auto &c2 = cluster_map.at(idx2);
-        // Merge node sets
-        merged_lcn.node_members = c1.node_members;
-        merged_lcn.node_members.insert(
-            c2.node_members.begin(),
-            c2.node_members.end()
-        );
-        merged_lcn.n = merged_lcn.node_members.size();
-        merged_lcn.m = c1.m + c2.m;
-        merged_lcn.mtree = merged_lcn.m - merged_lcn.n + 1;
+        if (verbose >= 2) {
+            std::cout << "[linkstat] fit_edgelist Step 5: initializing cluster map" << std::endl;
+        }
+        // --- Initialize Link Community Map ---
+        // Each initial edge (singleton cluster) is mapped to its nodes and statistics
+        tree_excess_sum = 0;
+        for (int i = 0; i < number_of_edges; ++i) {
+            LinkCommunityStats lcn;
 
-        // Update community density and entropy
-        merged_lcn.dc = Dc(merged_lcn.m, merged_lcn.n, undirected);
-        merged_lcn.sc = Sc(merged_lcn.m, merged_lcn.n, number_of_edges, number_of_nodes);
+            lcn.node_members.insert(source_nodes[i]);
+            lcn.node_members.insert(target_nodes[i]);
+            if (source_nodes[i] != target_nodes[i]) {
+                lcn.n = 2;
+            } else {
+                // Self-loops are not allowed, halt execution
+                throw std::invalid_argument("Self-loops detected. Self-loops are not allowed in this implementation.");
+            }
+            lcn.m = 1;
+            lcn.dc = Dc(lcn.m, lcn.n, undirected);
+            lcn.sc = Sc(lcn.m, lcn.n, number_of_edges, number_of_nodes);
+            lcn.mtree = lcn.m - lcn.n + 1;
+            cluster_map[-i - 1] = lcn;
 
-        // 4. Update cluster map with new merged cluster
-        cluster_map[static_cast<int>(i) + 1] = merged_lcn;
-
-        // 5. Update excess tree edges ("mtree") for normalization
-        tree_excess_sum += merged_lcn.mtree - (c1.mtree + c2.mtree);
-
-        // 6. Incremental update of statistics
-        running_density += merged_lcn.dc * merged_lcn.m / number_of_edges
-            - (c1.dc * c1.m / number_of_edges + c2.dc * c2.m / number_of_edges);
-        running_entropy += merged_lcn.sc - (c1.sc + c2.sc);
-        running_entropy += Ptree(number_of_edges, number_of_nodes, tree_excess_sum)
-            - Ptree(number_of_edges, number_of_nodes, prev_tree_excess);
+            tree_excess_sum += lcn.mtree;
+        }
         prev_tree_excess = tree_excess_sum;
 
-        D[i] = running_density;
-        S[i] = running_entropy;
 
-        // 7. Cleanup merged clusters from map to save memory
-        cluster_map.erase(idx1);
-        cluster_map.erase(idx2);
+        double running_density = 0, running_entropy = 0;
 
-        // --- Implementation Notes ---
-        // - All statistics are updated incrementally based on the linkage matrix.
-        // - Only clusters involved in each merge need updating; all others are unchanged.
-        // - The linkage matrix is assumed to follow R/fastcluster convention: singletons negative, compounds positive.
-        // - If your implementation changes this convention, update idx1/idx2 usage accordingly.
+        if (verbose >= 2) {
+            std::cout << "[linkstat] fit_edgelist Step 6: processing linkage merges" << std::endl;
+        }
+        // --- Main Incremental Hierarchy Loop ---
+        for (size_t i = 0; i < linkage_matrix.size(); i++) {
+            // 1. Determine number of clusters at this step
+            int num_link_communities = number_of_edges - static_cast<int>(i) - 1;
+
+            // 2. Retrieve indices of clusters being merged (R convention)
+            int idx1 = static_cast<int>(linkage_matrix[i][0]);
+            int idx2 = static_cast<int>(linkage_matrix[i][1]);
+            double merge_height = linkage_matrix[i][2]; // Height of current merge
+
+            K[i] = num_link_communities;
+            Height[i] = merge_height;
+
+            // 3. Merge cluster properties
+            LinkCommunityStats merged_lcn;
+            // Validate indices exist in map to avoid accidental default insertion
+            const auto &c1 = cluster_map.at(idx1);
+            const auto &c2 = cluster_map.at(idx2);
+            // Merge node sets
+            merged_lcn.node_members = c1.node_members;
+            merged_lcn.node_members.insert(
+                c2.node_members.begin(),
+                c2.node_members.end()
+            );
+            merged_lcn.n = merged_lcn.node_members.size();
+            merged_lcn.m = c1.m + c2.m;
+            merged_lcn.mtree = merged_lcn.m - merged_lcn.n + 1;
+
+            try {
+                // Update community density and entropy
+                merged_lcn.dc = Dc(merged_lcn.m, merged_lcn.n, undirected);
+                merged_lcn.sc = Sc(merged_lcn.m, merged_lcn.n, number_of_edges, number_of_nodes);
+
+                // 4. Update cluster map with new merged cluster
+                cluster_map[static_cast<int>(i) + 1] = merged_lcn;
+
+                // 5. Update excess tree edges ("mtree") for normalization
+                tree_excess_sum += merged_lcn.mtree - (c1.mtree + c2.mtree);
+
+                // 6. Incremental update of statistics
+                running_density += merged_lcn.dc * merged_lcn.m / number_of_edges
+                    - (c1.dc * c1.m / number_of_edges + c2.dc * c2.m / number_of_edges);
+                running_entropy += merged_lcn.sc - (c1.sc + c2.sc);
+                running_entropy += Ptree(number_of_edges, number_of_nodes, tree_excess_sum)
+                    - Ptree(number_of_edges, number_of_nodes, prev_tree_excess);
+                prev_tree_excess = tree_excess_sum;
+
+                D[i] = running_density;
+                S[i] = running_entropy;
+            } catch (const std::exception& ex) {
+                std::cerr << "[linkstat] fit_edgelist merge failure at step=" << i
+                          << " merge_indices=(" << idx1 << ", " << idx2 << ")"
+                          << " merged_stats(n=" << merged_lcn.n
+                          << ", m=" << merged_lcn.m
+                          << ", mtree=" << merged_lcn.mtree << ")"
+                          << " error=" << ex.what() << std::endl;
+                throw;
+            }
+
+            // 7. Cleanup merged clusters from map to save memory
+            cluster_map.erase(idx1);
+            cluster_map.erase(idx2);
+
+            // --- Implementation Notes ---
+            // - All statistics are updated incrementally based on the linkage matrix.
+            // - Only clusters involved in each merge need updating; all others are unchanged.
+            // - The linkage matrix is assumed to follow R/fastcluster convention: singletons negative, compounds positive.
+            // - If your implementation changes this convention, update idx1/idx2 usage accordingly.
+        }
+
+        if (verbose >= 1) {
+            std::cout << "[linkstat] Completed fit_edgelist workflow" << std::endl;
+        }
+    } catch (const std::exception& ex) {
+        if (!force) {
+            throw;
+        }
+        if (verbose >= 1) {
+            std::cerr << "[linkstat] fit_edgelist forced completion after error: "
+                      << ex.what() << std::endl;
+        }
     }
-
-    // --- Memory Cleanup ---
-    delete[] merge;
-    delete[] height;
 }
 
 // Optimized fit method for ph class -- enhanced logic, variable naming, and documentation.
@@ -364,141 +433,179 @@ void core::fit_edgelist(std::vector<std::vector<double>> &distance_edgelist, con
 // The code avoids recomputing statistics for all communities at every step, updating only the merged clusters, and maintains robust error checking.
 
 void core::fit_matrix(std::vector<double>& condensed_distance_matrix) {
-    // --- Variable Declarations ---
-    // Statistics and loop variables
-    int prev_tree_excess, tree_excess_sum;
-    long int size_condensed_matrix = (static_cast<long int>(number_of_edges) * static_cast<long int>(number_of_edges - 1)) / 2;
+    try {
+        // --- Variable Declarations ---
+        // Statistics and loop variables
+        int prev_tree_excess, tree_excess_sum;
+        long int size_condensed_matrix = (static_cast<long int>(number_of_edges) * static_cast<long int>(number_of_edges - 1)) / 2;
 
-    // linkage matrix, cluster mapping
-    std::vector<std::vector<double>> linkage_matrix;
+        // linkage matrix, cluster mapping
+        std::vector<std::vector<double>> linkage_matrix;
 
-    // Object map for link communities to their statistics
-    std::unordered_map<int, LinkCommunityStats> cluster_map;
+        // Object map for link communities to their statistics
+        std::unordered_map<int, LinkCommunityStats> cluster_map;
 
-    // --- Input Validation ---
-    if (source_nodes.size() != target_nodes.size()) {
-        throw std::invalid_argument("Source and target vectors must have the same size.");
-    }
-    if (condensed_distance_matrix.size() != size_condensed_matrix) {
-        throw std::invalid_argument("Distance vector must be a condensed upper triangle matrix.");
-    }
-    for (size_t i = 0; i < source_nodes.size(); ++i) {
-        if (source_nodes[i] < 0 || source_nodes[i] >= number_of_nodes ||
-            target_nodes[i] < 0 || target_nodes[i] >= number_of_nodes) {
-            throw std::out_of_range("Source/target indices out of bounds.");
+        if (verbose >= 1) {
+            std::cout << "[linkstat] Starting fit_matrix workflow" << std::endl;
         }
-    }
-
-    // --- Prepare Clustering ---
-    // Allocate and fill condensed distance matrix
-    double* condensed_distance_array = new double[size_condensed_matrix];
-    for (size_t i = 0; i < condensed_distance_matrix.size(); i++) {
-        condensed_distance_array[i] = condensed_distance_matrix[i];
-    }
-
-    // Allocate clustering results
-    int* merge = new int[2 * (number_of_edges - 1)];
-    double* height = new double[number_of_edges - 1];
-
-    // --- Run Clustering ---
-    hclust_fast(number_of_edges, condensed_distance_array, linkage, merge, height);
-    linkage_matrix = make_linkage_matrix(merge, height, number_of_edges);
-
-    // --- Prepare Output Vectors ---
-    expand_vector(K, number_of_edges - 1);
-    expand_vector(Height, number_of_edges - 1);
-    expand_vector(D, number_of_edges - 1);
-    expand_vector(S, number_of_edges - 1);
-
-    // --- Initialize Link Community Map ---
-    // Each initial edge (singleton cluster) is mapped to its nodes and statistics
-    tree_excess_sum = 0;
-    for (int i = 0; i < number_of_edges; ++i) {
-        LinkCommunityStats lcn;
-        lcn.node_members.insert(source_nodes[i]);
-        lcn.node_members.insert(target_nodes[i]);
-        if (source_nodes[i] != target_nodes[i]) {
-            lcn.n = 2;
-        } else {
-            // Self-loops are not allowed, halt execution
-            throw std::invalid_argument("Self-loops detected. Self-loops are not allowed in this implementation.");
+        if (verbose >= 2) {
+            std::cout << "[linkstat] fit_matrix Step 1: validating inputs" << std::endl;
         }
-        lcn.m = 1;
-        lcn.dc = Dc(lcn.m, lcn.n, undirected);
-        lcn.sc = Sc(lcn.m, lcn.n, number_of_edges, number_of_nodes);
-        lcn.mtree = lcn.m - lcn.n + 1;
-        cluster_map[-i - 1] = lcn;
 
-        tree_excess_sum += lcn.mtree;
-    }
-    prev_tree_excess = tree_excess_sum;
+        // --- Input Validation ---
+        if (source_nodes.size() != target_nodes.size()) {
+            throw std::invalid_argument("Source and target vectors must have the same size.");
+        }
+        if (condensed_distance_matrix.size() != size_condensed_matrix) {
+            throw std::invalid_argument("Distance vector must be a condensed upper triangle matrix.");
+        }
+        for (size_t i = 0; i < source_nodes.size(); ++i) {
+            if (source_nodes[i] < 0 || source_nodes[i] >= number_of_nodes ||
+                target_nodes[i] < 0 || target_nodes[i] >= number_of_nodes) {
+                throw std::out_of_range("Source/target indices out of bounds.");
+            }
+        }
 
-    double running_density = 0, running_entropy = 0;
+        if (verbose >= 2) {
+            std::cout << "[linkstat] fit_matrix Step 2: preparing condensed distance array" << std::endl;
+        }
+        // --- Prepare Clustering ---
+        // Allocate and fill condensed distance matrix
+        std::vector<double> condensed_distance_array = condensed_distance_matrix;
 
-    // --- Main Incremental Hierarchy Loop ---
-    for (size_t i = 0; i < linkage_matrix.size(); i++) {
-        // 1. Determine number of clusters at this step
-        int num_link_communities = number_of_edges - static_cast<int>(i) - 1;
+        // Allocate clustering results
+        std::vector<int> merge(2 * (number_of_edges - 1));
+        std::vector<double> height(number_of_edges - 1);
 
-        // 2. Retrieve indices of clusters being merged (R convention)
-        int idx1 = static_cast<int>(linkage_matrix[i][0]);
-        int idx2 = static_cast<int>(linkage_matrix[i][1]);
-        double merge_height = linkage_matrix[i][2]; // Height of current merge
+        if (verbose >= 2) {
+            std::cout << "[linkstat] fit_matrix Step 3: running hierarchical clustering" << std::endl;
+        }
+        // --- Run Clustering ---
+        hclust_fast(number_of_edges, condensed_distance_array.data(), linkage, merge.data(), height.data());
+        linkage_matrix = make_linkage_matrix(merge.data(), height.data(), number_of_edges);
 
-        K[i] = num_link_communities;
-        Height[i] = merge_height;
+        if (verbose >= 2) {
+            std::cout << "[linkstat] fit_matrix Step 4: preparing output buffers" << std::endl;
+        }
+        // --- Prepare Output Vectors ---
+        expand_vector(K, number_of_edges - 1);
+        expand_vector(Height, number_of_edges - 1);
+        expand_vector(D, number_of_edges - 1);
+        expand_vector(S, number_of_edges - 1);
 
-        // 3. Merge cluster properties
-        LinkCommunityStats merged_lcn;
-        // Validate indices exist in map to avoid accidental default insertion
-        const auto &c1 = cluster_map.at(idx1);
-        const auto &c2 = cluster_map.at(idx2);
-        // Merge node sets
-        merged_lcn.node_members = c1.node_members;
-        merged_lcn.node_members.insert(
-            c2.node_members.begin(),
-            c2.node_members.end()
-        );
-        merged_lcn.n = merged_lcn.node_members.size();
-        merged_lcn.m = c1.m + c2.m;
-        merged_lcn.mtree = merged_lcn.m - merged_lcn.n + 1;
+        if (verbose >= 2) {
+            std::cout << "[linkstat] fit_matrix Step 5: initializing cluster map" << std::endl;
+        }
+        // --- Initialize Link Community Map ---
+        // Each initial edge (singleton cluster) is mapped to its nodes and statistics
+        tree_excess_sum = 0;
+        for (int i = 0; i < number_of_edges; ++i) {
+            LinkCommunityStats lcn;
+            lcn.node_members.insert(source_nodes[i]);
+            lcn.node_members.insert(target_nodes[i]);
+            if (source_nodes[i] != target_nodes[i]) {
+                lcn.n = 2;
+            } else {
+                // Self-loops are not allowed, halt execution
+                throw std::invalid_argument("Self-loops detected. Self-loops are not allowed in this implementation.");
+            }
+            lcn.m = 1;
+            lcn.dc = Dc(lcn.m, lcn.n, undirected);
+            lcn.sc = Sc(lcn.m, lcn.n, number_of_edges, number_of_nodes);
+            lcn.mtree = lcn.m - lcn.n + 1;
+            cluster_map[-i - 1] = lcn;
 
-        // Update community density and entropy
-        merged_lcn.dc = Dc(merged_lcn.m, merged_lcn.n, undirected);
-        merged_lcn.sc = Sc(merged_lcn.m, merged_lcn.n, number_of_edges, number_of_nodes);
-
-        // 4. Update cluster map with new merged cluster
-        cluster_map[static_cast<int>(i) + 1] = merged_lcn;
-
-        // 5. Update excess tree edges ("mtree") for normalization
-        tree_excess_sum += merged_lcn.mtree - (c1.mtree + c2.mtree);
-
-        // 6. Incremental update of statistics
-        running_density += merged_lcn.dc * merged_lcn.m / number_of_edges
-            - (c1.dc * c1.m / number_of_edges + c2.dc * c2.m / number_of_edges);
-        running_entropy += merged_lcn.sc - (c1.sc + c2.sc);
-        running_entropy += Ptree(number_of_edges, number_of_nodes, tree_excess_sum)
-            - Ptree(number_of_edges, number_of_nodes, prev_tree_excess);
+            tree_excess_sum += lcn.mtree;
+        }
         prev_tree_excess = tree_excess_sum;
 
-        D[i] = running_density;
-        S[i] = running_entropy;
+        double running_density = 0, running_entropy = 0;
 
-        // 7. Cleanup merged clusters from map to save memory
-        cluster_map.erase(idx1);
-        cluster_map.erase(idx2);
+        if (verbose >= 2) {
+            std::cout << "[linkstat] fit_matrix Step 6: processing linkage merges" << std::endl;
+        }
+        // --- Main Incremental Hierarchy Loop ---
+        for (size_t i = 0; i < linkage_matrix.size(); i++) {
+            // 1. Determine number of clusters at this step
+            int num_link_communities = number_of_edges - static_cast<int>(i) - 1;
 
-        // --- Implementation Notes ---
-        // - All statistics are updated incrementally based on the linkage matrix.
-        // - Only clusters involved in each merge need updating; all others are unchanged.
-        // - The linkage matrix is assumed to follow R/fastcluster convention: singletons negative, compounds positive.
-        // - If your implementation changes this convention, update idx1/idx2 usage accordingly.
+            // 2. Retrieve indices of clusters being merged (R convention)
+            int idx1 = static_cast<int>(linkage_matrix[i][0]);
+            int idx2 = static_cast<int>(linkage_matrix[i][1]);
+            double merge_height = linkage_matrix[i][2]; // Height of current merge
+
+            K[i] = num_link_communities;
+            Height[i] = merge_height;
+
+            // 3. Merge cluster properties
+            LinkCommunityStats merged_lcn;
+            // Validate indices exist in map to avoid accidental default insertion
+            const auto &c1 = cluster_map.at(idx1);
+            const auto &c2 = cluster_map.at(idx2);
+            // Merge node sets
+            merged_lcn.node_members = c1.node_members;
+            merged_lcn.node_members.insert(
+                c2.node_members.begin(),
+                c2.node_members.end()
+            );
+            merged_lcn.n = merged_lcn.node_members.size();
+            merged_lcn.m = c1.m + c2.m;
+            merged_lcn.mtree = merged_lcn.m - merged_lcn.n + 1;
+
+            try {
+                // Update community density and entropy
+                merged_lcn.dc = Dc(merged_lcn.m, merged_lcn.n, undirected);
+                merged_lcn.sc = Sc(merged_lcn.m, merged_lcn.n, number_of_edges, number_of_nodes);
+
+                // 4. Update cluster map with new merged cluster
+                cluster_map[static_cast<int>(i) + 1] = merged_lcn;
+
+                // 5. Update excess tree edges ("mtree") for normalization
+                tree_excess_sum += merged_lcn.mtree - (c1.mtree + c2.mtree);
+
+                // 6. Incremental update of statistics
+                running_density += merged_lcn.dc * merged_lcn.m / number_of_edges
+                    - (c1.dc * c1.m / number_of_edges + c2.dc * c2.m / number_of_edges);
+                running_entropy += merged_lcn.sc - (c1.sc + c2.sc);
+                running_entropy += Ptree(number_of_edges, number_of_nodes, tree_excess_sum)
+                    - Ptree(number_of_edges, number_of_nodes, prev_tree_excess);
+                prev_tree_excess = tree_excess_sum;
+
+                D[i] = running_density;
+                S[i] = running_entropy;
+            } catch (const std::exception& ex) {
+                std::cerr << "[linkstat] fit_matrix merge failure at step=" << i
+                          << " merge_indices=(" << idx1 << ", " << idx2 << ")"
+                          << " merged_stats(n=" << merged_lcn.n
+                          << ", m=" << merged_lcn.m
+                          << ", mtree=" << merged_lcn.mtree << ")"
+                          << " error=" << ex.what() << std::endl;
+                throw;
+            }
+
+            // 7. Cleanup merged clusters from map to save memory
+            cluster_map.erase(idx1);
+            cluster_map.erase(idx2);
+
+            // --- Implementation Notes ---
+            // - All statistics are updated incrementally based on the linkage matrix.
+            // - Only clusters involved in each merge need updating; all others are unchanged.
+            // - The linkage matrix is assumed to follow R/fastcluster convention: singletons negative, compounds positive.
+            // - If your implementation changes this convention, update idx1/idx2 usage accordingly.
+        }
+
+        if (verbose >= 1) {
+            std::cout << "[linkstat] Completed fit_matrix workflow" << std::endl;
+        }
+    } catch (const std::exception& ex) {
+        if (!force) {
+            throw;
+        }
+        if (verbose >= 1) {
+            std::cerr << "[linkstat] fit_matrix forced completion after error: "
+                      << ex.what() << std::endl;
+        }
     }
-
-    // --- Memory Cleanup ---
-    delete[] merge;
-    delete[] height;
-    delete[] condensed_distance_array;
 }
 
 // --- Implementation Caveats ---
@@ -526,14 +633,24 @@ PYBIND11_MODULE(link_hierarchy_statistics_cpp, m) {
             std::vector<int>,
             std::vector<int>,
             const int,
+            const bool,
+            const int,
             const bool
-          >()
+          >(),
+          py::arg("N"),
+          py::arg("M"),
+          py::arg("source_nodes"),
+          py::arg("target_nodes"),
+          py::arg("linkage"),
+          py::arg("undirected"),
+          py::arg("verbose") = 0,
+          py::arg("force") = false
         )
 
         .def("fit_matrix", &core::fit_matrix)
         .def("fit_edgelist", &core::fit_edgelist)
         .def("get_K", &core::get_K)
-				.def("get_Height", &core::get_Height)
-				.def("get_D", &core::get_D)
+        .def("get_Height", &core::get_Height)
+        .def("get_D", &core::get_D)
         .def("get_S", &core::get_S);
 }

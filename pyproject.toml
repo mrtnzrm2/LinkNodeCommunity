@@ -30,6 +30,7 @@ dependencies = [
   "pandas>=2.3.2",
   "tqdm>=4.66.4",
   "pycairo>=1.25.0",
+  "pytest>=8.2.0",
   "rpy2>=3.5.0",
   "python-igraph>=0.11.4",
   "matplotlib>=3.10.6",
@@ -58,6 +59,7 @@ wheel.packages = ["src/LinkNodeCommunity"]
 [tool.cibuildwheel]
 build = "cp310-* cp311-* cp312-*"
 skip = "pp* *-musllinux_*"
+test-requires = ["pytest"]
 test-command = "pytest -q {project}/tests"
 manylinux-x86_64-image = "manylinux2014"
 manylinux-aarch64-image = "manylinux2014"

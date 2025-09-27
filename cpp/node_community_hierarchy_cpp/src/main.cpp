@@ -38,6 +38,7 @@
  * - target_nodes (std::vector<int>): Target index for each edge (size M).
  * - linkage (int): Linkage method for the link hierarchy (single recommended).
  * - undirected (int/bool): 0 for directed (default), 1 for undirected (experimental).
+ * - verbose (int, optional): Verbosity level (0 silent, 1 milestones, 2 step announcements).
  *
  * core Class Methods:
  * -------------------
@@ -417,6 +418,10 @@ class core {
 
     bool use_parallel;
 
+    int verbose;
+
+    void workflow(int level, const std::string &message, const bool &newline=false);
+
     // Results
     std::vector<std::vector<double> > node_hierarchy; // Stores node merge events (dendrogram)
     std::vector<std::vector<int> > linknode_equivalence;       // Tracks equivalence classes at each step
@@ -430,7 +435,8 @@ class core {
       std::vector<int> target_nodes,
       const int linkage,
       const int undirected,
-      const bool enable_parallel = true
+      const bool enable_parallel = true,
+      const int verbose_level = 0
     ) {
       number_of_nodes = N;
       number_of_edges = M;
@@ -440,6 +446,17 @@ class core {
       this->undirected = undirected;
       this->use_parallel = enable_parallel;
       this->node_hierarchy = std::vector<std::vector<double>>(number_of_nodes - 1, std::vector<double>(4, 0.));
+      if (verbose_level < 0 || verbose_level > 2) {
+        std::cerr << "Warning: Verbose level " << verbose_level << " out of range [0,2]. Clamping to nearest bound.\n";
+        this->verbose = (verbose_level < 0) ? 0 : 2;
+      } else {
+        this->verbose = verbose_level;
+      }
+      if (this->verbose >= 1) {
+        std::cout << "[link2node] Initialized with N=" << number_of_nodes
+                  << ", M=" << number_of_edges
+                  << ", verbose=" << this->verbose << std::endl;
+      }
     }
     ~core(){};
 
@@ -460,6 +477,15 @@ class core {
     std::vector<std::vector<int> > get_linknode_equivalence();
 };
 
+void core::workflow(int level, const std::string &message, const bool &newline) {
+  if (verbose >= level) {
+    if (!newline) 
+        std::cout << "[link2node] " << message << std::endl;
+    else
+        std::cout << "            " << message << std::endl;
+  }
+}
+
 std::vector<std::vector<double> > core::get_node_hierarchy() {
   return node_hierarchy;
 }
@@ -469,19 +495,29 @@ std::vector<std::vector<int> > core::get_linknode_equivalence() {
 }
 
 void core::fit_edgelist(std::vector<std::vector<double>> &distance_edgelist, const double &max_dist) {
+    workflow(1, "Starting fit_edgelist workflow");
+    if (verbose >= 2) {
+        workflow(2, undirected == 0 ? "fit_edgelist Step 1: dispatching to directed implementation" : "fit_edgelist Step 1: dispatching to undirected implementation");
+    }
     if (undirected == 0) {
         fit_edgelist_directed(distance_edgelist, max_dist);
     } else {
         fit_edgelist_undirected(distance_edgelist, max_dist);
     }
+    workflow(1, "Completed fit_edgelist workflow");
 }
 
 void core::fit_matrix(std::vector<double> &condensed_distance_matrix) {
+    workflow(1, "Starting fit_matrix workflow");
+    if (verbose >= 2) {
+        workflow(2, undirected == 0 ? "fit_matrix Step 1: dispatching to directed implementation" : "fit_matrix Step 1: dispatching to undirected implementation");
+    }
     if (undirected == 0) {
         fit_matrix_directed(condensed_distance_matrix);
     } else {
         fit_matrix_undirected(condensed_distance_matrix);
     }
+    workflow(1, "Completed fit_matrix workflow");
 }
 
 void core::fit_edgelist_undirected(std::vector<std::vector<double>> &distance_edgelist, const double &max_dist) {
@@ -502,6 +538,10 @@ void core::fit_edgelist_undirected(std::vector<std::vector<double>> &distance_ed
 
     node new_node; // For node community merges
 
+    workflow(1, "Starting fit_edgelist_undirected workflow");
+    if (verbose >= 2) {
+        workflow(2, "fit_edgelist_undirected Step 1: validating inputs");
+    }
     if (source_nodes.size() != target_nodes.size()) {
         throw std::invalid_argument("Source and target vectors must have the same size.");
     }
@@ -512,15 +552,24 @@ void core::fit_edgelist_undirected(std::vector<std::vector<double>> &distance_ed
         }
     }
 
+    if (verbose >= 2) {
+        workflow(2, "fit_edgelist_undirected Step 2: preparing edge distance data");
+    }
     // --- Prepare Distance Matrix ---
     std::vector<edge_struct> edgelist = vecvec_to_edgelist(distance_edgelist);
 
+    if (verbose >= 2) {
+        workflow(2, "fit_edgelist_undirected Step 3: running hierarchical clustering");
+    }
     // --- Hierarchical Clustering ---
     int* merge = new int[2 * (number_of_edges - 1)];
     double* height = new double[number_of_edges - 1];
     hclust_fast_edgelist(number_of_edges, edgelist, max_dist, merge, height);
     linkage_matrix = make_linkage_matrix(merge, height, number_of_edges);
 
+    if (verbose >= 2) {
+        workflow(2, "fit_edgelist_undirected Step 4: initializing node communities");
+    }
     // --- Initialize Node Community List ---
     std::vector<node> merge_list(number_of_nodes);
     for (int i = 0; i < number_of_nodes; i++) {
@@ -528,12 +577,18 @@ void core::fit_edgelist_undirected(std::vector<std::vector<double>> &distance_ed
         merge_list[i].members.push_back(i);
     }
 
+    if (verbose >= 2) {
+        workflow(2, "fit_edgelist_undirected Step 5: mapping initial link communities");
+    }
     // --- Map initial link communities to their neighbors ---
     for (int i = 0; i < number_of_edges; ++i) {
         NeighborNodes lcn(source_nodes[i], target_nodes[i]);
         cluster_nodes_map[-i - 1] = lcn;
     }
 
+    if (verbose >= 2) {
+        workflow(2, "fit_edgelist_undirected Step 6: traversing linkage merges");
+    }
     // --- Traverse Linkage Matrix to Build Hierarchy ---
     for (size_t step = 0; step < linkage_matrix.size(); ++step) {
 
@@ -587,8 +642,14 @@ void core::fit_edgelist_undirected(std::vector<std::vector<double>> &distance_ed
     }
 
     // --- Final pass: merge any remaining node communities ---
+    if (verbose >= 2) {
+        workflow(2, "fit_edgelist_undirected Step 7: finalizing remaining communities");
+    }
     if (merge_list.size() > 1) {
-        py::print("Adding remaining node communities due to topological constraints.");
+        if (verbose >= 1) {
+            workflow(1,"Some node communities remain unmerged after processing all link merges.");
+            workflow(1, "This is deliberate behaviour to ensure a full dendrogram is produced.", true);
+        }
         for (size_t i = 0; i < merge_list.size() - 1; ++i) {
             node_hierarchy[merge_step_counter][0] = merge_list.back().merge;
             node_hierarchy[merge_step_counter][1] = merge_list[i].merge;
@@ -603,8 +664,12 @@ void core::fit_edgelist_undirected(std::vector<std::vector<double>> &distance_ed
         }
     }
     linknode_equivalence.back()[1] = 1; // Set last equivalence to 1 (root?)
+    if (verbose >= 2) {
+        workflow(2, "fit_edgelist_undirected Step 8: releasing buffers");
+    }
     delete[] merge;
     delete[] height;
+    workflow(1, "Completed fit_edgelist_undirected workflow");
 }
 
 void core::fit_matrix_undirected(std::vector<double> &condensed_distance_matrix) {
@@ -625,6 +690,10 @@ void core::fit_matrix_undirected(std::vector<double> &condensed_distance_matrix)
 
     node new_node; // For node community merges
 
+    workflow(1, "Starting fit_matrix_undirected workflow");
+    if (verbose >= 2) {
+        workflow(2, "fit_matrix_undirected Step 1: validating inputs");
+    }
     if (source_nodes.size() != target_nodes.size()) {
         throw std::invalid_argument("Source and target vectors must have the same size.");
     }
@@ -639,18 +708,27 @@ void core::fit_matrix_undirected(std::vector<double> &condensed_distance_matrix)
         throw std::invalid_argument("distance vector must be a condensed upper triangle matrix");
     }
 
+    if (verbose >= 2) {
+        workflow(2, "fit_matrix_undirected Step 2: preparing condensed distance array");
+    }
     // --- Prepare Distance Matrix ---
     double* condensed_distance_array = new double[(number_of_edges * (number_of_edges - 1)) / 2];
     for (size_t i = 0; i < condensed_distance_matrix.size(); i++) {
         condensed_distance_array[i] = condensed_distance_matrix[i];
     }
 
+    if (verbose >= 2) {
+        workflow(2, "fit_matrix_undirected Step 3: running hierarchical clustering");
+    }
     // --- Hierarchical Clustering ---
     int* merge = new int[2 * (number_of_edges - 1)];
     double* height = new double[number_of_edges - 1];
     hclust_fast(number_of_edges, condensed_distance_array, linkage, merge, height);
     linkage_matrix = make_linkage_matrix(merge, height, number_of_edges);
 
+    if (verbose >= 2) {
+        workflow(2, "fit_matrix_undirected Step 4: initializing node communities");
+    }
     // --- Initialize Node Community List ---
     std::vector<node> merge_list(number_of_nodes);
     for (int i = 0; i < number_of_nodes; i++) {
@@ -658,12 +736,18 @@ void core::fit_matrix_undirected(std::vector<double> &condensed_distance_matrix)
         merge_list[i].members.push_back(i);
     }
 
+    if (verbose >= 2) {
+        workflow(2, "fit_matrix_undirected Step 5: mapping initial link communities");
+    }
     // --- Map initial link communities to their neighbors ---
     for (int i = 0; i < number_of_edges; ++i) {
         NeighborNodes lcn(source_nodes[i], target_nodes[i]);
         cluster_nodes_map[-i - 1] = lcn;
     }
 
+    if (verbose >= 2) {
+        workflow(2, "fit_matrix_undirected Step 6: traversing linkage merges");
+    }
     // --- Traverse Linkage Matrix to Build Hierarchy ---
     for (size_t step = 0; step < linkage_matrix.size(); ++step) {
 
@@ -717,8 +801,14 @@ void core::fit_matrix_undirected(std::vector<double> &condensed_distance_matrix)
     }
 
     // --- Final pass: merge any remaining node communities ---
+    if (verbose >= 2) {
+        workflow(2, "fit_matrix_undirected Step 7: finalizing remaining communities");
+    }
     if (merge_list.size() > 1) {
-        py::print("Adding remaining node communities due to topological constraints.");
+        if (verbose >= 1) {
+            workflow(1,"Some node communities remain unmerged after processing all link merges.");
+            workflow(1, "This is deliberate behaviour to ensure a full dendrogram is produced.", true);
+        }
         for (size_t i = 0; i < merge_list.size() - 1; ++i) {
             node_hierarchy[merge_step_counter][0] = merge_list.back().merge;
             node_hierarchy[merge_step_counter][1] = merge_list[i].merge;
@@ -733,9 +823,13 @@ void core::fit_matrix_undirected(std::vector<double> &condensed_distance_matrix)
         }
     }
     linknode_equivalence.back()[1] = 1; // Set last equivalence to 1 (root?)
+    if (verbose >= 2) {
+        workflow(2, "fit_matrix_undirected Step 8: releasing buffers");
+    }
     delete[] merge;
     delete[] height;
     delete[] condensed_distance_array;
+    workflow(1, "Completed fit_matrix_undirected workflow");
 }
 
 
@@ -757,6 +851,10 @@ void core::fit_edgelist_directed(std::vector<std::vector<double>> &distance_edge
 
     node new_node; // For node community merges
 
+    workflow(1, "Starting fit_edgelist_directed workflow");
+    if (verbose >= 2) {
+        workflow(2, "fit_edgelist_directed Step 1: validating inputs");
+    }
     if (source_nodes.size() != target_nodes.size()) {
         throw std::invalid_argument("Source and target vectors must have the same size.");
     }
@@ -767,15 +865,24 @@ void core::fit_edgelist_directed(std::vector<std::vector<double>> &distance_edge
         }
     }
 
+    if (verbose >= 2) {
+        workflow(2, "fit_edgelist_directed Step 2: preparing edge distance data");
+    }
     // --- Prepare Distance Matrix ---
     std::vector<edge_struct> edgelist = vecvec_to_edgelist(distance_edgelist);
 
+    if (verbose >= 2) {
+        workflow(2, "fit_edgelist_directed Step 3: running hierarchical clustering");
+    }
     // --- Hierarchical Clustering ---
     int* merge = new int[2 * (number_of_edges - 1)];
     double* height = new double[number_of_edges - 1];
     hclust_fast_edgelist(number_of_edges, edgelist, max_dist, merge, height);
     linkage_matrix = make_linkage_matrix(merge, height, number_of_edges);
 
+    if (verbose >= 2) {
+        workflow(2, "fit_edgelist_directed Step 4: initializing node communities");
+    }
     // --- Initialize Node Community List ---
     std::vector<node> merge_list(number_of_nodes);
     for (int i = 0; i < number_of_nodes; i++) {
@@ -783,6 +890,9 @@ void core::fit_edgelist_directed(std::vector<std::vector<double>> &distance_edge
         merge_list[i].members.push_back(i);
     }
 
+    if (verbose >= 2) {
+        workflow(2, "fit_edgelist_directed Step 5: mapping initial link communities");
+    }
     // --- Map initial link communities to their source/target nodes ---
     for (int i = 0; i < number_of_edges; ++i) {
         LinkCommunityNodes lcn;
@@ -791,6 +901,9 @@ void core::fit_edgelist_directed(std::vector<std::vector<double>> &distance_edge
         cluster_nodes_map[-i - 1] = lcn;
     }
 
+    if (verbose >= 2) {
+        workflow(2, "fit_edgelist_directed Step 6: traversing linkage merges");
+    }
     // --- Traverse Linkage Matrix to Build Hierarchy ---
     for (size_t step = 0; step < linkage_matrix.size(); ++step) {
 
@@ -860,8 +973,14 @@ void core::fit_edgelist_directed(std::vector<std::vector<double>> &distance_edge
     }
 
     // --- Final pass: merge any remaining node communities ---
+    if (verbose >= 2) {
+        workflow(2, "fit_edgelist_directed Step 7: finalizing remaining communities");
+    }
     if (merge_list.size() > 1) {
-        py::print("Adding remaining node communities due to topological constraints.");
+        if (verbose >= 1) {
+            workflow(1,"Some node communities remain unmerged after processing all link merges.");
+            workflow(1, "This is deliberate behaviour to ensure a full dendrogram is produced.", true);
+        }
         for (size_t i = 0; i < merge_list.size() - 1; ++i) {
             node_hierarchy[merge_step_counter][0] = merge_list.back().merge;
             node_hierarchy[merge_step_counter][1] = merge_list[i].merge;
@@ -876,8 +995,12 @@ void core::fit_edgelist_directed(std::vector<std::vector<double>> &distance_edge
         }
     }
     linknode_equivalence.back()[1] = 1; // Set last equivalence to 1 (root?)
+    if (verbose >= 2) {
+        workflow(2, "fit_edgelist_directed Step 8: releasing buffers");
+    }
     delete[] merge;
     delete[] height;
+    workflow(1, "Completed fit_edgelist_directed workflow");
 }
 
 void core::fit_matrix_directed(std::vector<double> &condensed_distance_matrix) {
@@ -898,6 +1021,10 @@ void core::fit_matrix_directed(std::vector<double> &condensed_distance_matrix) {
 
     node new_node; // For node community merges
 
+    workflow(1, "Starting fit_matrix_directed workflow");
+    if (verbose >= 2) {
+        workflow(2, "fit_matrix_directed Step 1: validating inputs");
+    }
     if (source_nodes.size() != target_nodes.size()) {
         throw std::invalid_argument("Source and target vectors must have the same size.");
     }
@@ -912,18 +1039,27 @@ void core::fit_matrix_directed(std::vector<double> &condensed_distance_matrix) {
         throw std::invalid_argument("distance vector must be a condensed upper triangle matrix");
     }
 
+    if (verbose >= 2) {
+        workflow(2, "fit_matrix_directed Step 2: preparing condensed distance array");
+    }
     // --- Prepare Distance Matrix ---
     double* condensed_distance_array = new double[(number_of_edges * (number_of_edges - 1)) / 2];
     for (size_t i = 0; i < condensed_distance_matrix.size(); i++) {
         condensed_distance_array[i] = condensed_distance_matrix[i];
     }
 
+    if (verbose >= 2) {
+        workflow(2, "fit_matrix_directed Step 3: running hierarchical clustering");
+    }
     // --- Hierarchical Clustering ---
     int* merge = new int[2 * (number_of_edges - 1)];
     double* height = new double[number_of_edges - 1];
     hclust_fast(number_of_edges, condensed_distance_array, linkage, merge, height);
     linkage_matrix = make_linkage_matrix(merge, height, number_of_edges);
 
+    if (verbose >= 2) {
+        workflow(2, "fit_matrix_directed Step 4: initializing node communities");
+    }
     // --- Initialize Node Community List ---
     std::vector<node> merge_list(number_of_nodes);
     for (int i = 0; i < number_of_nodes; i++) {
@@ -931,6 +1067,9 @@ void core::fit_matrix_directed(std::vector<double> &condensed_distance_matrix) {
         merge_list[i].members.push_back(i);
     }
 
+    if (verbose >= 2) {
+        workflow(2, "fit_matrix_directed Step 5: mapping initial link communities");
+    }
     // --- Map initial link communities to their source/target nodes ---
     for (int i = 0; i < number_of_edges; ++i) {
         LinkCommunityNodes lcn;
@@ -939,6 +1078,9 @@ void core::fit_matrix_directed(std::vector<double> &condensed_distance_matrix) {
         cluster_nodes_map[-i - 1] = lcn;
     }
 
+    if (verbose >= 2) {
+        workflow(2, "fit_matrix_directed Step 6: traversing linkage merges");
+    }
     // --- Traverse Linkage Matrix to Build Hierarchy ---
     for (size_t step = 0; step < linkage_matrix.size(); ++step) {
 
@@ -1006,8 +1148,14 @@ void core::fit_matrix_directed(std::vector<double> &condensed_distance_matrix) {
     }
 
     // --- Final pass: merge any remaining node communities ---
+    if (verbose >= 2) {
+        workflow(2, "fit_matrix_directed Step 7: finalizing remaining communities");
+    }
     if (merge_list.size() > 1) {
-        py::print("Adding remaining node communities due to topological constraints.");
+        if (verbose >= 1) {
+            workflow(1,"Some node communities remain unmerged after processing all link merges.");
+            workflow(1, "This is deliberate behaviour to ensure a full dendrogram is produced.", true);
+        }
         for (size_t i = 0; i < merge_list.size() - 1; ++i) {
             node_hierarchy[merge_step_counter][0] = merge_list.back().merge;
             node_hierarchy[merge_step_counter][1] = merge_list[i].merge;
@@ -1022,9 +1170,13 @@ void core::fit_matrix_directed(std::vector<double> &condensed_distance_matrix) {
         }
     }
     linknode_equivalence.back()[1] = 1; // Set last equivalence to 1 (root?)
+    if (verbose >= 2) {
+        workflow(2, "fit_matrix_directed Step 8: releasing buffers");
+    }
     delete[] merge;
     delete[] height;
     delete[] condensed_distance_array;
+    workflow(1, "Completed fit_matrix_directed workflow");
 }
 
 PYBIND11_MODULE(node_community_hierarchy_cpp, m) {
@@ -1037,7 +1189,8 @@ PYBIND11_MODULE(node_community_hierarchy_cpp, m) {
             std::vector<int>,
             const int,
             const int,
-            const bool
+            const bool,
+            const int
           >(),
           py::arg("N"),
           py::arg("M"),
@@ -1045,7 +1198,8 @@ PYBIND11_MODULE(node_community_hierarchy_cpp, m) {
           py::arg("target_nodes"),
           py::arg("linkage"),
           py::arg("undirected"),
-          py::arg("use_parallel") = true
+          py::arg("use_parallel") = true,
+          py::arg("verbose") = 0
         )
         .def("fit_matrix", &core::fit_matrix)
         .def("fit_edgelist", &core::fit_edgelist)

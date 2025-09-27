@@ -1,3 +1,24 @@
+"""
+Path: src/viz/graphics.py
+
+Module: viz.graphics
+Author: Jorge S. Martinez Armas
+
+Overview:
+---------
+Plotting utilities for LinkNodeCommunity results. Renders node-cover overlays,
+hierarchy heatmaps, and other diagnostic figures used in the manuscript.
+
+Key Components:
+---------------
+- graph_network_covers: visualises overlapping node communities with pie charts.
+- linkcommunity_matrix_map: reorders adjacency matrices by community structure.
+
+Notes:
+------
+- Builds on Matplotlib and Seaborn styling consistent with the published
+  figures.
+"""
 
 import numpy as np
 import seaborn as sns
@@ -67,9 +88,9 @@ def graph_network_covers(
     wedgewidth : float | None, optional
         Width of the wedges in the pie charts. Default is None.
     edge_color : str, optional
-        Color of the edges in the plot. Default is "#000000".
+        Color of the edges in the plot. Default is "#888888".
     alpha_line : float, optional
-        Transparency level of the edges. Default is 0.25.
+        Transparency level of the edges. Default is 1.0.
     connectionstyle : str, optional
         Style for connections between nodes. Default is "arc3,rad=-0.12".
     arrowstyle : str, optional
@@ -275,7 +296,7 @@ def linkcommunity_matrix_map(
     remove_labels=False,
     linewidth=1.5,
     font_color=None,
-    cbar_position=[1.01, 0.15, 0.02, 0.7],      # [left, bottom, width, height]
+    cbar_position=[1.0, 0.15, 0.02, 0.7],      # [left, bottom, width, height]
     undirected=False,
     ax: Axes | None = None,
     **kwargs
@@ -368,6 +389,8 @@ def linkcommunity_matrix_map(
 
     if labels is not None:
         labels_copy = labels.copy()[den_order]
+    else:
+        labels_copy = np.array([str(i) for i in range(N)])[den_order]
 
     if colors is None:
         colors_copy = np.array(["#000000"] * G.number_of_nodes())
@@ -477,24 +500,250 @@ def linkcommunity_matrix_map(
             colors="black",
             zorder=10,
         )
+        
+
+def heatmap(
+    G: nx.DiGraph | nx.Graph,
+    Z: npt.NDArray,
+    R: int,
+    labels: npt.ArrayLike | None = None,
+    colors: npt.ArrayLike | None = None,
+    remove_labels=False,
+    heatmap_linewidths=0.5,
+    community_boundaries=1.5,
+    font_color=None,
+    font_size=14,
+    center=0.5,
+    cbar_label="",
+    cbar_position=[1.0, 0.15, 0.02, 0.7],      # [left, bottom, width, height]
+    ax: Axes | None = None,
+    **kwargs
+):
+    """
+    Plot a heatmap of the adjacency matrix, with rows and columns reordered according to the node dendrogram.
+    Community boundaries are indicated with lines, and node labels are color-coded for clarity.
+
+    Parameters
+    ----------
+    G : nx.DiGraph | nx.Graph
+        The input graph.
+    Z : np.ndarray
+        Linkage matrix for nodes.
+    R : int
+        Number of node communities.
+    labels : array-like or None, optional
+        Labels for nodes. If None, uses default integer labels. Default is None.
+    colors : array-like or None, optional
+        Colors for node labels. If None, defaults to black. Default is None.
+    remove_labels : bool, optional
+        If True, hides axis labels. Default is False.
+    heatmap_linewidths : float, optional
+        Width of lines between cells in the heatmap. Default is 0.5.
+    community_boundaries : float, optional
+        Width of community boundary lines. Default is 1.5.
+    font_color : str or None, optional
+        Color for axis tick labels. If None, uses colors argument.
+    center : float, optional
+        The value at which to center the colormap when plotting divergant data. Default is 0.5.
+    cbar_position : list of float, optional
+        Position of the colorbar in [left, bottom, width, height] format. Default is [1.0, 0.15, 0.02, 0.7
+    ax : matplotlib.axes.Axes | None, optional
+        The axes to plot on. If None, creates a new figure and axes. Default is None.
+    **kwargs
+        Additional keyword arguments (e.g., fontsize).
+    """
+    from src.LinkNodeCommunity.utils import (
+        fast_cut_tree,
+        collapsed_partition,
+        linear_partition
+    )
+    from scipy.cluster.hierarchy import dendrogram
+    import matplotlib.ticker as ticker
+    from matplotlib.colors import LinearSegmentedColormap, ListedColormap
+
+    sns.set_style("white", rc={"axes.grid": False})
+
+    cmap = LinearSegmentedColormap.from_list("", ["#8E1B16","#FDF399"])
+
+    # Build adjacency matrix with link community IDs
+    A = nx.adjacency_matrix(G).todense().astype(float)
+    N = A.shape[0]
+
+    # Get node ordering from dendrogram
+    den_order = np.array(dendrogram(Z, no_plot=True)["ivl"]).astype(int)
+    memberships = fast_cut_tree(Z, n_clusters=R)
+    memberships = collapsed_partition(memberships)
+    memberships = linear_partition(memberships)[den_order]
+
+    # Find community boundaries for lines
+    C = [i + 1 for i in range(len(memberships) - 1) if memberships[i] != memberships[i + 1]]
+    D = np.where(memberships == -1)[0] + 1
+    C = sorted(set(C).union(D))
+
+    # Reorder adjacency and labels
+    A = A[den_order, :][:, den_order]
+    A[A == 0] = np.nan
+
+    if labels is not None:
+        labels_copy = labels.copy()[den_order]
+    else:
+        labels_copy = np.array([str(i) for i in range(N)])[den_order]
+
+    if colors is None:
+        colors_copy = np.array(["#000000"] * G.number_of_nodes())
+    else:
+        colors_copy = np.array(colors)[den_order]
+
+    # Create figure and axes
+
+    if ax is not None:
+        plt.sca(ax)
+    else:
+        fig, ax = plt.subplots(figsize=(10, 10))
+
+    if ax.figure is None:
+        fig = plt.gcf()
+    else:
+        fig = ax.figure
+
+    cbar_ax = fig.add_axes(cbar_position)
+
+    # Plot heatmap
+    if not remove_labels:
+        g = sns.heatmap(
+            A,
+            cmap=cmap,
+            xticklabels=labels_copy,
+            yticklabels=labels_copy,
+            linecolor="gray",
+            linewidths=heatmap_linewidths,
+            center=center,
+            ax=ax,
+            cbar_ax=cbar_ax,
+            # square=True,
+            cbar_kws={"label": cbar_label},
+        )
+
+        g.set_facecolor("#030103")
+
+        # Overlay a matrix with 1s on the main diagonal of the NxN block, NaN elsewhere
+        overlay = np.full((N, N), np.nan)
+        np.fill_diagonal(overlay[:N, :N], 1)
+
+        # Plot overlay matrix with bright green color and some transparency using sns.heatmap
+        _ = sns.heatmap(
+            overlay,
+            cmap=ListedColormap(["#00FF00"]),
+            alpha=0.7,
+            linewidths=heatmap_linewidths,
+            # square=True,
+            ax=ax,
+            cbar=False
+        )
+
+        # Improved tick label aesthetics
+        ax.xaxis.set_ticklabels([])
+        ax.xaxis.set_major_locator(ticker.FixedLocator(np.arange(0.5, N, 2)))
+        ax.xaxis.set_ticklabels([l for i, l in enumerate(labels_copy) if i % 2 == 0], rotation=90)
+        colors1 = [c for i, c in enumerate(colors_copy) if i % 2 == 0]
+        [t.set_color(c) for c, t in zip(colors1, ax.xaxis.get_ticklabels())]
+
+        ax2 = ax.twiny()
+        ax2.xaxis.set_major_locator(ticker.FixedLocator(np.arange(1.5, N, 2) / N))
+        ax2.xaxis.set_ticklabels([l for i, l in enumerate(labels_copy) if i % 2 == 1], rotation=90)
+        colors2 = [c for i, c in enumerate(colors_copy) if i % 2 == 1]
+        [t.set_color(c) for c, t in zip(colors2, ax2.xaxis.get_ticklabels())]
+
+        ax.yaxis.set_major_locator(ticker.FixedLocator(np.arange(0.5, N, 2)))
+        ax.yaxis.set_ticklabels([l for i, l in enumerate(labels_copy) if i % 2 == 0], rotation=0)
+        [t.set_color(c) for c, t in zip(colors1, ax.yaxis.get_ticklabels())]
+
+        ax3 = ax.twinx()
+        ax3.yaxis.set_inverted(True)
+        ax3.yaxis.set_major_locator(ticker.FixedLocator(np.arange(1.5, N, 2) / N))
+        ax3.yaxis.set_ticklabels([l for i, l in enumerate(labels_copy) if i % 2 == 1])
+        [t.set_color(c) for c, t in zip(colors2, ax3.yaxis.get_ticklabels())]
+
+        # Set font color if provided
+        if font_color:
+            [t.set_color(font_color) for t in ax.xaxis.get_ticklabels()]
+            [t.set_color(font_color) for t in ax.yaxis.get_ticklabels()]
+
+        # Set font size if provided
+        fontsize = kwargs.get("fontsize", font_size)
+        ax.set_xticklabels(ax.get_xmajorticklabels(), fontsize=fontsize)
+        ax.set_yticklabels(ax.get_ymajorticklabels(), fontsize=fontsize)
+        ax2.set_xticklabels(ax2.get_xmajorticklabels(), fontsize=fontsize)
+        ax3.set_yticklabels(ax3.get_ymajorticklabels(), fontsize=fontsize)
+
+        ax.set_ylabel("Source", fontdict={"fontsize": 20, "weight": "bold"})
+        ax.set_xlabel("Target", fontdict={"fontsize": 20, "weight": "bold"})
+    else:
+        g =sns.heatmap(
+            A,
+            cmap=cmap,
+            xticklabels=False,
+            yticklabels=False,
+            ax=ax,
+            linecolor="gray",
+            linewidths=heatmap_linewidths,
+            cbar_ax=cbar_ax,
+            cbar_kws={"label": "Link Community Membership"},
+            square=True,
+        )
+
+        g.set_facecolor("#030103")
+        # Overlay a matrix with 1s on the main diagonal of the NxN block, NaN elsewhere
+        overlay = np.full((N, N), np.nan)
+        np.fill_diagonal(overlay, 1)
+
+        # Plot overlay matrix with bright green color and some transparency using sns.heatmap
+        _ = sns.heatmap(
+                overlay,
+                xticklabels=False,
+                yticklabels=False,
+                cmap=ListedColormap(["#00FF00"]),
+                linewidths=heatmap_linewidths,
+                alpha=0.7,
+                ax=ax,
+                cbar=False,
+                square=True
+            )
+
+    # Draw community boundary lines
+    for c in C:
+        ax.vlines(
+            c, ymin=0, ymax=N,
+            linewidth=community_boundaries,
+            colors="white",
+            zorder=10
+        )
+        ax.hlines(
+            c, xmin=0, xmax=N,
+            linewidth=community_boundaries,
+            colors="white",
+            zorder=10
+        )
 
 
 def link_statistics_graph(
-    link_stats: pd.DataFrame,
+    linkstats: pd.DataFrame,
     x="height",
     y="S",
     xlabel=None,
     ylabel=None,
-    testxoffset=0.1,
-    textyoffset=0.1,
+    testxoffset=0,
+    textyoffset=0,
     color="tab:blue",
     ax : Axes | None = None,
 ):
     own_axes = ax is None
     if own_axes:
-        fig, ax = plt.subplots()
+        ax = plt.gca()
 
-    sns.lineplot(data=link_stats, x=x, y=y, color=color, ax=ax)
+    ax.minorticks_on()
+
+    sns.lineplot(data=linkstats, x=x, y=y, color=color, ax=ax)
 
     ax.set_xlabel(xlabel if xlabel else x)
     ax.set_ylabel(ylabel if ylabel else y)
@@ -503,12 +752,12 @@ def link_statistics_graph(
     sns.despine(ax=ax)
 
     # Highlight max y value
-    max_idx = link_stats[y].idxmax()
-    max_x = link_stats.loc[max_idx, x]
-    max_y = link_stats.loc[max_idx, y]
+    max_idx = linkstats[y].idxmax()
+    max_x = linkstats.loc[max_idx, x]
+    max_y = linkstats.loc[max_idx, y]
     ax.axvline(max_x, color='gray', linestyle='--', lw=1)
     ax.text(
-        max_x + testxoffset, max_y - textyoffset,
+        max_x + testxoffset, max_y + textyoffset,
         f'Max {y}\n{x}={max_x:.3f}',
         color='gray',
         ha='left', va='bottom',
@@ -614,3 +863,5 @@ def dendrogram(
 
     ax.set_ylabel(ylabel, fontsize=16, weight="bold")
     sns.despine(ax=ax, trim=True, offset=10)
+
+

@@ -22,7 +22,7 @@
  *   Output:
  *     (N-1) x 4 linkage matrix [i, j, height, size] in SciPy format.
  *
- * - hellinger_similarity_graph(std::vector<double>& fu,
+ * - bhattacharyya_coefficient_graph(std::vector<double>& fu,
  *     std::vector<double>& fv, int& iu, int& iv) -> double
  *   Computes an approximation to the Bhattacharyya coefficient between
  *   two non‑negative feature vectors, treating entries at positions iu and iv
@@ -352,62 +352,39 @@ std::vector<std::vector<double>> mst_edges_to_linkage(int N, const std::vector<s
 }
 
 
-double hellinger_similarity_graph(
+double bhattacharyya_coefficient_graph(
     std::vector<double> &fu, std::vector<double> &fv, int &iu, int &iv
 ) {
     int N = fu.size();
-    double pu = 0.0, pv = 0.0;
-    double s = 0.0, maxp = -std::numeric_limits<double>::infinity();
+    double Zu = 0.0, Zv = 0.0, BC = 0.0;  // Bhattacharyya coefficient
 
-    std::vector<double> ppu(N, 0.0), ppv(N, 0.0), peff(N, 0.0);
-    std::vector<bool> possible(N, false);
 
     // Compute normalizers and rearranged vectors
     for (int j = 0; j < N; ++j) {
-        pu += fu[j];
-        pv += fv[j];
+        Zu += fu[j];
+        Zv += fv[j];
     }
 
-    if (pu <= 0 || pv <= 0) throw std::invalid_argument("One or both feature vectors have all zeros, which is not allowed.");
+    if (Zu <= 0 || Zv <= 0) throw std::invalid_argument("One or both feature vectors have all zeros, which is not allowed.");
 
-    // Rearranged to handle iu and iv explicitly
-    int k = 0;
     for (int j = 0; j < N; ++j) {
         if (j == iu || j == iv) continue;
-        ppu[k] = fu[j];
-        ppv[k] = fv[j];
-        k++;
-    }
-    // Assign the special indices
-    ppu[N-2] = fu[iu];
-    ppu[N-1] = fu[iv];
-    ppv[N-2] = fv[iv];
-    ppv[N-1] = fv[iu];
-
-    for (int j = 0; j < N; ++j) {
-        if (ppu[j] > 0 && ppv[j] > 0) {
-            peff[j] = 0.5 * (log(ppu[j]) + log(ppv[j]) - log(pu) - log(pv));
-            possible[j] = true;
-            if (peff[j] > maxp) maxp = peff[j];
-        }
+        BC += sqrt((fu[j] / Zu) * (fv[j] / Zv));
     }
 
-    if (maxp == -std::numeric_limits<double>::infinity()) throw std::invalid_argument("One or both feature vectors have all zeros, which is not allowed.");
+    BC += sqrt((fu[iv] / Zu) * (fv[iu] / Zv));          // compare mutual interactions
+    BC += sqrt((fu[iu] / Zu) * (fv[iv] / Zv));          // compare self interactions
 
-    for (int j = 0; j < N; ++j) {
-        if (possible[j]) {
-            s += exp(peff[j] - maxp);
-        }
-    }
-
-    return s * exp(maxp);  // Approximation of the Bhattacharyya coefficient
+    if (BC < 0) BC = 0;
+    else if (BC > 1) BC = 1;
+    return BC;  // Return the Bhattacharyya coefficient
 }
 
 double cosine_similarity_graph(
 	std::vector<double> &u, std::vector<double> &v, int &ii, int &jj
 ) {
 	int N = u.size();
-	double uv=0., uu=0., vv=0.;
+	double uv=0., uu=0., vv=0., r;
     if (ii < 0 || jj < 0 || ii >= N || jj >= N) {
         throw std::invalid_argument("Indices ii and jj must be within vector bounds.");
     }
@@ -426,14 +403,18 @@ double cosine_similarity_graph(
 
     if (uu <= 0 || vv <= 0) throw std::invalid_argument("One or both feature vectors have all zeros, which is not allowed.");
 
-	return uv / (sqrt(uu * vv));
+    r = uv / (sqrt(uu) * sqrt(vv));
+
+    if (r < 0) r = 0;
+    else if (r > 1) r = 1;
+	return r;
 }
 
 double tanimoto_coefficient_graph(
 	std::vector<double> &u, std::vector<double> &v, int &ii, int &jj
 ) {
 	int N = u.size();
-	double uv=0., uu=0., vv=0.;
+	double uv=0., uu=0., vv=0., r;
     for (int i=0; i < N; i++) {
         uu += u[i] * u[i];
         vv += v[i] * v[i];
@@ -447,14 +428,17 @@ double tanimoto_coefficient_graph(
 
     if (uu <= 0 && vv <= 0 && uv <= 0) throw std::invalid_argument("One or both feature vectors have all zeros, which is not allowed.");
 
-	return uv / (uu + vv - uv);
+    r = uv / (sqrt(uu) * sqrt(vv));
+    if (r < 0) r = 0;
+    else if (r > 1) r = 1;
+	return r;
 }
 
 double pearson_correlation_graph(
 	std::vector<double> &u, std::vector<double> &v, int &ii, int &jj
 ) {
 	int N = u.size();
-	double uv=0., uu=0., vv=0., mu=0., mv=0.;
+	double uv=0., uu=0., vv=0., mu=0., mv=0., r;
 
     for (int i=0; i < N; i++) {
         mu += u[i];
@@ -468,10 +452,8 @@ double pearson_correlation_graph(
 	mu /= N;
 	mv /= N;
 
-	if (ii < N && jj < N) {
-		uv += u[jj] * v[ii];
-		uv += u[ii] * v[jj]; 
-	}
+	uv += u[jj] * v[ii];
+    uv += u[ii] * v[jj]; 
 
 	uv /= N;
 	uu /= N;
@@ -480,14 +462,17 @@ double pearson_correlation_graph(
 	vv -= pow(mv, 2);
 	if (uu <= 0 || vv <= 0) throw std::invalid_argument("One or both feature vectors have all zeros, which is not allowed.");
 
-	return (uv - mu * mv) / (sqrt( uu * vv));
+    r = (uv - mu * mv) / (sqrt( uu * vv));
+    if (r < -1) r = -1;
+    else if (r > 1) r = 1;
+	return r;
 }
 
 double weighted_jaccard_graph(
 	std::vector<double> &u, std::vector<double> &v, int &ii, int &jj
 ) {
 	int N = u.size();
-	double maximus=0., minimum=0.;
+	double maximus=0., minimum=0., r;
 	for (int i=0; i < N; i++) {
 		if ( i == ii || i == jj) continue;
 		minimum += std::min(u[i], v[i]);
@@ -502,8 +487,10 @@ double weighted_jaccard_graph(
 
 	if (minimum == 0 && maximus == 0) throw std::invalid_argument("One or both feature vectors have all zeros, which is not allowed.");
 
-
-	return minimum / maximus;
+    r = minimum / maximus;
+    if (r < 0) r = 0;
+    else if (r > 1) r = 1;
+	return r;
 }
 
 double jaccard_probability_graph(
@@ -538,6 +525,8 @@ double jaccard_probability_graph(
 		else
 			std::cout << "Vectors with indices " << ii << " and " << jj << " are both zero\n";
 	}
+    if (jacp < 0) jacp = 0;
+    else if (jacp > 1) jacp = 1;
 	return jacp;
 }
 
@@ -550,8 +539,8 @@ PYBIND11_MODULE(utils_cpp, m) {
         py::return_value_policy::reference_internal
     );
     m.def(
-        "hellinger_similarity_graph",
-        &hellinger_similarity_graph,
+        "bhattacharyya_coefficient_graph",
+        &bhattacharyya_coefficient_graph,
         py::return_value_policy::reference_internal
     );
     m.def(
@@ -567,6 +556,11 @@ PYBIND11_MODULE(utils_cpp, m) {
     m.def(
         "tanimoto_coefficient_graph",
         &tanimoto_coefficient_graph,
+        py::return_value_policy::reference_internal
+    );
+    m.def(
+        "jaccard_probability_graph",
+        &jaccard_probability_graph,
         py::return_value_policy::reference_internal
     );
     m.def(

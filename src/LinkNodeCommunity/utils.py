@@ -1,3 +1,25 @@
+"""
+Path: src/LinkNodeCommunity/utils.py
+
+Module: LinkNodeCommunity.utils
+Author: Jorge S. Martinez Armas
+
+Overview:
+---------
+Utility helpers shared across LinkNodeCommunity. Provides colour conversion,
+graph-to-edgelist adapters, and palette helpers for node cover visualisation.
+
+Key Components:
+---------------
+- hex_to_rgb, edgelist_from_graph, generate_cmap_from_partition, match, and
+  related helpers.
+
+Notes:
+------
+- Functions favour NumPy/NetworkX inputs and return pandas DataFrames or NumPy
+  arrays ready for the core pipeline.
+"""
+
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -288,7 +310,7 @@ def collapsed_partition(partition : npt.ArrayLike):
   new_partition = np.array([label_map[x] if x != -1 else -1 for x in par])
   return new_partition
 
-def linknode_equivalence_partition(score, link_stats : pd.DataFrame, linknode_equivalence : npt.NDArray):
+def linknode_equivalence_partition(score, linkstats : pd.DataFrame, linknode_equivalence : npt.NDArray):
   
   """
   Compute the number of link communities (K) and the corresponding number of node
@@ -300,7 +322,7 @@ def linknode_equivalence_partition(score, link_stats : pd.DataFrame, linknode_eq
   ----------
   score : str
       The score to use for selecting the maximum (either "D" or "S").
-  link_stats : pd.DataFrame
+  linkstats : pd.DataFrame
       DataFrame containing link community statistics with columns 'K', 'S', 'D', and 'height'.
 
   Returns
@@ -315,7 +337,7 @@ def linknode_equivalence_partition(score, link_stats : pd.DataFrame, linknode_eq
     raise ValueError("Unexpected score: must be 'D' or 'S'")
 
   get_max_func = get_number_link_communities_from_maxD if score == "D" else get_number_link_communities_from_maxS
-  number_link_communities, height_at_maximum = get_max_func(link_stats)
+  number_link_communities, height_at_maximum = get_max_func(linkstats)
   number_node_communities = get_number_node_communities_from_linknode_equivalence(number_link_communities, linknode_equivalence)
 
   # Ensure all outputs are numpy arrays of at least 1D, unless they are scalars

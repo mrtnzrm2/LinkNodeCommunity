@@ -1,3 +1,24 @@
+"""
+Path: src/io/loader.py
+
+Module: io.loader
+Author: Jorge S. Martinez Armas
+
+Overview:
+---------
+Loads the macaque FLN 40d91 dataset used in the LinkNodeCommunity paper and
+returns edgelists, labels, region annotations, and colour palettes.
+
+Key Components:
+---------------
+- load_macaque_fln_40d91: fetches CSV assets from disk and encodes the network.
+
+Notes:
+------
+- Expects Core-Nets CSV files to be present locally; `path` overrides the
+  lookup directory.
+"""
+
 import numpy as np
 import pandas as pd
 
@@ -26,7 +47,12 @@ general_colors = dict(zip(general_colors["REGION"], general_colors["COLOR"]))
 
 
 def load_macaque_fln_40d91(path=""):
-    """Load the Macaque FLN 40D91 dataset.
+    """Load the Macaque FLN 40d91 dataset from local CSV files.
+
+    Parameters
+    ----------
+    path : str, optional
+        Directory containing the Core-Nets CSV assets. Defaults to "" (current directory).
 
     Returns
     -------
@@ -37,7 +63,7 @@ def load_macaque_fln_40d91(path=""):
     regions : np.ndarray
         Array of region names corresponding to each label.
     colors : np.ndarray
-        Array of color codes corresponding to each region.
+        Array of colour codes corresponding to each region.
     """
     data = pd.read_csv(f"{path}/FLN40d91.csv", header=None)
 
