@@ -1,4 +1,4 @@
-[![LinkNodeCommunity Logo](docs/logo2.svg)](https://github.com/mrtnzrm2/LinkNodeCommunity)
+[![LinkNodeCommunity Logo](docs/logo6.svg)](https://github.com/mrtnzrm2/LinkNodeCommunity)
 
 <!-- TODO: add PyPI, build, docs, and coverage badges when available -->
 
