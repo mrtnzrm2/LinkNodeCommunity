@@ -2,9 +2,7 @@
 requires = [
   "scikit-build-core>=0.11.6",
   "setuptools_scm[toml]>=9.2.0",
-  "pybind11>=3.0.1",
-  "cmake>=3.24.0",      # minimum required by pybind11
-  "ninja"                # fast builds
+  "pybind11>=3.0.1"
 ]
 build-backend = "scikit_build_core.build"
 

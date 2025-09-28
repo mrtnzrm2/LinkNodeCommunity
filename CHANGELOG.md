@@ -1,8 +1,9 @@
 ## [Unreleased]
 
-## [v0.2.1] - 09-28-2025
+## [v0.2.2] - 09-28-2025
 - Reworked `pyproject.toml` metadata provider configuration so scikit-build-core pulls the exact tag version from `setuptools_scm`.
 - Enabled the scikit-build experimental metadata provider hook to unblock wheel and sdist builds for TestPyPI.
+- Removed `cmake` and `ninja` from the build requirements now that scikit-build-core injects them automatically.
 
 ## [v0.2.0] - 09-28-2025
 - Added project logo.
