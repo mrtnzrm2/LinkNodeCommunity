@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+## [v0.2.1] - 09-28-2025
+- Reworked `pyproject.toml` metadata provider configuration so scikit-build-core pulls the exact tag version from `setuptools_scm`.
+- Enabled the scikit-build experimental metadata provider hook to unblock wheel and sdist builds for TestPyPI.
+
 ## [v0.2.0] - 09-28-2025
 - Added project logo.
 - Implemented lazy loading for core classes to speed top-level imports.
