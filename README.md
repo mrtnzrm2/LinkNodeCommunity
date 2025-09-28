@@ -1,4 +1,9 @@
-[![LinkNodeCommunity Logo](docs/logo6.svg)](https://github.com/mrtnzrm2/LinkNodeCommunity)
+<!-- [![LinkNodeCommunity Logo](docs/logo6.svg)](https://github.com/mrtnzrm2/LinkNodeCommunity) -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="assets/logo-light.svg">
+  <img alt="LinkNodeCommunity" src="assets/logo-light.svg" width="280">
+</picture>
 
 <!-- TODO: add PyPI, build, docs, and coverage badges when available -->
 
