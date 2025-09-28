@@ -33,6 +33,9 @@
 ## Overview
 LinkNodeCommunity provides an information-theoretic framework for detecting link and node communities in dense, directed, and weighted networks. Originally developed for mesoscale cortical connectivity analysis, it formalizes a workflow that integrates link similarity, hierarchical clustering, and statistical diagnostics to reveal nested community structure.
 
+This package implements the methods introduced in:
+Martinez Armas, J., Knoblauch, K., Kennedy, H., & Toroczkai, Z. (2024). A principled approach to community detection in interareal cortical networks. [https://doi.org/10.1101/2024.08.07.606907](https://doi.org/10.1101/2024.08.07.606907)
+
 ## Key Features
 - Information-theoretic link similarity based on the Hellinger metric and 1/2-Rényi divergence
 - Dual hierarchies: link communities and node communities derived from the same similarity landscape
