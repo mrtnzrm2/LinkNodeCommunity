@@ -36,20 +36,17 @@ dependencies = [
 dynamic = ["version"]                          # from Git tags
 
 [tool.setuptools_scm]
-# Tag your repo like v0.3.1; this becomes 0.3.1
+
 version_scheme = "no-guess-dev"
 local_scheme = "node-and-date"
 
 [tool.scikit-build]
-# Helpful defaults
+
 wheel.expand-macos-universal-tags = true       # build universal2 on macOS if possible
 build.verbose = true
 build-dir = "build/{wheel_tag}"
-# Include the Python package in wheels & editable installs (src layout)
+
 wheel.packages = ["src/LinkNodeCommunity"]
-# If you need to pass flags:
-# cmake.define.CMAKE_CXX_STANDARD = "17"
-# cmake.define.PYBIND11_FINDPYTHON = "ON"
 
 [tool.cibuildwheel]
 build = "cp310-* cp311-* cp312-*"
@@ -58,8 +55,7 @@ test-requires = ["pytest"]
 test-command = "pytest -q {project}/tests"
 manylinux-x86_64-image = "manylinux2014"
 manylinux-aarch64-image = "manylinux2014"
-# macOS universal2 + delocate handled automatically
-# Windows MSVC handled automatically
+
 environment = { CIBW_ENVIRONMENT="PIP_ONLY_BINARY=:all:" }
 
 [project.optional-dependencies]
