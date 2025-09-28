@@ -59,7 +59,7 @@ On macOS
 brew install cmake ninja
 ```
 On Windows:
-- Install the Visual Studio Build Tools with C++17 support
+- Install the [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) with C++17 support
 - Add CMake and Ninja to your PATH
 
 ### Installation
