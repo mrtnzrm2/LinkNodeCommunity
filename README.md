@@ -145,12 +145,16 @@ print(partition_dict)
 
 ## Repository Layout
 ```
+assets/                   # Logos and static resources for documentation
 cpp/                      # pybind11 extensions (C++ implementations of hierarchy core loops)
 notebooks/                # reproducible analyses and figures
 src/LinkNodeCommunity/    # Python package (core algorithms and utilities)
-docs/                     # future API and tutorials
+docs/                     # API documentation and tutorials (to be expanded)
 tests/                    # pytest-based regression tests
 CMakeLists.txt            # top-level CMake for native extensions
+CHANGELOG.md              # Project history (releases, fixes, new features)
+LICENSE                   # License terms for reuse
+README.md                 # Project overview and usage guide
 pyproject.toml            # build metadata (scikit-build-core, dependencies)
 ```
 
