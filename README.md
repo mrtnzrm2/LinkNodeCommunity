@@ -102,7 +102,7 @@ During this process, scikit-build automatically compiles the C++ extensions unde
 ```python
 >>> import LinkNodeCommunity as lnc
 >>> lnc.__version__
-'0.0.0'
+'0.2.4'
 
 # Lazy exports keep the top-level import fast while providing submodule discovery
 >>> from LinkNodeCommunity import Clustering
