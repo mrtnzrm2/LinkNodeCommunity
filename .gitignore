@@ -5,9 +5,11 @@
 .vscode/
 data/
 .venv/
+.smoke/
 **/__pycache__/
 .github/
 build/
+build_/
 dist/
 
 pycache/
