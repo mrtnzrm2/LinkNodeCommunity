@@ -19,19 +19,19 @@
 - [References](#references)
 
 ## Overview
-LinkNodeCommunity implements an information-theoretic link community algorithm tailored to dense, directed, and weighted networks. It grew out of mesoscale cortical connectivity studies and formalizes a workflow that couples link similarity, hierarchical clustering, and statistical diagnostics to expose nested community structure. The package bundles high-performance C++ extensions (via pybind11) with a Python-first API that integrates with NetworkX, pandas, and SciPy tooling.
+LinkNodeCommunity provides an information-theoretic framework for detecting link and node communities in dense, directed, and weighted networks. Originally developed for mesoscale cortical connectivity analysis, it formalizes a workflow that integrates link similarity, hierarchical clustering, and statistical diagnostics to reveal nested community structure.
 
 ## Key Features
 - Information-theoretic link similarity based on the Hellinger metric and 1/2-Rényi divergence
 - Dual hierarchies: link communities and node communities derived from the same similarity landscape
-- Loop entropy scoring to pinpoint a "Goldilocks" resolution for mesoscale organization
+- Loop entropy scoring to identify a "Goldilocks" resolution for mesoscale organization
 - Support for directed or undirected graphs, heterogeneous weights, and optional subgraph conditioning
-- Utilities to export hierarchies as Newick trees for downstream phylogenetic-style visualization
+- Export utilities to export hierarchies as Newick trees for downstream phylogenetic-style visualization
 - Benchmarks and diagnostics aligned with neuroscience-grade anatomical datasets and synthetic benchmarks
 
 ## Scientific Motivation
 ### Neuroscience
-- Captures the mesoscale organization of macaque cortical networks obtained from retrograde tract-tracing (see `data/macaque`).
+- Captures the mesoscale organization of macaque cortical networks reconstructed via retrograde tract-tracing.
 - Aligns structural partitions with functional hypotheses by identifying link communities that preserve densely interconnected feedback circuits.
 
 ### Information Theory
@@ -40,7 +40,7 @@ LinkNodeCommunity implements an information-theoretic link community algorithm t
 
 ### Network Science
 - Extends the link community paradigm of Ahn, Bagrow, and Lehmann (2010) to weighted, directed, and dense graphs.
-- Employs hierarchical clustering routines optimized in C++ (`link_hierarchy_statistics_cpp`, `node_community_hierarchy_cpp`) to handle thousands of links efficiently.
+- Employs hierarchical clustering routines optimized in C++ (`link_hierarchy_statistics`, `node_community_hierarchy`) to handle thousands of links efficiently.
 
 ## Getting Started
 ### Prerequisites
@@ -48,6 +48,19 @@ LinkNodeCommunity implements an information-theoretic link community algorithm t
 - A C++17 toolchain compatible with scikit-build-core, CMake (>=3.24), and Ninja
 - Recommended Python dependencies: `numpy`, `scipy`, `pandas`, `networkx`, `matplotlib`, `scikit-learn`, `seaborn`
 - Optional: R (for `ggtree` visualizations accessed via `rpy2`)
+
+On Debian/Ubuntu:
+```bash
+sudo apt-get update
+sudo apt-get install -y cmake ninja-build g++
+```
+On macOS
+```bash
+brew install cmake ninja
+```
+On Windows:
+- Install the Visual Studio Build Tools with C++17 support
+- Add CMake and Ninja to your PATH
 
 ### Installation
 **From PyPI (planned):**
@@ -60,14 +73,15 @@ pip install LinkNodeCommunity
 pip install -i https://test.pypi.org/simple/ LinkNodeCommunity
 ```
 
-**From source:**
+**From source (developer mode):**
 ```bash
 # clone your fork or the upstream repository
 python -m venv .venv && source .venv/bin/activate
 pip install --upgrade pip
-pip install .[dev]
+pip install -e .[dev]
 ```
-The editable install triggers scikit-build to compile the C++ extensions located under `cpp/`.
+The editable install (`-e`) links the local source into your environment and installs developer dependencies.
+During this process, scikit-build automatically compiles the C++ extensions under `cpp/`.
 
 ### Verifying the Build
 ```python
@@ -85,7 +99,7 @@ The editable install triggers scikit-build to compile the C++ extensions located
 import networkx as nx
 from LinkNodeCommunity import Clustering
 
-# Build a small weighted directed graph
+# Build a small directed, weighted graph
 g = nx.DiGraph()
 g.add_weighted_edges_from([
     ("V1", "V2", 0.8),
@@ -111,18 +125,18 @@ print(partition_dict)
 - `NOCFinder`: derives node-overlap communities aligned with link-level partitions.
 - `LinkageToNewick`: converts linkage matrices to Newick strings for compatibility with tree visualizers (e.g., `ggtree`).
 - `LinkSimilarity` / `ACCEPTED_SIMILARITY_INDICES`: expose alternative similarity indices (Bhattacharyya, cosine, Pearson, weighted Jaccard, Tanimoto, and more) and parallel computation options.
-- `LinkNodeCommunity.core`: package exposing `framework`, `similarity`, `nocs`, and `tonewick` modules with lazy loading for fast imports and IDE completion support.
 - `utils`: helper functions for edgelist management, equivalence partitions, validity checks, and fast dendrogram cuts.
 
 ## Data & Notebooks
 - `data/macaque`: curated cortical connectivity matrices (FLN weights, anatomical distances, region labels) used throughout the associated manuscript.
-- `notebooks/`: exploratory analyses (e.g., `PaparAnalysis.ipynb`, `HierarchicaScaleFree.ipynb`, `ErdosRenyi.ipynb`) illustrating usage on empirical and synthetic graphs.
+- `notebooks/`: exploratory analyses (e.g., `PaperAnalysis.ipynb`, `HierarchicaScaleFree.ipynb`, `ErdosRenyi.ipynb`) illustrating usage on empirical and synthetic graphs.
 
 ## Repository Layout
 ```
 cpp/                      # pybind11 extensions (C++ implementations of hierarchy core loops)
 notebooks/                # reproducible analyses and figures
 src/LinkNodeCommunity/    # Python package (core algorithms and utilities)
+docs/                     # future API and tutorials
 tests/                    # pytest-based regression tests
 CMakeLists.txt            # top-level CMake for native extensions
 pyproject.toml            # build metadata (scikit-build-core, dependencies)
@@ -163,7 +177,6 @@ Distributed under the terms of the repository's [LICENSE](LICENSE).
 - Ahn, Y.-Y., Bagrow, J. P., & Lehmann, S. (2010). Link communities reveal multiscale network complexity. *Nature*, 466, 761–764. https://doi.org/10.1038/nature09182
 - Lancichinetti, A., & Fortunato, S. (2009). Benchmarks for testing community detection algorithms on directed and weighted graphs with overlapping communities. *Phys. Rev. E*, 80, 016118.
 - Martinez Armas, J., Knoblauch, K., Kennedy, H., & Toroczkai, Z. (2024). *An information theoretic approach to community detection in dense cortical networks reveals a nested hierarchical structure* (preprint to be submitted shortly).
-- Martinez Armas, J., Knoblauch, K., Kennedy, H., & Toroczkai, Z. (2024). A principled approach to community detection in interareal cortical networks. https://doi.org/10.1101/2024.08.07.606907
 - Markov, N., et al. (2011). Weight consistency specifies the regularities of macaque cortical networks. *Cerebral Cortex*, 21, 1254–1272.
 - Markov, N., et al. (2012). A weighted and directed interareal connectivity matrix for macaque cerebral cortex. *Cerebral Cortex*. https://doi.org/10.1093/cercor/bhs127
 - Müllner, D. (2013). fastcluster: Fast Hierarchical, Agglomerative Clustering Routines for R and Python. *Journal of Statistical Software*, 53(9), 1–18.
