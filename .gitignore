@@ -29,6 +29,7 @@ tox/
 *.o
 *.a
 *.lib
+*.ai
 
 cpp/**/build/
 cpp/**/CMakeFiles/
