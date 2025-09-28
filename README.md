@@ -121,7 +121,7 @@ print(partition_dict)
 ## Repository Layout
 ```
 cpp/                      # pybind11 extensions (C++ implementations of hierarchy core loops)
-data/                     # reference datasets (macaque, WikiVote)
+data/                     # reference datasets (macaque)
 notebooks/                # reproducible analyses and figures
 src/LinkNodeCommunity/    # Python package (core algorithms and utilities)
 tests/                    # pytest-based regression tests
