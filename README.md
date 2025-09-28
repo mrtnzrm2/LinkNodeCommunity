@@ -177,10 +177,10 @@ pyproject.toml            # build metadata (scikit-build-core, dependencies)
 ## Citation
 If you use this software in academic work, please cite:
 ```
-@article{MartinezArmas2024LinkNodeCommunity,
-  title   = {An information theoretic approach to community detection in dense cortical networks reveals a nested hierarchical structure},
-  author  = {Martinez Armas, Jorge S. and Knoblauch, Kenneth and Kennedy, Henry and Toroczkai, Zoltan},
-  journal = {Cold Spring Harbor Laboratory Preprint},
+@article{MartinezArmas2024,
+  title   = {A principled approach to community detection in interareal cortical networks},
+  author  = {Martinez Armas, Jorge. and Knoblauch, Kenneth and Kennedy, Henry and Toroczkai, Zoltan},
+  journal = {bioRxiv},
   year    = {2024},
   doi     = {10.1101/2024.08.07.606907}
 }
