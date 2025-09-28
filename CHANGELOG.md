@@ -5,6 +5,7 @@
 - Enabled the scikit-build experimental metadata provider hook to unblock wheel and sdist builds for TestPyPI.
 - Removed `cmake` and `ninja` from the build requirements now that scikit-build-core injects them automatically.
 - Updated the top-level `CMakeLists.txt` to adopt policy CMP0148 and use `FindPython`, removing the pybind11 warning during builds.
+- Switched the README logo to an absolute raw GitHub URL so the image renders on TestPyPI.
 
 ## [v0.2.0] - 09-28-2025
 - Added project logo.

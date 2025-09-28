@@ -1,9 +1,14 @@
-<!-- [![LinkNodeCommunity Logo](docs/logo6.svg)](https://github.com/mrtnzrm2/LinkNodeCommunity) -->
-<picture>
+<!-- <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg">
   <source media="(prefers-color-scheme: light)" srcset="assets/logo-light.svg">
   <img alt="LinkNodeCommunity" src="assets/logo-light.svg" width="780">
-</picture>
+</picture> -->
+
+<p align="center">
+  <a href="https://github.com/mrtnzrm2/LinkNodeCommunity">
+    <img alt="LinkNodeCommunity" src="https://raw.githubusercontent.com/mrtnzrm2/LinkNodeCommunity/main/assets/logo-light.svg" width="780">
+  </a>
+</p>
 
 <!-- TODO: add PyPI, build, docs, and coverage badges when available -->
 
@@ -102,7 +107,7 @@ During this process, scikit-build automatically compiles the C++ extensions unde
 ```python
 >>> import LinkNodeCommunity as lnc
 >>> lnc.__version__
-'0.2.4'
+'0.2.5'
 
 # Lazy exports keep the top-level import fast while providing submodule discovery
 >>> from LinkNodeCommunity import Clustering
