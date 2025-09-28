@@ -1,20 +1,27 @@
-[![LinkNodeCommunity](docs/logo.svg)](https://github.com/mrtnzrm2/LinkNodeCommunity)
+[![LinkNodeCommunity Logo](docs/logo2.svg)](https://github.com/mrtnzrm2/LinkNodeCommunity)
 
 <!-- TODO: add PyPI, build, docs, and coverage badges when available -->
 
 ## Table of Contents
+- [Table of Contents](#table-of-contents)
 - [Overview](#overview)
 - [Key Features](#key-features)
 - [Scientific Motivation](#scientific-motivation)
+  - [Neuroscience](#neuroscience)
+  - [Information Theory](#information-theory)
+  - [Network Science](#network-science)
 - [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+  - [Verifying the Build](#verifying-the-build)
 - [Quickstart](#quickstart)
 - [API Highlights](#api-highlights)
-- [Data & Notebooks](#data--notebooks)
+- [Data \& Notebooks](#data--notebooks)
 - [Repository Layout](#repository-layout)
-- [Testing & Quality](#testing--quality)
+- [Testing \& Quality](#testing--quality)
 - [Development Tips](#development-tips)
 - [Citation](#citation)
-- [Funding & Acknowledgements](#funding--acknowledgements)
+- [Funding \& Acknowledgements](#funding--acknowledgements)
 - [License](#license)
 - [References](#references)
 
