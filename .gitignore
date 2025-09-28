@@ -4,6 +4,7 @@
 
 .vscode/
 data/
+logo/
 .venv/
 .smoke/
 **/__pycache__/

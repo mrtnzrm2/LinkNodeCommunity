@@ -1,4 +1,4 @@
-# LinkNodeCommunity
+[![LinkNodeCommunity](docs/logo.svg)](https://github.com/mrtnzrm2/LinkNodeCommunity)
 
 <!-- TODO: add PyPI, build, docs, and coverage badges when available -->
 

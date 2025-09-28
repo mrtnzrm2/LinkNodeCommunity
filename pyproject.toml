@@ -56,7 +56,6 @@ test-requires = ["pytest"]
 test-command = "pytest -q {project}/tests"
 manylinux-x86_64-image = "manylinux2014"
 manylinux-aarch64-image = "manylinux2014"
-
 environment = { CIBW_ENVIRONMENT="PIP_ONLY_BINARY=:all:" }
 
 [project.optional-dependencies]
