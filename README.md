@@ -55,6 +55,11 @@ LinkNodeCommunity implements an information-theoretic link community algorithm t
 pip install LinkNodeCommunity
 ```
 
+**From TestPyPI (pre-release builds):**
+```bash
+pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple LinkNodeCommunity
+```
+
 **From source:**
 ```bash
 # clone your fork or the upstream repository
@@ -68,7 +73,11 @@ The editable install triggers scikit-build to compile the C++ extensions located
 ```python
 >>> import LinkNodeCommunity as lnc
 >>> lnc.__version__
-'0+unknown'  # appears when distribution metadata is absent (e.g., editable install)
+'0.0.0'
+
+# Lazy exports keep the top-level import fast while providing submodule discovery
+>>> from LinkNodeCommunity import Clustering
+>>> from LinkNodeCommunity.core import similarity
 ```
 
 ## Quickstart
@@ -86,7 +95,7 @@ g.add_weighted_edges_from([
     ("V4", "V1", 0.5),
 ])
 
-model = Clustering(g, similarity_index="bhattacharyya_coefficient", consider_subgraph=True)
+model = Clustering(g, similarity_index="bhattacharyya_coefficient", edge_complete=True)
 model.fit(method="matrix")
 
 # Linkage matrix for downstream cuts or dendrograms
@@ -102,6 +111,7 @@ print(partition_dict)
 - `NOCFinder`: derives node-overlap communities aligned with link-level partitions.
 - `LinkageToNewick`: converts linkage matrices to Newick strings for compatibility with tree visualizers (e.g., `ggtree`).
 - `LinkSimilarity` / `ACCEPTED_SIMILARITY_INDICES`: expose alternative similarity indices (Bhattacharyya, cosine, Pearson, weighted Jaccard, Tanimoto, and more) and parallel computation options.
+- `LinkNodeCommunity.core`: package exposing `framework`, `similarity`, `nocs`, and `tonewick` modules with lazy loading for fast imports and IDE completion support.
 - `utils`: helper functions for edgelist management, equivalence partitions, validity checks, and fast dendrogram cuts.
 
 ## Data & Notebooks
@@ -153,7 +163,7 @@ Distributed under the terms of the repository's [LICENSE](LICENSE).
 ## References
 - Ahn, Y.-Y., Bagrow, J. P., & Lehmann, S. (2010). Link communities reveal multiscale network complexity. *Nature*, 466, 761–764. https://doi.org/10.1038/nature09182
 - Lancichinetti, A., & Fortunato, S. (2009). Benchmarks for testing community detection algorithms on directed and weighted graphs with overlapping communities. *Phys. Rev. E*, 80, 016118.
-- Martínez Armas, J., Knoblauch, K., Kennedy, H., & Toroczkai, Z. (2024). *An information theoretic approach to community detection in dense cortical networks reveals a nested hierarchical structure*. Cold Spring Harbor Laboratory. https://doi.org/10.1101/2024.08.07.606907
+- Martinez Armas, J., Knoblauch, K., Kennedy, H., & Toroczkai, Z. (2024). *An information theoretic approach to community detection in dense cortical networks reveals a nested hierarchical structure*. Cold Spring Harbor Laboratory. https://doi.org/10.1101/2024.08.07.606907
 - Markov, N., et al. (2011). Weight consistency specifies the regularities of macaque cortical networks. *Cerebral Cortex*, 21, 1254–1272.
 - Markov, N., et al. (2012). A weighted and directed interareal connectivity matrix for macaque cerebral cortex. *Cerebral Cortex*. https://doi.org/10.1093/cercor/bhs127
 - Müllner, D. (2013). fastcluster: Fast Hierarchical, Agglomerative Clustering Routines for R and Python. *Journal of Statistical Software*, 53(9), 1–18.
