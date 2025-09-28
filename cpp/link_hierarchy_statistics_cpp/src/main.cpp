@@ -340,7 +340,7 @@ void core::fit_edgelist(std::vector<std::vector<double>> &distance_edgelist, con
 
         std::vector<int> processed_source_nodes;
         std::vector<int> processed_target_nodes;
-        if (!edge_complete) {
+        if (edge_complete) {
             if (verbose >= 2) {
                 std::cout << "[linkstat] fit_edgelist Step 1a: filtering and sorting edge list" << std::endl;
             }
@@ -349,8 +349,8 @@ void core::fit_edgelist(std::vector<std::vector<double>> &distance_edgelist, con
             processed_target_nodes = std::move(filtered_edges.second);
         }
 
-        const std::vector<int>& current_source_nodes = edge_complete ? source_nodes : processed_source_nodes;
-        const std::vector<int>& current_target_nodes = edge_complete ? target_nodes : processed_target_nodes;
+        const std::vector<int>& current_source_nodes = edge_complete ? processed_source_nodes : source_nodes;
+        const std::vector<int>& current_target_nodes = edge_complete ? processed_target_nodes : target_nodes;
 
         if (current_source_nodes.size() != static_cast<size_t>(number_of_edges) ||
             current_target_nodes.size() != static_cast<size_t>(number_of_edges)) {
@@ -538,7 +538,7 @@ void core::fit_matrix(std::vector<double>& condensed_distance_matrix) {
 
         std::vector<int> processed_source_nodes;
         std::vector<int> processed_target_nodes;
-        if (!edge_complete) {
+        if (edge_complete) {
             if (verbose >= 2) {
                 std::cout << "[linkstat] fit_matrix Step 1a: filtering and sorting edge list" << std::endl;
             }
@@ -547,8 +547,8 @@ void core::fit_matrix(std::vector<double>& condensed_distance_matrix) {
             processed_target_nodes = std::move(filtered_edges.second);
         }
 
-        const std::vector<int>& current_source_nodes = edge_complete ? source_nodes : processed_source_nodes;
-        const std::vector<int>& current_target_nodes = edge_complete ? target_nodes : processed_target_nodes;
+        const std::vector<int>& current_source_nodes = edge_complete ? processed_source_nodes : source_nodes;
+        const std::vector<int>& current_target_nodes = edge_complete ? processed_target_nodes : target_nodes;
 
         if (current_source_nodes.size() != static_cast<size_t>(number_of_edges) ||
             current_target_nodes.size() != static_cast<size_t>(number_of_edges)) {

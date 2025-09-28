@@ -2,11 +2,6 @@
 
 <!-- TODO: add PyPI, build, docs, and coverage badges when available -->
 
-## Why This README Works
-- Starts with a concise elevator pitch, then dives into actionable sections (overview, install, quickstart, API)
-- Surfaces project logistics—tests, data, roadmap, citation—so contributors can orient quickly
-- Connects the software to its scientific context and references, a best practice for research-grade packages
-
 ## Table of Contents
 - [Overview](#overview)
 - [Key Features](#key-features)
@@ -46,10 +41,6 @@ LinkNodeCommunity implements an information-theoretic link community algorithm t
 ### Network Science
 - Extends the link community paradigm of Ahn, Bagrow, and Lehmann (2010) to weighted, directed, and dense graphs.
 - Employs hierarchical clustering routines optimized in C++ (`link_hierarchy_statistics_cpp`, `node_community_hierarchy_cpp`) to handle thousands of links efficiently.
-
-### Statistical Physics
-- Treats cortical connectivity as a complex system where mesoscale structure emerges from interaction statistics.
-- Analyzes similarity distributions (Weibull-like tails) and scaling relationships between connectivity divergence and physical distances, echoing statistical physics approaches to systems organization.
 
 ## Getting Started
 ### Prerequisites
@@ -102,8 +93,8 @@ model.fit(method="matrix")
 linkage = model.get_hierarchy_matrix()
 
 # Loop entropy-guided partition
-n_link_clusters, n_node_clusters, optimal_height = model.equivalence_partition(score="S")
-print(n_link_clusters, optimal_height)
+partition_dict = model.equivalence_partition(score="S")
+print(partition_dict)
 ```
 
 ## API Highlights
@@ -115,7 +106,6 @@ print(n_link_clusters, optimal_height)
 
 ## Data & Notebooks
 - `data/macaque`: curated cortical connectivity matrices (FLN weights, anatomical distances, region labels) used throughout the associated manuscript.
-- `data/WikiVote`: sample social network for quick demonstrations.
 - `notebooks/`: exploratory analyses (e.g., `PaparAnalysis.ipynb`, `HierarchicaScaleFree.ipynb`, `ErdosRenyi.ipynb`) illustrating usage on empirical and synthetic graphs.
 
 ## Repository Layout
@@ -137,8 +127,8 @@ pyproject.toml            # build metadata (scikit-build-core, dependencies)
 - Continuous integration hooks can be wired by reusing `pyproject.toml`'s cibuildwheel configuration.
 
 ## Development Tips
-- Prefer `method="matrix"` for dense graphs; switch to `method="edgelist"` when memory is constrained.
-- Use `Clustering.consider_subgraph=True` to focus on the strongly connected core of directed networks when statistics demand edge-complete nodes.
+- Prefer `method="matrix"` for sparse graphs; switch to `method="edgelist"` when memory is constrained in dense graphs.
+- Use `Clustering.edge_complete=True` to focus on the strongly connected core of directed networks when statistics demand edge-complete nodes.
 - Explore community resolutions via `equivalence_partition(score="S"|"D")` and compare against loop entropy maxima.
 - Export Newick strings to inspect hierarchies with phylogenetic visualization libraries.
 
@@ -147,7 +137,7 @@ If you use this software in academic work, please cite:
 ```
 @article{MartinezArmas2024LinkNodeCommunity,
   title   = {An information theoretic approach to community detection in dense cortical networks reveals a nested hierarchical structure},
-  author  = {Martinez Armas, Jorge S. and Knoblauch, Kenneth and Kennedy, Henry and Toroczkai, Zolt{\'a}n},
+  author  = {Martinez Armas, Jorge S. and Knoblauch, Kenneth and Kennedy, Henry and Toroczkai, Zoltan},
   journal = {Cold Spring Harbor Laboratory Preprint},
   year    = {2024},
   doi     = {10.1101/2024.08.07.606907}
@@ -167,4 +157,3 @@ Distributed under the terms of the repository's [LICENSE](LICENSE).
 - Markov, N., et al. (2011). Weight consistency specifies the regularities of macaque cortical networks. *Cerebral Cortex*, 21, 1254–1272.
 - Markov, N., et al. (2012). A weighted and directed interareal connectivity matrix for macaque cerebral cortex. *Cerebral Cortex*. https://doi.org/10.1093/cercor/bhs127
 - Müllner, D. (2013). fastcluster: Fast Hierarchical, Agglomerative Clustering Routines for R and Python. *Journal of Statistical Software*, 53(9), 1–18.
-- Supplemental analyses and terminology are detailed in `Supp__materials_FuncComm.pdf` and `Technical terms.pdf` within this repository.

@@ -607,7 +607,7 @@ void core::fit_edgelist_undirected(std::vector<std::vector<double>> &distance_ed
 
     std::vector<int> processed_source_nodes;
     std::vector<int> processed_target_nodes;
-    if (!edge_complete) {
+    if (edge_complete && !(undirected == 1)) {
         if (verbose >= 2) {
             workflow(2, "fit_edgelist_undirected Step 1a: filtering and sorting edges");
         }
@@ -616,8 +616,8 @@ void core::fit_edgelist_undirected(std::vector<std::vector<double>> &distance_ed
         processed_target_nodes = std::move(filtered_edges.second);
     }
 
-    const std::vector<int>& current_source_nodes = edge_complete ? source_nodes : processed_source_nodes;
-    const std::vector<int>& current_target_nodes = edge_complete ? target_nodes : processed_target_nodes;
+    const std::vector<int>& current_source_nodes = edge_complete && !(undirected == 1) ? processed_source_nodes : source_nodes;
+    const std::vector<int>& current_target_nodes = edge_complete && !(undirected == 1) ? processed_target_nodes : target_nodes;
 
     if (current_source_nodes.size() != static_cast<size_t>(number_of_edges) ||
         current_target_nodes.size() != static_cast<size_t>(number_of_edges)) {
@@ -725,6 +725,12 @@ void core::fit_edgelist_undirected(std::vector<std::vector<double>> &distance_ed
         workflow(2, "fit_edgelist_undirected Step 7: finalizing remaining communities");
     }
     if (merge_list.size() > 1) {
+        if (merge_step_counter == 0) {
+            throw std::runtime_error(
+                "fit_edgelist_undirected: no node communities resolved via triad criterion; "
+                "input graph exposes no triads in merged link communities."
+            );
+        }
         if (verbose >= 1) {
             workflow(1,"Some node communities remain unmerged after processing all link merges.");
             workflow(1, "This is deliberate behaviour to ensure a full dendrogram is produced.", true);
@@ -779,17 +785,17 @@ void core::fit_matrix_undirected(std::vector<double> &condensed_distance_matrix)
 
     std::vector<int> processed_source_nodes;
     std::vector<int> processed_target_nodes;
-    if (!edge_complete) {
+   if (edge_complete && !(undirected == 1)) {
         if (verbose >= 2) {
-            workflow(2, "fit_matrix_undirected Step 1a: filtering and sorting edges");
+            workflow(2, "fit_edgelist_undirected Step 1a: filtering and sorting edges");
         }
         auto filtered_edges = filter_and_sort_edges(source_nodes, target_nodes);
         processed_source_nodes = std::move(filtered_edges.first);
         processed_target_nodes = std::move(filtered_edges.second);
     }
 
-    const std::vector<int>& current_source_nodes = edge_complete ? source_nodes : processed_source_nodes;
-    const std::vector<int>& current_target_nodes = edge_complete ? target_nodes : processed_target_nodes;
+    const std::vector<int>& current_source_nodes = edge_complete && !(undirected == 1) ? processed_source_nodes : source_nodes;
+    const std::vector<int>& current_target_nodes = edge_complete && !(undirected == 1) ? processed_target_nodes : target_nodes;
 
     if (current_source_nodes.size() != static_cast<size_t>(number_of_edges) ||
         current_target_nodes.size() != static_cast<size_t>(number_of_edges)) {
@@ -904,6 +910,12 @@ void core::fit_matrix_undirected(std::vector<double> &condensed_distance_matrix)
         workflow(2, "fit_matrix_undirected Step 7: finalizing remaining communities");
     }
     if (merge_list.size() > 1) {
+        if (merge_step_counter == 0) {
+            throw std::runtime_error(
+                "fit_matrix_undirected: no node communities resolved via triad criterion; "
+                "input graph exposes no triads in merged link communities."
+            );
+        }
         if (verbose >= 1) {
             workflow(1,"Some node communities remain unmerged after processing all link merges.");
             workflow(1, "This is deliberate behaviour to ensure a full dendrogram is produced.", true);
@@ -960,7 +972,7 @@ void core::fit_edgelist_directed(std::vector<std::vector<double>> &distance_edge
 
     std::vector<int> processed_source_nodes;
     std::vector<int> processed_target_nodes;
-    if (!edge_complete) {
+    if (edge_complete && (undirected == 0)) {
         if (verbose >= 2) {
             workflow(2, "fit_edgelist_directed Step 1a: filtering and sorting edges");
         }
@@ -969,8 +981,8 @@ void core::fit_edgelist_directed(std::vector<std::vector<double>> &distance_edge
         processed_target_nodes = std::move(filtered_edges.second);
     }
 
-    const std::vector<int>& current_source_nodes = edge_complete ? source_nodes : processed_source_nodes;
-    const std::vector<int>& current_target_nodes = edge_complete ? target_nodes : processed_target_nodes;
+    const std::vector<int>& current_source_nodes = edge_complete && (undirected == 0) ? processed_source_nodes : source_nodes;
+    const std::vector<int>& current_target_nodes = edge_complete && (undirected == 0) ? processed_target_nodes : target_nodes;
 
     if (current_source_nodes.size() != static_cast<size_t>(number_of_edges) ||
         current_target_nodes.size() != static_cast<size_t>(number_of_edges)) {
@@ -1096,6 +1108,12 @@ void core::fit_edgelist_directed(std::vector<std::vector<double>> &distance_edge
         workflow(2, "fit_edgelist_directed Step 7: finalizing remaining communities");
     }
     if (merge_list.size() > 1) {
+        if (merge_step_counter == 0) {
+            throw std::runtime_error(
+                "fit_edgelist_directed: no node communities resolved via recurrence criterion; "
+                "link hierarchy exploration found no overlapping source/target memberships."
+            );
+        }
         if (verbose >= 1) {
             workflow(1,"Some node communities remain unmerged after processing all link merges.");
             workflow(1, "This is deliberate behaviour to ensure a full dendrogram is produced.", true);
@@ -1150,7 +1168,7 @@ void core::fit_matrix_directed(std::vector<double> &condensed_distance_matrix) {
 
     std::vector<int> processed_source_nodes;
     std::vector<int> processed_target_nodes;
-    if (!edge_complete) {
+    if (edge_complete && (undirected == 0)) {
         if (verbose >= 2) {
             workflow(2, "fit_matrix_directed Step 1a: filtering and sorting edges");
         }
@@ -1159,8 +1177,8 @@ void core::fit_matrix_directed(std::vector<double> &condensed_distance_matrix) {
         processed_target_nodes = std::move(filtered_edges.second);
     }
 
-    const std::vector<int>& current_source_nodes = edge_complete ? source_nodes : processed_source_nodes;
-    const std::vector<int>& current_target_nodes = edge_complete ? target_nodes : processed_target_nodes;
+    const std::vector<int>& current_source_nodes = edge_complete && (undirected == 0) ? processed_source_nodes : source_nodes;
+    const std::vector<int>& current_target_nodes = edge_complete && (undirected == 0) ? processed_target_nodes : target_nodes;
 
     if (current_source_nodes.size() != static_cast<size_t>(number_of_edges) ||
         current_target_nodes.size() != static_cast<size_t>(number_of_edges)) {
@@ -1291,6 +1309,12 @@ void core::fit_matrix_directed(std::vector<double> &condensed_distance_matrix) {
         workflow(2, "fit_matrix_directed Step 7: finalizing remaining communities");
     }
     if (merge_list.size() > 1) {
+        if (merge_step_counter == 0) {
+            throw std::runtime_error(
+                "fit_matrix_directed: no node communities resolved via recurrence criterion; "
+                "link hierarchy exploration found no overlapping source/target memberships."
+            );
+        }
         if (verbose >= 1) {
             workflow(1,"Some node communities remain unmerged after processing all link merges.");
             workflow(1, "This is deliberate behaviour to ensure a full dendrogram is produced.", true);

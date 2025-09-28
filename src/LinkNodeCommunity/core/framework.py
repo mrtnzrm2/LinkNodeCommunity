@@ -62,7 +62,7 @@ class Clustering:
               "weighted_jaccard", "jaccard_probability", "tanimoto_coefficient"}.
                   Default is "bhattacharyya_coefficient".
     edge_complete : bool, optional
-        When True, restricts statistics (N, M) to nodes that appear as both sources and targets while computing similarities on the full graph. Default is True.
+        When True, restricts statistics (N, M) to nodes that appear as both sources and targets while computing similarities on the full graph. Relevant only for directed graphs. Default is True.
 
     Attributes
     ----------
@@ -117,11 +117,18 @@ class Clustering:
       if not isinstance(G, (nx.Graph, nx.DiGraph)):
         raise TypeError("G must be an instance of nx.Graph or nx.DiGraph.")
 
+      if labels is not None:
+        if not isinstance(labels, dict):
+          raise TypeError("Labels must be provided as a dictionary mapping node IDs to labels.")
+
       # Validate similarity index
       if similarity_index not in ACCEPTED_SIMILARITY_INDICES:
         raise ValueError(
           f"Similarity index '{similarity_index}' is not supported.\nAccepted indices are: {ACCEPTED_SIMILARITY_INDICES}"
         )
+      
+      if not isinstance(edge_complete, bool):
+        raise TypeError("edge_complete must be a boolean value (True or False).")
       
       # Check for NaN edge weights
       for u, v, data in G.edges(data=True):
@@ -137,12 +144,16 @@ class Clustering:
       if labels is not None and all(isinstance(node, str) for node in G.nodes()):
         raise ValueError("If labels are provided, node IDs in the graph must not be strings. Use integer node IDs when supplying labels.")
 
-      # Validate labels length and uniqueness
+      # Validate labels if provided
       if labels is not None:
         if len(labels) != len(G.nodes):
           raise ValueError(f"Number of labels ({len(labels)}) does not match number of nodes in the graph ({len(G.nodes)}).")
+
         if len(set(labels.values())) != len(labels):
           raise ValueError("All labels must be unique.")
+        
+        if set(G.nodes) != set(labels.keys()):
+          raise ValueError("Labels keys must exactly match the set of nodes in the graph.")
 
       # Relabel nodes to integers if they are strings, preserving original labels
       if all(isinstance(node, str) for node in G.nodes()):
@@ -161,14 +172,22 @@ class Clustering:
       if not all(isinstance(node, int) for node in G_copy.nodes()):
         mapping = {node: idx for idx, node in enumerate(sorted(G_copy.nodes()))}
         G_copy = nx.relabel_nodes(G_copy, mapping)
-
-      # Trivial node mapping and inverse mapping: map node indices from 0 to len(G_copy)-1
-      self.node_mapping = {node: idx for idx, node in enumerate(sorted(G_copy.nodes()))}
-      self.inv_node_mapping = {idx: node for node, idx in self.node_mapping.items()}
+      
+      # Guard: if all nodes are integers, relabel them to 0..N-1 (sorted ascending)
+      if all(isinstance(node, int) for node in G_copy.nodes()):
+        sorted_nodes = sorted(G_copy.nodes())
+        self.node_mapping = {node: idx for idx, node in enumerate(sorted_nodes)}
+        self.inv_node_mapping = {idx: node for node, idx in self.node_mapping.items()}
+        G_copy = nx.relabel_nodes(G_copy, self.node_mapping)
+      else:
+        # Trivial node mapping and inverse mapping: map node indices from 0 to len(G_copy)-1
+        self.node_mapping = {node: idx for idx, node in enumerate(sorted(G_copy.nodes()))}
+        self.inv_node_mapping = {idx: node for node, idx in self.node_mapping.items()}
 
       self.edge_complete = edge_complete
+
       # If edge_complete is True, restrict N, M to nodes that appear as both sources and targets
-      if self.edge_complete:
+      if self.edge_complete and not self.undirected:
         # Get intersection of source and target nodes
         sources = set(u for u, _, _ in G_copy.edges(data=True))
         targets = set(v for _, v, _ in G_copy.edges(data=True))
@@ -197,9 +216,12 @@ class Clustering:
         self.M = self.edge_complete_subgraph.number_of_edges()  # Edges between intersection nodes
 
       else:
-        self.G = G_copy
+        self.G = G_copy.copy()
         self.N = self.G.number_of_nodes()
         self.M = self.G.number_of_edges()
+
+      if self.N <= 2 or self.M <= 1:
+        raise ValueError("Graph must have more than 2 nodes and more than 1 edge for clustering.")
       
       # Add labels to self.G and self.edge_complete_subgraph if labels are provided
       if labels is not None:
@@ -210,7 +232,7 @@ class Clustering:
         mapped_labels = {mapped_node: labels[original_node] for mapped_node, original_node in self.inv_node_mapping.items()}
 
         self.add_labels(self.G, mapped_labels)
-        if self.edge_complete:
+        if self.edge_complete and not self.undirected:
           edge_complete_labels = {node: mapped_labels[node] for node in self.edge_complete_subgraph.nodes()}
           self.add_labels(self.edge_complete_subgraph, edge_complete_labels)
         
@@ -289,7 +311,7 @@ class Clustering:
       flat_mode : bool, optional
         If True, maps zero feature vectors to similarity 0. Default is False.
       method : str, optional
-        Method to compute similarities: "matrix" for condensed matrix, "edgelist" for edge list. Default is "matrix".
+        Method to compute similarities: "matrix" for condensed matrix, "edgelist" for edge list. We recommend using "edgelist" for large graphs. Default is "matrix".
 
       Raises
       ------
@@ -347,18 +369,6 @@ class Clustering:
       
       self.linkdist_edgelist = np.array(self.linksim_edgelist)
       self.linkdist_edgelist[:, 2] = 1 - self.linkdist_edgelist[:, 2]
-
-    def delete_linksim_matrix(self):
-      self.linksim_matrix = None
-
-    def delete_linksim_edgelist(self):
-      self.linksim_edglist = None
-
-    def delete_dist_matrix(self):
-      self.linkdist_matrix = None
-
-    def delete_dist_edgelist(self):
-      self.linkdist_edgelist = None
 
     def get_hierarchy_matrix(self):
       from scipy.cluster.hierarchy import linkage
@@ -606,7 +616,7 @@ class Clustering:
               )
 
       # Prepare dictionary mapping node label or integer to membership
-      if self.edge_complete:
+      if self.edge_complete and not self.undirected:
         node_list = sorted(self.edge_complete_subgraph.nodes())
       else:
         node_list = sorted(self.G.nodes())
@@ -617,7 +627,7 @@ class Clustering:
 
       membership_dict = {}
       for idx, node in enumerate(node_list):
-          if self.edge_complete:
+          if self.edge_complete and not self.undirected:
             label = self.edge_complete_subgraph.nodes[node].get("label", node)
           else:
             label = self.G.nodes[node].get("label", node)

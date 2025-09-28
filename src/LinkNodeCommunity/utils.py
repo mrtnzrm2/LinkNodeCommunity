@@ -422,8 +422,8 @@ def get_number_link_communities_from_maxD(link_stats : pd.DataFrame):
   height_at_maxD = link_stats["height"].loc[
     link_stats["D"] == np.nanmax(link_stats["D"])
   ]
-  if number_link_communities.shape[0] > 1:
-    print("Warning: more than one link community level with maximum D")
+  # if number_link_communities.shape[0] > 1:
+    # print("Warning: more than one link community level with maximum D")
   return int(number_link_communities.iloc[-1]), float(height_at_maxD.iloc[-1])
 
 def   get_number_link_communities_from_maxS(link_stats : pd.DataFrame):
@@ -443,8 +443,8 @@ def   get_number_link_communities_from_maxS(link_stats : pd.DataFrame):
   height_at_maxS = link_stats["height"].loc[
     link_stats["S"] == np.nanmax(link_stats["S"])
   ]
-  if number_link_communities.shape[0] > 1:
-    print("Warning: more than one link community level with maximum S")
+  # if number_link_communities.shape[0] > 1:
+    # print("Warning: more than one link community level with maximum S")
   return int(number_link_communities.iloc[-1]), float(height_at_maxS.iloc[-1])
 
 
