@@ -2,7 +2,7 @@
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg">
   <source media="(prefers-color-scheme: light)" srcset="assets/logo-light.svg">
-  <img alt="LinkNodeCommunity" src="assets/logo-light.svg" width="500">
+  <img alt="LinkNodeCommunity" src="assets/logo-light.svg" width="780">
 </picture>
 
 <!-- TODO: add PyPI, build, docs, and coverage badges when available -->
