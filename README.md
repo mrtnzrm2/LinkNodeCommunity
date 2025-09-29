@@ -187,7 +187,7 @@ If you use this software in academic work, please cite:
   url = {http://dx.doi.org/10.1101/2024.08.07.606907},
   DOI = {10.1101/2024.08.07.606907},
   publisher = {Cold Spring Harbor Laboratory},
-  author = {Armas,  Jorge Martinez and Knoblauch,  Kenneth and Kennedy,  Henry and Toroczkai,  Zoltan},
+  author = { Martinez Armas,  Jorge and Knoblauch,  Kenneth and Kennedy,  Henry and Toroczkai,  Zoltan},
   year = {2024},
   month = aug 
 }
