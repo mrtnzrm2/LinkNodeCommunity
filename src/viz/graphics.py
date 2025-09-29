@@ -825,7 +825,7 @@ def dendrogram(
     # Compute partition and assign cluster colors
     partition = fast_cut_tree(Z, n_clusters=R)
     new_partition = collapsed_partition(partition)
-    new_partition = linear_partition(partition)
+    new_partition = linear_partition(new_partition)
     unique_clusters_id = np.unique(new_partition)
     cmap = sns.color_palette(palette, len(unique_clusters_id))
     gray_col = "#808080"

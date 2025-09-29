@@ -183,11 +183,13 @@ pyproject.toml            # build metadata (scikit-build-core, dependencies)
 If you use this software in academic work, please cite:
 ```
 @article{MartinezArmas2024,
-  title   = {A principled approach to community detection in interareal cortical networks},
-  author  = {Martinez Armas, Jorge. and Knoblauch, Kenneth and Kennedy, Henry and Toroczkai, Zoltan},
-  journal = {bioRxiv},
-  year    = {2024},
-  doi     = {10.1101/2024.08.07.606907}
+  title = {A principled approach to community detection in interareal cortical networks},
+  url = {http://dx.doi.org/10.1101/2024.08.07.606907},
+  DOI = {10.1101/2024.08.07.606907},
+  publisher = {Cold Spring Harbor Laboratory},
+  author = {Armas,  Jorge Martinez and Knoblauch,  Kenneth and Kennedy,  Henry and Toroczkai,  Zoltan},
+  year = {2024},
+  month = aug 
 }
 ```
 
