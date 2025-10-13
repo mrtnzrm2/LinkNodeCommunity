@@ -228,10 +228,12 @@ class Clustering:
         rest_mapping = {node: idx + len(intersection_nodes_sorted) for idx, node in enumerate(rest_nodes)}
 
         # Combine mappings
-        self.node_mapping = {**intersection_mapping, **rest_mapping}
+        node_mapping_support = {**intersection_mapping, **rest_mapping}
+        self.node_mapping = {node: node_mapping_support[self.node_mapping[node]] for node in self.node_mapping}
+        self.inv_node_mapping = {idx: node for node, idx in self.node_mapping.items()}
 
         # Relabel G_copy using node_mapping
-        G_remapped = nx.relabel_nodes(G_copy, self.node_mapping)
+        G_remapped = nx.relabel_nodes(G_copy, node_mapping_support)
         self.G = G_remapped
 
         # Extract edge_complete_subgraph from range [0, len(intersection_nodes)-1]
@@ -654,7 +656,7 @@ class Clustering:
           if self.edge_complete and not self.undirected:
             label = self.edge_complete_subgraph.nodes[self.node_mapping[node]].get("label", node)
           else:
-            label = self.G.nodes[node].get("label", node)
+            label = self.G.nodes[self.node_mapping[node]].get("label", node)
           membership_dict[label] = memberships[idx]
 
       return membership_dict

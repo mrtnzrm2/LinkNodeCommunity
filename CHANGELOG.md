@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+## [v0.2.8] - 10-13-2025
+- Fixed equivalence_partition bug.
+
 ## [v0.2.7] - 10-13-2025
 - Added the utils_cpp in the __init__.py script.
 - Added weight parameter in the Clustering class to select the weight attribute to be used for computing node neighborhood similarities.
