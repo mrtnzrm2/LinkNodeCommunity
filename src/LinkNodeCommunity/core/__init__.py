@@ -14,6 +14,7 @@ _EXPORTS = {
     "nocs": "LinkNodeCommunity.core.nocs",
     "similarity": "LinkNodeCommunity.core.similarity",
     "tonewick": "LinkNodeCommunity.core.tonewick",
+    "utils_cpp": "utils_cpp",
     "Clustering": "LinkNodeCommunity.core.framework",
     "NOCFinder": "LinkNodeCommunity.core.nocs",
     "LinkSimilarity": "LinkNodeCommunity.core.similarity",
@@ -26,6 +27,7 @@ __all__ = [
     "nocs",
     "similarity",
     "tonewick",
+    "utils_cpp",
     "Clustering",
     "NOCFinder",
     "LinkSimilarity",
@@ -54,4 +56,4 @@ if TYPE_CHECKING:  # pragma: no cover
         LinkSimilarity,
         ACCEPTED_SIMILARITY_INDICES,
     )
-    from LinkNodeCommunity.core import framework, nocs, similarity, tonewick
+    from LinkNodeCommunity.core import framework, nocs, similarity, tonewick, utils_cpp

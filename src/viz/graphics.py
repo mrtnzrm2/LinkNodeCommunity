@@ -41,6 +41,7 @@ def graph_network_covers(
       palette="hls",
       pie_radius=0.045,
       pie_alpha=0.97,
+      node_size_for_edges=1800,
       single_node_color="#888888",
       wedgewidth : float | None = None,
       edge_color="#888888",
@@ -85,6 +86,8 @@ def graph_network_covers(
         Radius of the pie charts. Default is 0.045.
     pie_alpha : float, optional
         Transparency level of the pie charts. Default is 0.97.
+    node_size_for_edges : int, optional
+        Size of the nodes for edge connections. Default is 1800.
     wedgewidth : float | None, optional
         Width of the wedges in the pie charts. Default is None.
     edge_color : str, optional
@@ -213,7 +216,7 @@ def graph_network_covers(
             edge_color=edge_color,
             alpha=alpha_line,
             width=edge_linewidth,
-            node_size=1800,
+            node_size=node_size_for_edges,
             arrows=draw_arrows_flag,
             ax=ax
         )
@@ -281,7 +284,6 @@ def graph_network_covers(
     _ = ax.set_xlim(np.min(array_pos[:, 0]) - pad, np.max(array_pos[:, 0]) + pad)
     _ = ax.set_ylim(np.min(array_pos[:, 1]) - pad, np.max(array_pos[:, 1]) + pad)
     _ = ax.axis("off")
-    plt.gcf().tight_layout()
 
 
 def linkcommunity_matrix_map(
@@ -832,7 +834,7 @@ def dendrogram(
 
     # Assign colors to leaves based on cluster membership
     D_leaf_colors = {}
-    for i, _ in enumerate(labels):
+    for i in np.arange(N):
         if new_partition[i] != -1:
             D_leaf_colors[i] = to_hex(cmap[new_partition[i]])
         else:
@@ -861,7 +863,7 @@ def dendrogram(
         dendro_kwargs["no_labels"] = True
         scipy_dendrogram(**dendro_kwargs)
 
-    ax.set_ylabel(ylabel, fontsize=16, weight="bold")
-    sns.despine(ax=ax, trim=True, offset=10)
+    ax.set_ylabel(ylabel)
+    sns.despine(ax=ax)
 
 

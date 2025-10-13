@@ -27,12 +27,17 @@ import networkx as nx
 import pandas as pd
 import numpy.typing as npt
 
+from ..utils import (
+  collapsed_partition,
+  linear_partition
+)
+
 # Node Overlapping Communities ----
 class NOCFinder:
   def __init__(
     self,
     G : nx.DiGraph | nx.Graph,
-    node_partition : npt.ArrayLike,
+    node_partition : dict | npt.ArrayLike,
     undirected: bool = False,
     labels : npt.ArrayLike | None = None,
     similarity_index: str = "bhattacharyya_coefficient",
@@ -50,8 +55,12 @@ class NOCFinder:
     ----------
     G : nx.DiGraph | nx.Graph
         Input graph. Nodes may be any hashable objects.
-    node_partition : array-like of shape (N,)
-        Community id per node; use -1 for singleton nodes that need reassignment.
+    node_partition : dict | array-like
+        Initial hard partition of nodes into communities. If a dict, maps node
+        labels to community IDs; if array-like, must match the number of graph
+        nodes. In both cases, memberships must be ordered according to labels
+        or the sorted nodes of the (sub)graph analyzed (G). Nodes assigned -1
+        are treated as singletons to be assigned to one or more communities.
     undirected : bool, optional
         Whether upstream steps treated edges as undirected. Default is False.
     labels : array-like | None, optional
@@ -70,6 +79,14 @@ class NOCFinder:
     max_workers : int | None, optional
         Maximum threads when parallelising single-node processing. Default is None (executor default).
     """
+
+    if isinstance(node_partition, dict):
+      if set(node_partition.keys()) != set(G.nodes()):
+        raise ValueError("node_partition keys must match graph nodes")
+      node_partition = np.array(list(node_partition.values()))
+      node_partition = linear_partition(collapsed_partition(node_partition))
+    else:
+      node_partition = np.asarray(node_partition)
 
     if not np.any(np.asarray(node_partition) == -1):
       raise ValueError("node_partition must at least contain one -1 value.")

@@ -84,6 +84,8 @@ class Clustering:
         The linkage criterion passed at construction time.
     similarity_index : str
         The configured similarity index.
+    weight : str
+        The edge attribute used as weight.
     edgelist : pandas.DataFrame
         Sorted edge list with columns [source, target, weight].
     linksim : LinkSimilarity | None
@@ -92,7 +94,7 @@ class Clustering:
         Condensed link-link similarity matrix when computed.
     linksim_edgelist : pandas.DataFrame | None
         Link similarity edge list when computed.
-    linkdist_matrix : np.ndarray | None
+    linkdist_condense_matrix : np.ndarray | None
         Condensed link-link distance matrix when computed.
     linkdist_edgelist : pandas.DataFrame | None
         Link distance edge list when computed.
@@ -110,6 +112,7 @@ class Clustering:
         G: nx.DiGraph | nx.Graph,
         labels: dict | None = None,
         similarity_index="bhattacharyya_coefficient",
+        weight="weight",
         edge_complete=True
     ):
       
@@ -130,11 +133,34 @@ class Clustering:
       if not isinstance(edge_complete, bool):
         raise TypeError("edge_complete must be a boolean value (True or False).")
       
+      # Validate weight parameter
+      if not isinstance(weight, str):
+        raise TypeError("weight must be a string representing the edge attribute used as weight.")
+    
+      # Ensure the specified weight attribute exists on all edges
+      # Only validate the weight attribute if the graph appears weighted
+      # (i.e., at least one edge has an attribute dict with entries).
+      if any(data for _, _, data in G.edges(data=True)):
+          missing_edges = [(u, v) for u, v, data in G.edges(data=True) if weight not in data]
+          if missing_edges:
+            raise ValueError(
+              f"Edge attribute '{weight}' is missing on {len(missing_edges)} edge(s). "
+              f"First missing edge: {missing_edges[0]}"
+            )
+
+      # Check for negative edge weights
+      for u, v, data in G.edges(data=True):
+        w = data.get(weight, 1.0)
+        if w < 0:
+          raise ValueError(f"Edge ({u}, {v}) has negative weight {w}. All edge weights must be non-negative.")
+
       # Check for NaN edge weights
       for u, v, data in G.edges(data=True):
-        weight = data.get("weight", 1.0)
-        if pd.isna(weight):
+        w = data.get(weight, 1.0)
+        if pd.isna(w):
           raise ValueError(f"Edge ({u}, {v}) has NaN as weight. Please clean your graph.")
+      
+      self.weight = weight
       
       # Check for self-loops
       if any(u == v for u, v in G.edges()):
@@ -158,7 +184,7 @@ class Clustering:
       # Relabel nodes to integers if they are strings, preserving original labels
       if all(isinstance(node, str) for node in G.nodes()):
         G_copy = self.relabel_nodes_to_integers(G.copy())
-        print("Node labels converted to integers (sorted by label); originals saved in each node's 'label' attribute.")
+        print("Node labels converted to integers (sorted by label).\nOriginals saved in each node's 'label' attribute.")
       else:
         G_copy = G.copy()
         
@@ -225,13 +251,11 @@ class Clustering:
       
       # Add labels to self.G and self.edge_complete_subgraph if labels are provided
       if labels is not None:
-        # Invert node_mapping: mapped_node -> original_node
-        self.inv_node_mapping = {v: k for k, v in self.node_mapping.items()}
-
         # Build mapping: mapped_node -> label
         mapped_labels = {mapped_node: labels[original_node] for mapped_node, original_node in self.inv_node_mapping.items()}
 
         self.add_labels(self.G, mapped_labels)
+
         if self.edge_complete and not self.undirected:
           edge_complete_labels = {node: mapped_labels[node] for node in self.edge_complete_subgraph.nodes()}
           self.add_labels(self.edge_complete_subgraph, edge_complete_labels)
@@ -240,12 +264,12 @@ class Clustering:
 
       self.linksim_condense_matrix = None
       self.linksim_edgelist = None
-      self.linkdist_matrix = None
+      self.linkdist_condense_matrix = None
       self.linkdist_edgelist = None
 
       # Get edge list with source, target, and weight as a pandas DataFrame
       # from the whole network to have better estimates of similarities
-      self.edgelist = edgelist_from_graph(self.G, sort=True)
+      self.edgelist = edgelist_from_graph(self.G, sort=True, weight=self.weight)
 
     def relabel_nodes_to_integers(self, G : nx.Graph | nx.DiGraph) -> nx.Graph | nx.DiGraph:
       """
@@ -361,7 +385,7 @@ class Clustering:
       if self.linksim_condense_matrix is None:
         raise ValueError("linksim_condense_matrix is not set. Run fit_linksim_matrix() first.")
       
-      self.linkdist_matrix = 1 - self.linksim_condense_matrix
+      self.linkdist_condense_matrix = 1 - self.linksim_condense_matrix
     
     def fit_linkdist_edgelist(self):
       if self.linksim_edgelist is None:
@@ -372,7 +396,7 @@ class Clustering:
 
     def get_hierarchy_matrix(self):
       from scipy.cluster.hierarchy import linkage
-      return linkage(self.linkdist_matrix, method="single")
+      return linkage(self.linkdist_condense_matrix, method="single")
 
     def get_hierarchy_edgelist(self, max_dist : float = 1):
       return np.array(utils_cpp.mst_edges_to_linkage(self.M, self.linkdist_edgelist, max_dist))
@@ -398,7 +422,7 @@ class Clustering:
         force=force,
         edge_complete=self.edge_complete
       )
-      features.fit_matrix(self.linkdist_matrix)
+      features.fit_matrix(self.linkdist_condense_matrix)
       result = np.array(
         [
           features.get_K(),
@@ -484,8 +508,8 @@ class Clustering:
     def node_community_hierarchy_matrix(self, use_parallel=False, verbose=0):
       linkage = 0  # Single linkage
                    # Only single linkage supported deliberately
-      if self.linkdist_matrix is None:
-        raise ValueError("linkdist_matrix is not set. Run fit_linksim_matrix() and build the distance column first.")
+      if self.linkdist_condense_matrix is None:
+        raise ValueError("linkdist_condense_matrix is not set. Run fit_linksim_matrix() and build the distance column first.")
       if self.edgelist.shape[0] > 1:
         sources = self.edgelist["source"].to_numpy()
         targets = self.edgelist["target"].to_numpy()
@@ -511,7 +535,7 @@ class Clustering:
         edge_complete=self.edge_complete
       )
 
-      NH.fit_matrix(self.linkdist_matrix)
+      NH.fit_matrix(self.linkdist_condense_matrix)
 
       self.Z = NH.get_node_hierarchy()
       self.Z = np.array(self.Z)
@@ -628,7 +652,7 @@ class Clustering:
       membership_dict = {}
       for idx, node in enumerate(node_list):
           if self.edge_complete and not self.undirected:
-            label = self.edge_complete_subgraph.nodes[node].get("label", node)
+            label = self.edge_complete_subgraph.nodes[self.node_mapping[node]].get("label", node)
           else:
             label = self.G.nodes[node].get("label", node)
           membership_dict[label] = memberships[idx]

@@ -26,8 +26,6 @@ import pandas as pd
 import networkx as nx
 import seaborn as sns
 
-from LinkNodeCommunity.core import nocs
-
 pd.options.mode.chained_assignment = None  # default='warn'
 
 
@@ -47,7 +45,7 @@ def hex_to_rgb(hex_value: str):
   """
   return tuple(int(hex_value.lstrip("#")[i:i+2], 16)/255.0 for i in (0, 2, 4))
 
-def edgelist_from_graph(G: nx.DiGraph | nx.Graph, sort: bool = False):
+def edgelist_from_graph(G: nx.DiGraph | nx.Graph, sort: bool = False, weight="weight") -> pd.DataFrame:
   """
   Convert a NetworkX graph to an edge list DataFrame with columns ['source', 'target', 'weight'].
   Optionally sort the DataFrame by 'source' (first) and 'target' (second).
@@ -58,6 +56,8 @@ def edgelist_from_graph(G: nx.DiGraph | nx.Graph, sort: bool = False):
     The input NetworkX graph.
   sort : bool, optional
     If True, sort the DataFrame by 'source' and then 'target'. Default is False.
+  weight : str, optional
+    The edge attribute to use as weight. Default is "weight".
 
   Returns
   -------
@@ -65,7 +65,7 @@ def edgelist_from_graph(G: nx.DiGraph | nx.Graph, sort: bool = False):
     Edge list DataFrame with columns ['source', 'target', 'weight'].
   """
   edgelist = [
-      {"source": u, "target": v, "weight": data.get("weight", 1.0)}
+      {"source": u, "target": v, "weight": data.get(weight, 1.0)}
       for u, v, data in G.edges(data=True)
     ]
   edgelist = pd.DataFrame(edgelist)
@@ -122,8 +122,10 @@ def generate_cmap_from_partition(partition : npt.ArrayLike, trivial="-1", cmap="
       n = len(unique_labels)
       cm = list(np.array(sns.color_palette(cmap, unique_labels.shape[0]))[np.random.permutation(np.arange(n))])
 
-  cm = {u: to_hex(c) for u, c in zip(unique_labels, cm)}
-  return cm
+  if numeric:
+    return {int(u): to_hex(c) for u, c in zip(unique_labels, cm)}
+  else:
+    return {u: to_hex(c) for u, c in zip(unique_labels, cm)}
 
 
 def pvalue2asterisks(pvalue):

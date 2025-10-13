@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+## [v0.2.7] - 10-13-2025
+- Added the utils_cpp in the __init__.py script.
+- Added weight parameter in the Clustering class to select the weight attribute to be used for computing node neighborhood similarities.
+- Added tests to validate the weight attribute label used in the Clustering class.
+- Relabeled Clustering member linkdist_matrix to linkdist_condensed_matrix.
+- Fixed bug in equivalence_partition method.
+
 ## [v0.2.6] - 09-28-2025
 - Reworked `pyproject.toml` metadata provider configuration so scikit-build-core pulls the exact tag version from `setuptools_scm`.
 - Enabled the scikit-build experimental metadata provider hook to unblock wheel and sdist builds for TestPyPI.

@@ -773,3 +773,36 @@ def test_directed_tree_network():
         assert False, "Expected an exception but none was raised."
 
     print("Directed tree network test passed")
+
+def test_weighted_graph_custom_weight_attribute():
+    """Test clustering on a directed weighted graph where the weight attribute is custom-named."""
+    G = nx.DiGraph()
+    # create a 10-node directed graph ring with a custom weight attribute 'weight_test'
+    for i in range(10):
+        G.add_edge(i, (i + 1) % 10, weight_test=float(i) + 0.5)
+
+    clustering = Clustering(G, weight="weight_test")
+    clustering.fit(method="matrix")
+
+    assert is_valid_linkage_matrix(clustering.get_hierarchy_matrix()), "Hierarchy matrix is not valid."
+    assert is_valid_linkage_matrix(clustering.Z), "Linkage matrix is not valid."
+    assert clustering.N == 10, "N should equal number of nodes (10)."
+    assert clustering.M == 10, "M should equal number of edges (10)."
+
+    print("Weighted custom weight attribute test passed successfully.")
+
+
+def test_weighted_graph_invalid_weight_attribute_exception():
+    """Test that using a wrong weight attribute name raises an exception."""
+    G = nx.DiGraph()
+    for i in range(10):
+        G.add_edge(i, (i + 1) % 10, weight_test=float(i) + 0.5)
+
+    try:
+        _ = Clustering(G, weight="wrong_weight")
+    except ValueError as e:
+        assert str(e) == "Edge attribute 'wrong_weight' is missing on 10 edge(s). First missing edge: (0, 1)", "Incorrect exception message."
+    else:
+        assert False, "Expected ValueError for incorrect weight attribute label."
+
+    print("Weighted invalid weight attribute exception test passed successfully.")

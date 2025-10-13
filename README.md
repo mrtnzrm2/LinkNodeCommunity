@@ -90,7 +90,7 @@ pip install LinkNodeCommunity
 
 **From TestPyPI (pre-release builds):**
 ```bash
-pip install -i https://test.pypi.org/simple/ LinkNodeCommunity==0.2.6
+pip install -i https://test.pypi.org/simple/ LinkNodeCommunity==0.2.7
 ```
 
 **From source (developer mode):**
@@ -107,7 +107,7 @@ During this process, scikit-build automatically compiles the C++ extensions unde
 ```python
 >>> import LinkNodeCommunity as lnc
 >>> lnc.__version__
-'0.2.6'
+'0.2.7'
 
 # Lazy exports keep the top-level import fast while providing submodule discovery
 >>> from LinkNodeCommunity import Clustering
@@ -116,28 +116,31 @@ During this process, scikit-build automatically compiles the C++ extensions unde
 
 ## Quickstart
 ```python
-import networkx as nx
-from LinkNodeCommunity import Clustering
+>>> import networkx as nx
+>>> from LinkNodeCommunity import Clustering
 
 # Build a small directed, weighted graph
-g = nx.DiGraph()
-g.add_weighted_edges_from([
-    ("V1", "V2", 0.8),
-    ("V2", "V4", 0.6),
-    ("V1", "V3", 0.7),
-    ("V3", "V4", 0.9),
-    ("V4", "V1", 0.5),
-])
+>>> g = nx.DiGraph()
+>>> g.add_weighted_edges_from([
+      ("V1", "V2", 0.8),
+      ("V2", "V4", 0.6),
+      ("V1", "V3", 0.7),
+      ("V3", "V4", 0.9),
+      ("V4", "V1", 0.5),
+    ])
 
-model = Clustering(g, similarity_index="bhattacharyya_coefficient", edge_complete=True)
-model.fit(method="matrix")
+>>> model = Clustering(g, similarity_index="bhattacharyya_coefficient", edge_complete=True)
+>>> model.fit(method="matrix")
 
-# Linkage matrix for downstream cuts or dendrograms
-linkage = model.get_hierarchy_matrix()
+# Link-Linkage matrix for downstream cuts or dendrograms
+>>> linkage = model.get_hierarchy_matrix()
+# Node-Linkage matrix for downstream cuts or dendrograms
+>>> linkage = model.Z
 
 # Loop entropy-guided partition
-partition_dict = model.equivalence_partition(score="S")
-print(partition_dict)
+>>> partition_dict = model.equivalence_partition(score="S")
+>>> print(partition_dict)
+{'V1': np.int64(0), 'V2': np.int64(2), 'V3': np.int64(2), 'V4': np.int64(1)}
 ```
 
 ## API Highlights
