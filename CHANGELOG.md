@@ -1,6 +1,6 @@
 ## [Unreleased]
 
-## [v0.2.8] - 10-13-2025
+## [v0.2.9] - 10-13-2025
 - Fixed equivalence_partition bug.
 
 ## [v0.2.7] - 10-13-2025
