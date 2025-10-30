@@ -246,7 +246,7 @@ def test_similarity_exceptions():
 
     print("Similarity exceptions test passed successfully.")
 
-def test_flat_mode_exception():
+def test_forced_linksim_exception():
     """Test the Clustering class with a simple example."""
     # Create a small graph with 5 nodes and 4 edges
     G = nx.DiGraph()
@@ -256,15 +256,15 @@ def test_flat_mode_exception():
     clustering = Clustering(G, edge_complete=False)
 
     try:
-        clustering.fit(method="matrix", flat_mode=False)
+        clustering.fit(method="matrix", forced_linksim=False)
     except ValueError as e:
         assert str(e) == "One or both feature vectors have all zeros, which is not allowed.", "Incorrect exception message."
     else:
-        assert False, "ValueError not raised for flat_mode=False in directed graph."
-    
-    print("flat_mode exception test passed successfully.")
+        assert False, "ValueError not raised for forced_linksim=False in directed graph."
 
-def test_flat_mode():
+    print("forced_linksim exception test passed successfully.")
+
+def test_forced_linksim():
     """Test the Clustering class with a simple example."""
     # Create a small graph with 5 nodes and 5 edges
     G = nx.DiGraph()
@@ -272,7 +272,7 @@ def test_flat_mode():
 
     # Initialize the Clustering class
     clustering = Clustering(G)
-    clustering.fit(method="matrix", flat_mode=True)
+    clustering.fit(method="matrix", forced_linksim=True)
 
     assert is_valid_linkage_matrix(clustering.Z), "Linkage matrix is not valid."
 
@@ -292,7 +292,7 @@ def test_flat_mode():
     assert clustering.number_node_communities == 1, "Number of node clusters is incorrect."
     assert np.allclose(clustering.height_at_maximum, [1.0]), "Height at the maximum score is incorrect."
 
-    print("flat_mode test passed successfully.")
+    print("forced_linksim test passed successfully.")
 
 def test_nocfinder():
     """Test the NOCFinder class with a simple example."""
@@ -315,7 +315,7 @@ def test_nocfinder():
     clustering = Clustering(G)
 
     # Fit the clustering model
-    clustering.fit(method="matrix", flat_mode=True)
+    clustering.fit(method="matrix", forced_linksim=True)
 
     # check partition
     partition_dict = clustering.equivalence_partition(score="S")
@@ -634,7 +634,7 @@ def test_graph_strings():
     assert [node for node in clustering.G.nodes()] == [0, 1, 2, 3, 4], "Node IDs do not match relabeled node IDs."
     assert [node["label"] for node in clustering.G.nodes.values()] == ["A", "B", "C", "D", "E"], "Node labels do not match original string IDs."
 
-    clustering.fit(method="matrix", flat_mode=True)
+    clustering.fit(method="matrix", forced_linksim=True)
     partition_dict = clustering.equivalence_partition()
     assert list(partition_dict.keys()) == ["A", "B", "C", "D", "E"], "Partition keys do not match original string IDs."
 
@@ -651,7 +651,7 @@ def test_directed_edge_complete_false_branch():
     assert clustering.M == G.number_of_edges(), "M should count all edges in the graph."
     assert getattr(clustering, "edge_complete_subgraph", None) is None, "edge_complete_subgraph should not be set."
 
-    clustering.fit(method="matrix", flat_mode=True)
+    clustering.fit(method="matrix", forced_linksim=True)
 
     partition = clustering.equivalence_partition(score="S")
     assert set(partition.keys()) == set(G.nodes()), "Partition should cover every node in the original graph."
@@ -691,14 +691,14 @@ def test_fit_linkdist_preconditions_and_edgelist_checks():
     with pytest.raises(ValueError, match="linksim_edgelist is not set"):
         clustering.fit_linkdist_edgelist()
 
-    clustering.fit_linksim_matrix(flat_mode=True)
+    clustering.fit_linksim_matrix(forced=True)
     clustering.fit_linkdist_matrix()
     clustering.edgelist = clustering.edgelist.iloc[::-1].reset_index(drop=True)
     with pytest.raises(AssertionError, match="edgelist is not sorted by 'source' and then 'target'"):
         clustering.process_features_matrix()
 
     clustering_edgelist = Clustering(G)
-    clustering_edgelist.fit_linksim_edgelist(flat_mode=True)
+    clustering_edgelist.fit_linksim_edgelist(forced=True)
     clustering_edgelist.fit_linkdist_edgelist()
     clustering_edgelist.linkdist_edgelist[[0, 1]] = clustering_edgelist.linkdist_edgelist[[1, 0]]
     with pytest.raises(AssertionError, match="linkdist_edgelist first two columns differ from linksim_edgelist"):

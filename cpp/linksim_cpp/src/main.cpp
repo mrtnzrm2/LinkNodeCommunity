@@ -32,8 +32,10 @@
  *     3 – Hellinger, 4 – Pearson, 5 – Weighted Jaccard.
  * - undirected (bool, default false): Treat the graph as undirected (symmetric node similarities).
  * - use_parallel (bool, default true): Enable multithreaded edge processing.
- * - flat (bool, default false): Allow zero feature vectors; similarities return 0 instead of
- *   throwing when at least one vector is all zeros.
+ * - forced (bool, default false): Override zero-vector handling; when true, empty comparisons
+ *   return forced_value instead of raising an exception.
+ * - forced_value (double, default 0.0): Similarity assigned when forced is enabled and a
+ *   comparison involves a zero vector.
  * - verbose (int, optional): Verbosity level (0 silent, 1 workflow milestones, 2 step announcements).
  *
  * core Class Methods:
@@ -53,9 +55,10 @@
  *
  * Usage:
  * ------
- * Construct core with (edgelist, N, M, similarity_score, use_parallel, flat), then call
+ * Construct core with (edgelist, N, M, similarity_score, use_parallel), then call
  * fit_linksim_condense_matrix() or fit_linksim_edgelist(), and finally query the results via the
- * getters. Pass flat=true to map zero feature vectors to similarity 0. The module is exposed to
+ * getters. Pass forced=true with a chosen forced_value to assign a specific score to empty
+ * comparisons. The module is exposed to
  * Python through pybind11.
 */
 
@@ -124,7 +127,8 @@ class core {
     int similarity_index;
     bool undirected;
     bool use_parallel;
-    bool flat_mode;
+    bool forced_mode;
+    double forced_similarity_value;
     int verbose;
     int max_dim;
 
@@ -138,7 +142,8 @@ class core {
             const int similarity_score,
             const bool undirected = false,
             const bool enable_parallel = true,
-            const bool flat = false,
+            const bool forced = false,
+            const double forced_value = 0.0,
             const int verbose_level = 0
         );
         ~core(){};
@@ -191,7 +196,8 @@ core::core(
 	const int similarity_score,
     const bool undirected,
 	const bool enable_parallel,
-	const bool flat,
+    const bool forced,
+    const double forced_value,
     const int verbose_level
 ){
 	number_of_nodes = N;
@@ -200,7 +206,8 @@ core::core(
 	similarity_index = similarity_score;
     this->undirected = undirected;
     use_parallel = enable_parallel;
-    flat_mode = flat;
+    forced_mode = forced;
+    forced_similarity_value = forced_value;
     max_dim = 0;
     if (verbose_level < 0 || verbose_level > 2) {
         std::cerr << "Warning: Verbose level " << verbose_level << " out of range [0,2]. Clamping to nearest bound.\n";
@@ -835,7 +842,7 @@ double core::tanimoto_coefficient_graph(
     uv += weight_or_zero(u, ii) * weight_or_zero(v, jj); // self interaction
 
     if (uu <= 0 && vv <= 0 && uv <= 0) {
-        if (flat_mode) return 0.0;
+        if (forced_mode) return forced_similarity_value;
         throw std::invalid_argument("One or both feature vectors have all zeros, which is not allowed.");
     }
 
@@ -881,7 +888,7 @@ double core::cosine_similarity_graph(
     uv += weight_or_zero(u, ii) * weight_or_zero(v, jj); // self interaction
 
     if (uu <= 0 || vv <= 0) {
-        if (flat_mode) return 0.0;
+        if (forced_mode) return forced_similarity_value;
         throw std::invalid_argument("One or both feature vectors have all zeros, which is not allowed.");
     }
 
@@ -896,7 +903,7 @@ double core::pearson_correlation_graph(
 ) {
     int dimension = std::max(max_dim, number_of_nodes);
     if (dimension <= 0) {
-        if (flat_mode) return 0.0;
+        if (forced_mode) return forced_similarity_value;
         throw std::invalid_argument("Feature space dimension must be positive for Pearson correlation.");
     }
 
@@ -947,7 +954,7 @@ double core::pearson_correlation_graph(
     vv -= mv_avg * mv_avg;
 
     if (uu <= 0 || vv <= 0) {
-        if (flat_mode) return 0.0;
+        if (forced_mode) return forced_similarity_value;
         throw std::invalid_argument("One or both feature vectors have all zeros, which is not allowed.");
     }
 
@@ -987,7 +994,7 @@ double core::weighted_jaccard_graph(
     maximus += std::max(weight_or_zero(u, ii), weight_or_zero(v, jj));
 
     if (minimum == 0.0 && maximus == 0.0) {
-        if (flat_mode) return 0.0;
+        if (forced_mode) return forced_similarity_value;
         throw std::invalid_argument("One or both feature vectors have all zeros, which is not allowed.");
     }
 
@@ -1010,7 +1017,7 @@ double core::bhattacharyya_coefficient_graph(
     }
 
     if (Zu <= 0.0 || Zv <= 0.0) {
-        if (flat_mode) return 0.0;
+        if (forced_mode) return forced_similarity_value;
         throw std::invalid_argument("One or both feature vectors have all zeros, which is not allowed.");
     }
 
@@ -1050,7 +1057,7 @@ double core::jaccard_probability_graph(
 {
     int dimension = std::max(max_dim, number_of_nodes);
     if (dimension <= 0) {
-        if (flat_mode) return 0.0;
+        if (forced_mode) return forced_similarity_value;
         throw std::invalid_argument("Feature space dimension must be positive for Jaccard probability.");
     }
 
@@ -1127,6 +1134,7 @@ PYBIND11_MODULE(linksim_cpp, m) {
                 const bool,
                 const bool,
                 const bool,
+                const double,
                 const int
             >(),
             py::arg("N"),
@@ -1135,7 +1143,8 @@ PYBIND11_MODULE(linksim_cpp, m) {
             py::arg("similarity_score"),
             py::arg("undirected") = false,
             py::arg("use_parallel") = true,
-            py::arg("flat") = false,
+            py::arg("forced") = false,
+            py::arg("forced_value") = 0.0,
             py::arg("verbose") = 0
         )
 		.def("fit_linksim_condense_matrix", &core::fit_linksim_condense_matrix)

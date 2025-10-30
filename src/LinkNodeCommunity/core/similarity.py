@@ -41,7 +41,7 @@ ACCEPTED_SIMILARITY_INDICES = [
 
 class LinkSimilarity:
   def __init__(
-    self,  N, M, edgelist : pd.DataFrame, similarity_index="bhattacharyya_coefficient", undirected=True, use_parallel=False, flat_mode=False
+    self,  N, M, edgelist : pd.DataFrame, similarity_index="bhattacharyya_coefficient", undirected=True, use_parallel=False, forced=False, forced_value=0.0
   ):
     # Parameters ----
     self.edgelist = edgelist
@@ -50,7 +50,8 @@ class LinkSimilarity:
     self.M = M # Edges of the subgraph analyzed
     self.undirected = undirected
     self.use_parallel = use_parallel
-    self.flat_mode = flat_mode  # Map zero feature vectors to similarity 0 if True
+    self.forced = forced
+    self.forced_value = forced_value
 
     self.similarity_indices_map = {
       "tanimoto_coefficient" : 0,
@@ -69,7 +70,8 @@ class LinkSimilarity:
       self.similarity_indices_map[self.similarity_index],
       self.undirected,
       self.use_parallel,
-      self.flat_mode,
+      self.forced,
+      self.forced_value,
       verbose
     )
 
@@ -86,7 +88,8 @@ class LinkSimilarity:
       self.similarity_indices_map[self.similarity_index],
       self.undirected,
       self.use_parallel,
-      self.flat_mode,
+      self.forced,
+      self.forced_value,
       verbose
     )
 

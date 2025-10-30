@@ -27,6 +27,7 @@ Notes:
 import numpy as np
 import pandas as pd
 import networkx as nx
+import numbers
 
 #  Framework libs ----
 from .similarity import LinkSimilarity, ACCEPTED_SIMILARITY_INDICES
@@ -148,17 +149,21 @@ class Clustering:
               f"First missing edge: {missing_edges[0]}"
             )
 
-      # Check for negative edge weights
+      # Validate edge weights: must be real, finite, and non-negative
       for u, v, data in G.edges(data=True):
         w = data.get(weight, 1.0)
+        if isinstance(w, bool) or not isinstance(w, numbers.Real):
+          raise TypeError(
+            f"Edge ({u}, {v}) has non-numeric weight {w!r} (type {type(w).__name__}). "
+            "Edge weights must be real numbers."
+          )
+        if not np.isfinite(w):
+          raise ValueError(
+            f"Edge ({u}, {v}) has a non-finite weight {w}. "
+            "Please ensure all edge weights are finite real numbers."
+          )
         if w < 0:
           raise ValueError(f"Edge ({u}, {v}) has negative weight {w}. All edge weights must be non-negative.")
-
-      # Check for NaN edge weights
-      for u, v, data in G.edges(data=True):
-        w = data.get(weight, 1.0)
-        if pd.isna(w):
-          raise ValueError(f"Edge ({u}, {v}) has NaN as weight. Please clean your graph.")
       
       self.weight = weight
       
@@ -182,11 +187,13 @@ class Clustering:
           raise ValueError("Labels keys must exactly match the set of nodes in the graph.")
 
       # Relabel nodes to integers if they are strings, preserving original labels
+      original_to_intermediate: dict
       if all(isinstance(node, str) for node in G.nodes()):
-        G_copy = self.relabel_nodes_to_integers(G.copy())
+        G_copy, original_to_intermediate, _ = self.relabel_nodes_to_integers(G.copy())
         print("Node labels converted to integers (sorted by label).\nOriginals saved in each node's 'label' attribute.")
       else:
         G_copy = G.copy()
+        original_to_intermediate = {node: node for node in G_copy.nodes()}
         
       # Determine if the graph is directed or undirected
       if isinstance(G, nx.DiGraph):
@@ -194,21 +201,24 @@ class Clustering:
       else:
         self.undirected = True
       
-      # Ensure node indices are integers
-      if not all(isinstance(node, int) for node in G_copy.nodes()):
-        mapping = {node: idx for idx, node in enumerate(sorted(G_copy.nodes()))}
-        G_copy = nx.relabel_nodes(G_copy, mapping)
-      
-      # Guard: if all nodes are integers, relabel them to 0..N-1 (sorted ascending)
-      if all(isinstance(node, int) for node in G_copy.nodes()):
-        sorted_nodes = sorted(G_copy.nodes())
-        self.node_mapping = {node: idx for idx, node in enumerate(sorted_nodes)}
-        self.inv_node_mapping = {idx: node for node, idx in self.node_mapping.items()}
-        G_copy = nx.relabel_nodes(G_copy, self.node_mapping)
-      else:
-        # Trivial node mapping and inverse mapping: map node indices from 0 to len(G_copy)-1
-        self.node_mapping = {node: idx for idx, node in enumerate(sorted(G_copy.nodes()))}
-        self.inv_node_mapping = {idx: node for node, idx in self.node_mapping.items()}
+      # Ensure node indices are integers. Accept Python ints and numpy integer types
+      # (e.g., np.int64) but explicitly exclude booleans (bool is a subclass of int).
+      if not all((isinstance(node, numbers.Integral) and not isinstance(node, bool)) for node in G_copy.nodes()):
+        raise TypeError(
+          "All node IDs in the graph must be integer types after relabeling. "
+          "Accepted types include Python int and numpy integer dtypes (e.g., np.int64)."
+        )
+
+      # Relabel nodes to a contiguous 0..N-1 range while preserving the original mapping.
+      sorted_nodes = sorted(G_copy.nodes(), key=lambda x: int(x))
+      intermediate_to_final = {node: idx for idx, node in enumerate(sorted_nodes)}
+      G_copy = nx.relabel_nodes(G_copy, intermediate_to_final)
+
+      self.node_mapping = {
+        original: intermediate_to_final[intermediate]
+        for original, intermediate in original_to_intermediate.items()
+      }
+      self.inv_node_mapping = {idx: original for original, idx in self.node_mapping.items()}
 
       self.edge_complete = edge_complete
 
@@ -273,7 +283,9 @@ class Clustering:
       # from the whole network to have better estimates of similarities
       self.edgelist = edgelist_from_graph(self.G, sort=True, weight=self.weight)
 
-    def relabel_nodes_to_integers(self, G : nx.Graph | nx.DiGraph) -> nx.Graph | nx.DiGraph:
+    def relabel_nodes_to_integers(
+        self, G : nx.Graph | nx.DiGraph
+      ) -> tuple[nx.Graph | nx.DiGraph, dict, dict]:
       """
       Relabels the nodes of a graph from strings to integers in sorted order,
       and assigns the original string as a 'label' attribute to each node.
@@ -285,15 +297,16 @@ class Clustering:
 
       Returns
       -------
-      nx.Graph or nx.DiGraph
-        The relabeled graph with integer nodes and 'label' attributes.
+      tuple
+        (relabeled graph, mapping from original labels to integers, inverse mapping).
       """
       sorted_labels = sorted(G.nodes())
       mapping = {label: idx for idx, label in enumerate(sorted_labels)}
+      inverse_mapping = {idx: label for label, idx in mapping.items()}
       G_int = nx.relabel_nodes(G, mapping)
-      for idx, label in enumerate(sorted_labels):
+      for idx, label in inverse_mapping.items():
         G_int.nodes[idx]["label"] = label
-      return G_int
+      return G_int, mapping, inverse_mapping
 
     def add_labels(self, G : nx.Graph | nx.DiGraph, labels: dict):
       """
@@ -321,11 +334,12 @@ class Clustering:
     def fit(
         self,
         use_parallel=False, 
-        flat_mode=False, 
         method="matrix", 
         max_dist=1.0, 
-        verbose=0,
-        force=False
+        forced_linksim=False,
+        forced_linksim_value=0.0,
+        forced_linkstats=False,
+        verbose=0
       ):
       """
       Fit the clustering model by computing link similarities and distances.
@@ -334,10 +348,19 @@ class Clustering:
       ----------
       use_parallel : bool, optional
         Whether to use parallel computation for similarity calculations. Default is False.
-      flat_mode : bool, optional
-        If True, maps zero feature vectors to similarity 0. Default is False.
       method : str, optional
-        Method to compute similarities: "matrix" for condensed matrix, "edgelist" for edge list. We recommend using "edgelist" for large graphs. Default is "matrix".
+        Method to compute similarities: "matrix" for condensed matrix,
+        "edgelist" for edge list. We recommend using "edgelist" for large graphs.
+        Default is "matrix".
+      forced_linksim : bool, optional
+        For linksim. If True, maps zero feature vectors to similarity 0. Default is False.
+      forced_linksim_value : float, optional
+        For linksim. The similarity value to assign to forced zero feature vectors. Default is 0.0.
+      forced_linkstats : bool, optional
+        For linkstats. Ignore recoverable runtime errors to let workflows finish when possible. 
+        False (0, default) halts on errors, True (1) attempts to continue.
+      verbose : int, optional
+        Verbosity level for logging progress. Default is 0 (silent).
 
       Raises
       ------
@@ -345,19 +368,19 @@ class Clustering:
         If an unsupported method is provided.
       """
       if method == "matrix":
-        self.fit_linksim_matrix(use_parallel=use_parallel, flat_mode=flat_mode, verbose=verbose)
+        self.fit_linksim_matrix(use_parallel=use_parallel, forced=forced_linksim, forced_value=forced_linksim_value, verbose=verbose)
         self.fit_linkdist_matrix()
-        self.linkstats = self.process_features_matrix(verbose=verbose, force=force)
+        self.linkstats = self.process_features_matrix(verbose=verbose, forced=forced_linkstats)
         self.node_community_hierarchy_matrix(use_parallel=use_parallel, verbose=verbose)
       elif method == "edgelist":
-        self.fit_linksim_edgelist(use_parallel=use_parallel, flat_mode=flat_mode, verbose=verbose)
+        self.fit_linksim_edgelist(use_parallel=use_parallel, forced=forced_linksim, forced_value=forced_linksim_value, verbose=verbose)
         self.fit_linkdist_edgelist()
-        self.linkstats = self.process_features_edgelist(max_dist=max_dist, verbose=verbose, force=force)
+        self.linkstats = self.process_features_edgelist(max_dist=max_dist, verbose=verbose, forced=forced_linkstats)
         self.node_community_hierarchy_edgelist(use_parallel=use_parallel, max_dist=max_dist, verbose=verbose)
       else:
         raise ValueError("Unsupported method. Use 'matrix' or 'edgelist'.")
 
-    def fit_linksim_matrix(self, use_parallel=False, flat_mode=False, verbose=0):
+    def fit_linksim_matrix(self, use_parallel=False, forced=False, forced_value=0.0, verbose=0):
       self.linksim = LinkSimilarity(
         self.N,
         self.M,
@@ -365,12 +388,13 @@ class Clustering:
         similarity_index=self.similarity_index,
         undirected=self.undirected,
         use_parallel=use_parallel,
-        flat_mode=flat_mode
+        forced=forced,
+        forced_value=forced_value
       )
       self.linksim.similarity_linksim_matrix(verbose=verbose)
       self.linksim_condense_matrix = self.linksim.linksim_condense_matrix
 
-    def fit_linksim_edgelist(self, use_parallel=False, flat_mode=False, verbose=0):
+    def fit_linksim_edgelist(self, use_parallel=False, forced=False, forced_value=0.0, verbose=0):
       self.linksim = LinkSimilarity(
         self.N,
         self.M,
@@ -378,7 +402,8 @@ class Clustering:
         similarity_index=self.similarity_index,
         undirected=self.undirected,
         use_parallel=use_parallel,
-        flat_mode=flat_mode
+        forced=forced,
+        forced_value=forced_value
       )
       self.linksim.similarity_linksim_edgelist(verbose=verbose)
       self.linksim_edgelist = np.array(self.linksim.linksim_edgelist)
@@ -403,7 +428,7 @@ class Clustering:
     def get_hierarchy_edgelist(self, max_dist : float = 1):
       return np.array(utils_cpp.mst_edges_to_linkage(self.M, self.linkdist_edgelist, max_dist))
 
-    def compute_features_matrix(self, linkage : int, verbose=0, force=False):
+    def compute_features_matrix(self, linkage : int, verbose=0, forced=False):
       if self.edgelist.shape[0] > 1:
         sources = self.edgelist["source"].to_numpy()
         targets = self.edgelist["target"].to_numpy()
@@ -421,7 +446,7 @@ class Clustering:
         linkage,
         self.undirected,
         verbose=verbose,
-        force=force,
+        forced=forced,
         edge_complete=self.edge_complete
       )
       features.fit_matrix(self.linkdist_condense_matrix)
@@ -435,7 +460,7 @@ class Clustering:
       )
       return result
 
-    def compute_features_edgelist(self, linkage : int, max_dist=1, verbose=0, force=False):
+    def compute_features_edgelist(self, linkage : int, max_dist=1, verbose=0, forced=False):
       if self.linkdist_edgelist is None:
         raise ValueError("linkdist_edgelist is not set. Run fit_linksim_edgelist() and build the distance column first.")
 
@@ -467,7 +492,7 @@ class Clustering:
         linkage,
         self.undirected,
         verbose=verbose,
-        force=force,
+        forced=forced,
         edge_complete=self.edge_complete
       )
       features.fit_edgelist(self.linkdist_edgelist, max_dist)
@@ -481,10 +506,10 @@ class Clustering:
       )
       return result
 
-    def process_features_matrix(self, verbose=0, force=False):
+    def process_features_matrix(self, verbose=0, forced=False):
       linkage = 0  # Single linkage
                    # Only single linkage supported deliberately
-      features = self.compute_features_matrix(linkage, verbose=verbose, force=force)
+      features = self.compute_features_matrix(linkage, verbose=verbose, forced=forced)
       return pd.DataFrame(
           {
             "K" : features[0, :],
@@ -494,10 +519,10 @@ class Clustering:
           }
         )
 
-    def process_features_edgelist(self, max_dist=1, verbose=0, force=False):
+    def process_features_edgelist(self, max_dist=1, verbose=0, forced=False):
       linkage = 0  # Single linkage
                    # Only single linkage supported deliberately
-      features = self.compute_features_edgelist(linkage, max_dist=max_dist, verbose=verbose, force=force)
+      features = self.compute_features_edgelist(linkage, max_dist=max_dist, verbose=verbose, forced=forced)
       return pd.DataFrame(
           {
             "K" : features[0, :],

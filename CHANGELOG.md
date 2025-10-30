@@ -1,14 +1,20 @@
 ## [Unreleased]
 
+## [v0.3.0] - X-X-2025
+- Edited `Clustering` class so it raises an error if nodes from the nx graph object have several types of node labels. Now, node labels must be all string or integers.
+- Accept Python ints and numpy integer dtypes (e.g., np.int64) in Clustering node-ID validation while excluding booleans; relabeling now sorts by int() for consistent numeric ordering.
+- Removed legacy flat-mode handling from the link similarity core in favor of the new `forced` fallback option.
+- Strengthened weight validation and preserved original→integer node mappings in   `Clustering`, ensuring robust graph preprocessing.
+
 ## [v0.2.9] - 10-13-2025
 - Fixed equivalence_partition bug.
 
 ## [v0.2.7] - 10-13-2025
 - Added the utils_cpp in the __init__.py script.
-- Added weight parameter in the Clustering class to select the weight attribute to be used for computing node neighborhood similarities.
-- Added tests to validate the weight attribute label used in the Clustering class.
-- Relabeled Clustering member linkdist_matrix to linkdist_condensed_matrix.
-- Fixed bug in equivalence_partition method.
+- Added weight parameter in the `Clustering` class to select the weight attribute to be used for computing node neighborhood similarities.
+- Added tests to validate the weight attribute label used in the `Clustering` class.
+- Relabeled `Clustering` member `linkdist_matrix` to `linkdist_condensed_matrix`.
+- Fixed bug in `equivalence_partition` method.
 
 ## [v0.2.6] - 09-28-2025
 - Reworked `pyproject.toml` metadata provider configuration so scikit-build-core pulls the exact tag version from `setuptools_scm`.

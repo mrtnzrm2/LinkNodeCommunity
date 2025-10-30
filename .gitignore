@@ -43,3 +43,5 @@ cpp/**/cmake-build-*/
 **.pdf
 
 **/WikiVote.ipynb
+
+**tmp**

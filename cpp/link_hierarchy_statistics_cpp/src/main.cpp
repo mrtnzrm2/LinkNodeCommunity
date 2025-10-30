@@ -35,7 +35,7 @@
  * - edge_complete (bool): Indicates if the provided edges already correspond to the edge-complete graph.
  *   When false, inputs are filtered to retain nodes present as both sources and targets (< N).
  * - verbose (int, optional): Verbosity level (0 no output, 1 workflow milestones, 2 step annoucements).
- * - force (bool, optional): Ignore recoverable runtime errors to let workflows finish when possible.
+ * - forced (bool, optional): Ignore recoverable runtime errors to let workflows finish when possible.
  *   False (0, default) halts on errors, True (1) attempts to continue.
  *
  * core Class Methods:
@@ -173,7 +173,7 @@ class core {
     int linkage;
     bool undirected;
     int verbose;
-    bool force;
+    bool forced;
     bool edge_complete;
 
     std::vector<int> source_nodes;
@@ -200,7 +200,7 @@ class core {
       const int linkage,
       const bool undirected,
       const int verbose = 0,
-      const bool force = false,
+      const bool forced = false,
       const bool edge_complete = true
     );
     ~core(){};
@@ -233,7 +233,7 @@ core::core(
   const int linkage,
   const bool undirected,
   const int verbose,
-  const bool force,
+  const bool forced,
   const bool edge_complete
 ) {
   number_of_nodes = N;
@@ -242,7 +242,7 @@ core::core(
   this->target_nodes = target_nodes;
   this->linkage = linkage;
   this->undirected = undirected;
-  this->force = force;
+  this->forced = forced;
   this->edge_complete = edge_complete;
 
   if (verbose < 0 || verbose > 2) {
@@ -260,7 +260,7 @@ core::core(
     std::cout << "[linkstat] Initialized with N=" << number_of_nodes
               << ", M=" << number_of_edges
               << ", verbose=" << this->verbose
-              << ", force=" << (this->force ? 1 : 0)
+              << ", forced=" << (this->forced ? 1 : 0)
               << ", edge_complete=" << (this->edge_complete ? 1 : 0) << "\n";
   }
 }
@@ -497,11 +497,11 @@ void core::fit_edgelist(std::vector<std::vector<double>> &distance_edgelist, con
             std::cout << "[linkstat] Completed fit_edgelist workflow" << std::endl;
         }
     } catch (const std::exception& ex) {
-        if (!force) {
+        if (!forced) {
             throw;
         }
         if (verbose >= 1) {
-            std::cerr << "[linkstat] fit_edgelist forced completion after error: "
+            std::cerr << "[linkstat] fit_edgelist forcedd completion after error: "
                       << ex.what() << std::endl;
         }
     }
@@ -698,11 +698,11 @@ void core::fit_matrix(std::vector<double>& condensed_distance_matrix) {
             std::cout << "[linkstat] Completed fit_matrix workflow" << std::endl;
         }
     } catch (const std::exception& ex) {
-        if (!force) {
+        if (!forced) {
             throw;
         }
         if (verbose >= 1) {
-            std::cerr << "[linkstat] fit_matrix forced completion after error: "
+            std::cerr << "[linkstat] fit_matrix forcedd completion after error: "
                       << ex.what() << std::endl;
         }
     }
@@ -745,7 +745,7 @@ PYBIND11_MODULE(link_hierarchy_statistics_cpp, m) {
           py::arg("linkage"),
           py::arg("undirected"),
           py::arg("verbose") = 0,
-          py::arg("force") = false,
+          py::arg("forced") = false,
           py::arg("edge_complete") = true
         )
 

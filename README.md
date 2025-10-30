@@ -90,7 +90,11 @@ pip install LinkNodeCommunity
 
 **From TestPyPI (pre-release builds):**
 ```bash
-pip install -i https://test.pypi.org/simple/ LinkNodeCommunity==0.2.9
+pip install -i https://test.pypi.org/simple/ LinkNodeCommunity==0.3.0
+```
+or
+```bash
+pip install --extra-index-url https://test.pypi.org/simple/ LinkNodeCommunity==0.3.0
 ```
 
 **From source (developer mode):**
@@ -107,7 +111,7 @@ During this process, scikit-build automatically compiles the C++ extensions unde
 ```python
 >>> import LinkNodeCommunity as lnc
 >>> lnc.__version__
-'0.2.9'
+'0.3.0'
 
 # Lazy exports keep the top-level import fast while providing submodule discovery
 >>> from LinkNodeCommunity import Clustering
