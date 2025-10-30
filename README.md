@@ -90,11 +90,11 @@ pip install LinkNodeCommunity
 
 **From TestPyPI (pre-release builds):**
 ```bash
-pip install -i https://test.pypi.org/simple/ LinkNodeCommunity==0.3.0
+pip install -i https://test.pypi.org/simple/ LinkNodeCommunity==0.3.1
 ```
 or
 ```bash
-pip install --extra-index-url https://test.pypi.org/simple/ LinkNodeCommunity==0.3.0
+pip install --extra-index-url https://test.pypi.org/simple/ LinkNodeCommunity==0.3.1
 ```
 
 **From source (developer mode):**

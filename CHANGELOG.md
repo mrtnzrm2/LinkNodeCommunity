@@ -1,6 +1,9 @@
 ## [Unreleased]
 
-## [v0.3.0] - X-X-2025
+## [v0.3.1] - 10-10-2025
+- Minor change in a test.
+
+## [v0.3.0] - 10-10-2025
 - Edited `Clustering` class so it raises an error if nodes from the nx graph object have several types of node labels. Now, node labels must be all string or integers.
 - Accept Python ints and numpy integer dtypes (e.g., np.int64) in Clustering node-ID validation while excluding booleans; relabeling now sorts by int() for consistent numeric ordering.
 - Removed legacy flat-mode handling from the link similarity core in favor of the new `forced` fallback option.

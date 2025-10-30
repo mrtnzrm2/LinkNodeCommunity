@@ -595,7 +595,7 @@ def test_clustering_inputs():
     try:
         _ = Clustering(G)
     except ValueError as e:
-        assert str(e) == "Edge (0, 1) has NaN as weight. Please clean your graph.", "Incorrect exception message."
+        assert str(e) == "Edge (0, 1) has a non-finite weight nan. Please ensure all edge weights are finite real numbers.", "Incorrect exception message."
     else:
         assert False, "Expected ValueError for adjacency matrix with NaN values."
 
