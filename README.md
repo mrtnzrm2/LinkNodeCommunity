@@ -30,7 +30,6 @@
 - [Repository Layout](#repository-layout)
 - [Testing \& Quality](#testing--quality)
 - [Development Tips](#development-tips)
-- [Citation](#citation)
 - [Funding \& Acknowledgements](#funding--acknowledgements)
 - [License](#license)
 - [References](#references)
@@ -186,20 +185,6 @@ pyproject.toml            # build metadata (scikit-build-core, dependencies)
 - Explore community resolutions via `equivalence_partition(score="S"|"D")` and compare against loop entropy maxima.
 - Export Newick strings to inspect hierarchies with phylogenetic visualization libraries.
 
-## Citation
-If you use this software in academic work, please cite:
-```
-@article{MartinezArmas2024,
-  title = {A principled approach to community detection in interareal cortical networks},
-  url = {http://dx.doi.org/10.1101/2024.08.07.606907},
-  DOI = {10.1101/2024.08.07.606907},
-  publisher = {Cold Spring Harbor Laboratory},
-  author = { Martinez Armas,  Jorge and Knoblauch,  Kenneth and Kennedy,  Henry and Toroczkai,  Zoltan},
-  year = {2024},
-  month = aug 
-}
-```
-
 ## Funding & Acknowledgements
 Supported by NSF IIS-1724297, French ANR grants (A2P2MC ANR-17-NEUC-0004, ANR-17-FLAG-ERA-HBP-CORTICITY, ANR-19-CE37-0025-DUAL_STREAMS), and collaborative efforts across Notre Dame, Washington University, Université Claude Bernard Lyon 1, and partner institutes. We thank B. Molnár, L. Magrou, and Y. Hou for insightful discussions, and acknowledge the use of the CORE-NETS connectivity datasets.
 
@@ -209,7 +194,6 @@ Distributed under the terms of the repository's [LICENSE](LICENSE).
 ## References
 - Ahn, Y.-Y., Bagrow, J. P., & Lehmann, S. (2010). Link communities reveal multiscale network complexity. *Nature*, 466, 761–764. https://doi.org/10.1038/nature09182
 - Lancichinetti, A., & Fortunato, S. (2009). Benchmarks for testing community detection algorithms on directed and weighted graphs with overlapping communities. *Phys. Rev. E*, 80, 016118.
-- Martinez Armas, J., Knoblauch, K., Kennedy, H., & Toroczkai, Z. (2024). *An information theoretic approach to community detection in dense cortical networks reveals a nested hierarchical structure* (preprint to be submitted shortly).
 - Markov, N., et al. (2011). Weight consistency specifies the regularities of macaque cortical networks. *Cerebral Cortex*, 21, 1254–1272.
 - Markov, N., et al. (2012). A weighted and directed interareal connectivity matrix for macaque cerebral cortex. *Cerebral Cortex*. https://doi.org/10.1093/cercor/bhs127
 - Müllner, D. (2013). fastcluster: Fast Hierarchical, Agglomerative Clustering Routines for R and Python. *Journal of Statistical Software*, 53(9), 1–18.
