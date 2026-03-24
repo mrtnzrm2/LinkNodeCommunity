@@ -264,7 +264,7 @@ def fast_cut_tree(H : npt.NDArray, n_clusters=None, height=None):
 
 def linear_partition(partition : npt.ArrayLike):
   ''' 
-  Renumber non-singleton communities consecutively from 0. Singleton communities (entries with -1) remain unchanged.
+  Renumber non-singleton communities, labeled with -1, consecutively from 0. Singleton communities (entries with -1) remain unchanged.
 
   Parameters
   ----------
@@ -284,7 +284,7 @@ def linear_partition(partition : npt.ArrayLike):
   new_partition = np.array([label_map[x] if x != -1 else -1 for x in par])
   return new_partition
 
-def collapsed_partition(partition : npt.ArrayLike):
+def linear_collapse_partition(partition : npt.ArrayLike):
   '''
   Renumber the communities linearly. From 0 to number of communities - 1. Singletons are replaced by -1.
 
@@ -539,7 +539,7 @@ def linkDc(df: pd.DataFrame, id, undirected=False):
   else:
     return (m - n + 1) / (n - 1) ** 2
 
-def linkcommunity_collapsed_partition(df: pd.DataFrame, undirected: bool = False):
+def linkcommunity_linear_collapse_partition(df: pd.DataFrame, undirected: bool = False):
   """
   Collapse trivial link communities in an edge list DataFrame by assigning their
   membership 'id' to -1. A trivial community is one with density <= 0.

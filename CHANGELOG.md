@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+## [v0.3.2] - X-X-2025
+- Renamed collapsed_partition to linear_collapse_partition.
+
 ## [v0.3.1] - 10-10-2025
 - Minor change in a test.
 

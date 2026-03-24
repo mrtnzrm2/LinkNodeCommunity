@@ -342,7 +342,7 @@ def linkcommunity_matrix_map(
     from src.LinkNodeCommunity.utils import (
         fast_cut_tree,
         linear_partition,
-        linkcommunity_collapsed_partition,
+        linkcommunity_linear_collapse_partition,
         linkcommunity_linear_partition,
         edgelist_to_adjacency, edgelist_from_graph
     )
@@ -365,7 +365,7 @@ def linkcommunity_matrix_map(
         edgelist["source_label"] = labels[edgelist["source"].astype(int)]
         edgelist["target_label"] = labels[edgelist["target"].astype(int)]
 
-    linkcommunity_collapsed_partition(edgelist, undirected)
+    linkcommunity_linear_collapse_partition(edgelist, undirected)
     linkcommunity_linear_partition(edgelist, offset=1)
 
     number_of_link_communities = np.unique(edgelist.id).shape[0]
@@ -556,7 +556,7 @@ def heatmap(
     """
     from src.LinkNodeCommunity.utils import (
         fast_cut_tree,
-        collapsed_partition,
+        linear_collapse_partition,
         linear_partition
     )
     from scipy.cluster.hierarchy import dendrogram
@@ -574,7 +574,7 @@ def heatmap(
     # Get node ordering from dendrogram
     den_order = np.array(dendrogram(Z, no_plot=True)["ivl"]).astype(int)
     memberships = fast_cut_tree(Z, n_clusters=R)
-    memberships = collapsed_partition(memberships)
+    memberships = linear_collapse_partition(memberships)
     memberships = linear_partition(memberships)[den_order]
 
     # Find community boundaries for lines
@@ -809,7 +809,7 @@ def dendrogram(
     **kwargs
         Additional keyword arguments for scipy dendrogram.
     """
-    from src.LinkNodeCommunity.utils import fast_cut_tree, linear_partition, collapsed_partition
+    from src.LinkNodeCommunity.utils import fast_cut_tree, linear_partition, linear_collapse_partition
     from scipy.cluster.hierarchy import dendrogram as scipy_dendrogram
     from matplotlib.colors import to_hex
 
@@ -826,7 +826,7 @@ def dendrogram(
 
     # Compute partition and assign cluster colors
     partition = fast_cut_tree(Z, n_clusters=R)
-    new_partition = collapsed_partition(partition)
+    new_partition = linear_collapse_partition(partition)
     new_partition = linear_partition(new_partition)
     unique_clusters_id = np.unique(new_partition)
     cmap = sns.color_palette(palette, len(unique_clusters_id))
